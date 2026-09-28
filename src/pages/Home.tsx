@@ -36,7 +36,7 @@ export default function Home() {
         <MeadowBackground />
         <div className="pointer-events-none absolute inset-0 z-10">
           <div className="absolute inset-0 bg-black/15" />
-          <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/70 via-black/30 to-transparent" />
+          <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/70 via-black/30 to-transparent" />
           <div
             className="absolute inset-0"
             style={{
@@ -53,7 +53,7 @@ export default function Home() {
               <CircularGallery items={homeGallery} radius={radius} autoRotateSpeed={0.03} />
             </div>
           </div>
-          <p className="px-6 py-3 text-center text-sm text-white/85">滚动页面，四张照片会转起来</p>
+          <p className="px-6 py-3 text-center text-sm text-white/85">滚动让照片转动，点击照片进入</p>
         </div>
       </div>
     </div>

@@ -51,6 +51,7 @@ export const homeGallery: GalleryItem[] = [
   {
     common: '个人介绍',
     binomial: 'About',
+    href: '/about',
     photo: {
       url: '/photos/about.png',
       text: '个人介绍',
@@ -61,6 +62,7 @@ export const homeGallery: GalleryItem[] = [
   {
     common: '实习目录',
     binomial: 'Internships',
+    href: '/internships',
     photo: {
       url: '/photos/internships.png',
       text: '实习目录',
@@ -71,6 +73,7 @@ export const homeGallery: GalleryItem[] = [
   {
     common: '项目列表',
     binomial: 'Projects',
+    href: '/projects',
     photo: {
       url: '/photos/projects.png',
       text: '项目列表',
@@ -81,6 +84,7 @@ export const homeGallery: GalleryItem[] = [
   {
     common: '个人能力',
     binomial: 'Skills',
+    href: '/skills',
     photo: {
       url: '/photos/skills.png',
       text: '个人能力',

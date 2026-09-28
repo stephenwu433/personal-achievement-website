@@ -41,29 +41,29 @@ export default function SiteHeader({ overlay = false, onPhoto = false }: SiteHea
             GitHub
           </a>
         </div>
-        <nav aria-label="页面" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {sections.map((section) => {
-            const Icon = icons[section.id]
-            const active = pathname === section.href
-            return (
-              <Link
-                key={section.href}
-                to={section.href}
-                aria-current={active ? 'page' : undefined}
-                className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
-                  active
-                    ? 'border-foreground/30 bg-foreground text-background'
-                    : onPhoto
-                      ? 'border-white/20 bg-black/55 text-white backdrop-blur-md hover:bg-black/70'
+        {onPhoto ? null : (
+          <nav aria-label="页面" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {sections.map((section) => {
+              const Icon = icons[section.id]
+              const active = pathname === section.href
+              return (
+                <Link
+                  key={section.href}
+                  to={section.href}
+                  aria-current={active ? 'page' : undefined}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
+                    active
+                      ? 'border-foreground/30 bg-foreground text-background'
                       : 'border-border bg-card/75 text-foreground hover:bg-accent'
-                }`}
-              >
-                <Icon className="size-4 shrink-0" aria-hidden="true" />
-                <span>{section.label}</span>
-              </Link>
-            )
-          })}
-        </nav>
+                  }`}
+                >
+                  <Icon className="size-4 shrink-0" aria-hidden="true" />
+                  <span>{section.label}</span>
+                </Link>
+              )
+            })}
+          </nav>
+        )}
       </div>
     </header>
   )

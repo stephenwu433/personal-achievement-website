@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, HTMLAttributes } from 'react';
+import { Link } from 'react-router-dom';
 
 // A simple utility for conditional class names
 const cn = (...classes: (string | undefined | null | false)[]) => {
@@ -9,6 +10,8 @@ const cn = (...classes: (string | undefined | null | false)[]) => {
 export interface GalleryItem {
   common: string;
   binomial: string;
+  /** 点这张照片时进入的页面。没有则只展示。 */
+  href?: string;
   photo: {
     url: string; 
     text: string;
@@ -103,11 +106,25 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
             const normalizedAngle = Math.abs(relativeAngle > 180 ? 360 - relativeAngle : relativeAngle);
             const opacity = Math.max(0.3, 1 - (normalizedAngle / 180));
 
+            const card = (
+              <>
+                <img
+                  src={item.photo.url}
+                  alt={item.href ? '' : item.photo.text}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{ objectPosition: item.photo.pos || 'center' }}
+                />
+                <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent text-white">
+                  <h2 className="text-xl font-bold">{item.common}</h2>
+                  {item.binomial ? <em className="text-sm italic opacity-80">{item.binomial}</em> : null}
+                  {item.photo.by ? <p className="text-xs mt-2 opacity-70">Photo by: {item.photo.by}</p> : null}
+                </div>
+              </>
+            );
+
             return (
               <div
-                key={item.photo.url} 
-                role="group"
-                aria-label={item.common}
+                key={item.photo.url}
                 className="absolute w-[300px] h-[400px]"
                 style={{
                   transform: `rotateY(${itemAngle}deg) translateZ(${radius}px)`,
@@ -119,20 +136,23 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
                   transition: 'opacity 0.3s linear'
                 }}
               >
-                <div className="relative w-full h-full rounded-lg shadow-2xl overflow-hidden group border border-border bg-card/70 dark:bg-card/30 backdrop-blur-lg">
-                  <img
-                    src={item.photo.url}
-                    alt={item.photo.text}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    style={{ objectPosition: item.photo.pos || 'center' }}
-                  />
-                  {/* Replaced text-primary-foreground with text-white for consistent color */}
-                  <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent text-white">
-                    <h2 className="text-xl font-bold">{item.common}</h2>
-                    {item.binomial ? <em className="text-sm italic opacity-80">{item.binomial}</em> : null}
-                    {item.photo.by ? <p className="text-xs mt-2 opacity-70">Photo by: {item.photo.by}</p> : null}
+                {item.href ? (
+                  <Link
+                    to={item.href}
+                    aria-label={item.common}
+                    className="relative block w-full h-full cursor-pointer rounded-lg shadow-2xl overflow-hidden border border-border bg-card/70 dark:bg-card/30 backdrop-blur-lg outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  >
+                    {card}
+                  </Link>
+                ) : (
+                  <div
+                    role="group"
+                    aria-label={item.common}
+                    className="relative w-full h-full rounded-lg shadow-2xl overflow-hidden border border-border bg-card/70 dark:bg-card/30 backdrop-blur-lg"
+                  >
+                    {card}
                   </div>
-                </div>
+                )}
               </div>
             );
           })}
