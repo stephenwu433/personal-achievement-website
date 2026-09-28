@@ -1,8 +1,10 @@
+import type { GalleryItem } from '@/components/ui/circular-gallery'
+
 export const profile = {
   name: 'Stephen舞',
   github: 'https://github.com/stephenwu433',
   githubHandle: 'stephenwu433',
-  portrait: '/photos/about.jpg',
+  portrait: '/photos/about.png',
 }
 
 export type SiteSection = {
@@ -31,7 +33,7 @@ export const sections: SiteSection[] = [
   {
     id: 'projects',
     href: '/projects',
-    label: '项目展示',
+    label: '项目列表',
     english: 'Projects',
     summary: '做过的项目，每件配一句说明、你的角色和链接。',
   },
@@ -41,6 +43,50 @@ export const sections: SiteSection[] = [
     label: '个人能力',
     english: 'Skills',
     summary: '按语言、工具和方向分组的能力。',
+  },
+]
+
+/** 打开网站时的环形画廊。背景图之后再换。 */
+export const homeGallery: GalleryItem[] = [
+  {
+    common: '个人介绍',
+    binomial: 'About',
+    photo: {
+      url: '/photos/about.png',
+      text: '个人介绍',
+      pos: '72% 42%',
+      by: '',
+    },
+  },
+  {
+    common: '实习目录',
+    binomial: 'Internships',
+    photo: {
+      url: '/photos/internships.png',
+      text: '实习目录',
+      pos: '78% 40%',
+      by: '',
+    },
+  },
+  {
+    common: '项目列表',
+    binomial: 'Projects',
+    photo: {
+      url: '/photos/projects.png',
+      text: '项目列表',
+      pos: '58% 36%',
+      by: '',
+    },
+  },
+  {
+    common: '个人能力',
+    binomial: 'Skills',
+    photo: {
+      url: '/photos/skills.png',
+      text: '个人能力',
+      pos: '64% 34%',
+      by: '',
+    },
   },
 ]
 

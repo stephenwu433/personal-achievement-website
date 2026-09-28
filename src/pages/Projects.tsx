@@ -21,7 +21,7 @@ export default function Projects() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,#3d5a49,transparent_46%)]" />
       <SiteHeader overlay />
       <main className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-5 pt-36 pb-10">
-        <p className="text-xs tracking-[0.22em] text-white/65 uppercase">项目展示</p>
+          <p className="text-xs tracking-[0.22em] text-white/65 uppercase">项目列表</p>
         <h2 className="mt-2 text-3xl font-semibold">左右滑动翻开下一件</h2>
         <div
           className="mt-8 w-[min(88vw,420px)] [perspective:1000px]"
