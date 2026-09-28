@@ -35,10 +35,12 @@ export default function Skills() {
   const drag = useRef<{ id: string; x: number; y: number } | null>(null)
   const reduced = useRef(false)
   const posesRef = useRef<Record<string, Pose>>({})
+  const tiltRef = useRef({ x: 0, y: 0, lightX: 50, lightY: 40 })
   const frame = useRef(0)
   const [poses, setPoses] = useState<Record<string, Pose>>(() =>
     Object.fromEntries(abilities.map((ability) => [ability.id, hiddenPose])),
   )
+  const [tilt, setTilt] = useState({ x: 0, y: 0, lightX: 50, lightY: 40 })
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -70,8 +72,25 @@ export default function Skills() {
         ? Math.min(1, Math.max(0, (pointerDistance - photoBox.width * 0.28) / 260))
         : 0
 
+      const px = (pointerX - originX) / photoBox.width
+      const py = (pointerY - originY) / photoBox.height
+      const clampedX = Math.max(-0.55, Math.min(0.55, px))
+      const clampedY = Math.max(-0.55, Math.min(0.55, py))
+      const targetTiltX = pointer.current.active && !reduced.current ? clampedY * -16 : 0
+      const targetTiltY = pointer.current.active && !reduced.current ? clampedX * 20 : 0
+      const targetLightX = pointer.current.active && !reduced.current ? (clampedX + 0.55) / 1.1 * 100 : 50
+      const targetLightY = pointer.current.active && !reduced.current ? (clampedY + 0.55) / 1.1 * 100 : 40
+      const tiltNow = tiltRef.current
+      tiltNow.x += (targetTiltX - tiltNow.x) * 0.16
+      tiltNow.y += (targetTiltY - tiltNow.y) * 0.16
+      tiltNow.lightX += (targetLightX - tiltNow.lightX) * 0.16
+      tiltNow.lightY += (targetLightY - tiltNow.lightY) * 0.16
+
       const next: Record<string, Pose> = {}
-      let moving = Boolean(drag.current) || pointer.current.active
+      let moving =
+        Boolean(drag.current) ||
+        Math.abs(tiltNow.x - targetTiltX) > 0.08 ||
+        Math.abs(tiltNow.y - targetTiltY) > 0.08
 
       for (const ability of abilities) {
         const radians = (ability.angle * Math.PI) / 180
@@ -111,6 +130,7 @@ export default function Skills() {
 
       posesRef.current = next
       setPoses(next)
+      setTilt({ x: tiltNow.x, y: tiltNow.y, lightX: tiltNow.lightX, lightY: tiltNow.lightY })
       if (moving) frame.current = requestAnimationFrame(tick)
       else running = false
     }
@@ -179,14 +199,25 @@ export default function Skills() {
       <SiteHeader overlay />
       <main className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-5 pt-40 pb-12">
         <p className="mb-5 text-xs tracking-[0.22em] text-white/70">个人能力</p>
-        <img
-          ref={photoRef}
-          src="/photos/skills.png"
-          alt="个人能力"
-          draggable={false}
-          className="aspect-[4/3] w-[min(78vw,420px)] rounded-[28px] object-cover shadow-[0_30px_80px_rgba(0,0,0,0.35)]"
-          style={{ objectPosition: '70% 42%' }}
-        />
+        <div ref={photoRef} className="relative w-[min(78vw,420px)] [perspective:1200px]">
+          <img
+            src="/photos/skills.png"
+            alt="个人能力"
+            draggable={false}
+            className="aspect-[4/3] w-full rounded-[28px] object-cover shadow-[0_30px_80px_rgba(0,0,0,0.35)]"
+            style={{
+              objectPosition: '70% 42%',
+              transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+              transformStyle: 'preserve-3d',
+            }}
+          />
+          <div
+            className="pointer-events-none absolute inset-0 rounded-[28px]"
+            style={{
+              background: `radial-gradient(circle at ${tilt.lightX}% ${tilt.lightY}%, rgba(255,255,255,0.28), transparent 36%)`,
+            }}
+          />
+        </div>
         <h2 className="mt-8 text-4xl font-semibold tracking-tight">{profile.name}</h2>
         <a
           href={profile.github}
@@ -197,7 +228,7 @@ export default function Skills() {
           github.com/{profile.githubHandle}
         </a>
         <p className="mt-6 max-w-md text-center text-sm leading-6 text-white/70">
-          从照片向外移动，能力会散出来。拖住一项可以把它拉得更远。
+          移动光标，肖像会跟着倾斜，能力也会散出来。拖住一项可以把它拉得更远。
         </p>
       </main>
       {abilities.map((ability) => {
