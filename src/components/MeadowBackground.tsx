@@ -61,11 +61,16 @@ function isKitePixel(r: number, g: number, b: number) {
   return Math.max(r, g, b) - Math.min(r, g, b) > 28
 }
 
+function fallbackPinX(vw: number) {
+  return Math.min(vw * 0.2, 88)
+}
+
 function coverLayout(vw: number, vh: number, iw: number, ih: number): Layout {
   const scale = Math.max(vw / iw, vh / ih)
   const dw = iw * scale
   const dh = ih * scale
-  let left = vw * 0.72 - PERSON.x * scale
+  const focusX = vw < 720 ? 0.84 : 0.72
+  let left = vw * focusX - PERSON.x * scale
   const top = Math.min(0, Math.max(vh - dh, vh * 0.48 - PERSON.y * scale))
   const kiteX = 370 * scale
   if (left + kiteX < vw * 0.04) {
@@ -233,9 +238,9 @@ function buildKiteLayer(img: HTMLImageElement): KiteLayer | null {
     const sy = Math.round(y + py * 8)
     if (sx < 0 || sy < 0 || sx >= iw || sy >= ih) continue
     const sample = (sy * iw + sx) * 4
-    eraseCtx.fillStyle = `rgba(${data[sample]}, ${data[sample + 1]}, ${data[sample + 2]}, 0.94)`
+    eraseCtx.fillStyle = `rgba(${data[sample]}, ${data[sample + 1]}, ${data[sample + 2]}, 0.96)`
     eraseCtx.beginPath()
-    eraseCtx.arc(x, y, 3.4, 0, Math.PI * 2)
+    eraseCtx.arc(x, y, 5, 0, Math.PI * 2)
     eraseCtx.fill()
   }
 
@@ -374,11 +379,11 @@ export default function MeadowBackground() {
       const photoPinY = top + kite.pinY * scale
       const handX = left + HAND.x * scale
       const handY = top + HAND.y * scale
-      const kiteOnPhoto = photoPinX > -40 && photoPinX < vw * 0.72 && photoPinY > -20 && photoPinY < vh * 0.7
+      const kiteOnPhoto = photoPinX > 24 && photoPinX < vw * 0.62 && photoPinY > 12 && photoPinY < vh * 0.62
       const offsetX = reduced ? 0 : wind.x * 40
       const offsetY = reduced ? 0 : wind.y * 18 - Math.abs(wind.x) * 8
 
-      if (kiteOnPhoto) ctx.drawImage(kite.erase, left, top, layout.dw, layout.dh)
+      ctx.drawImage(kite.erase, left, top, layout.dw, layout.dh)
 
       if (!reduced) {
         ctx.save()
@@ -389,8 +394,11 @@ export default function MeadowBackground() {
         ctx.restore()
       }
 
-      const kiteX = kiteOnPhoto ? photoPinX + offsetX : vw * 0.18 + offsetX
-      const kiteY = kiteOnPhoto ? photoPinY + offsetY : vh * 0.13 + offsetY
+      const parkedWidth = Math.min(150, vw * 0.34)
+      const parkedHeight = kite.sprite.width ? parkedWidth * (kite.sprite.height / kite.sprite.width) : parkedWidth
+      const pinRy = kite.sprite.height ? (kite.pinY - kite.originY) / kite.sprite.height : 0.4
+      const kiteX = kiteOnPhoto ? photoPinX + offsetX : fallbackPinX(vw) + offsetX
+      const kiteY = kiteOnPhoto ? photoPinY + offsetY : vh * 0.2 + pinRy * parkedHeight + offsetY
       const sway = reduced ? 0 : Math.sin(now * 0.0013) * (6 + Math.abs(wind.x) * 18)
       const midX = (kiteX + handX) / 2 + sway
       const midY = (kiteY + handY) / 2 + (reduced ? 10 : Math.sin(now * 0.001 + 0.6) * 8)
@@ -411,11 +419,14 @@ export default function MeadowBackground() {
           kite.sprite.height * scale,
         )
       } else {
-        const width = Math.min(170, vw * 0.36)
-        const height = width * (kite.sprite.height / kite.sprite.width)
-        const pinRx = (kite.pinX - kite.originX) / kite.sprite.width
-        const pinRy = (kite.pinY - kite.originY) / kite.sprite.height
-        ctx.drawImage(kite.sprite, kiteX - pinRx * width, kiteY - pinRy * height, width, height)
+        const pinRx = kite.sprite.width ? (kite.pinX - kite.originX) / kite.sprite.width : 0.5
+        ctx.drawImage(
+          kite.sprite,
+          kiteX - pinRx * parkedWidth,
+          kiteY - pinRy * parkedHeight,
+          parkedWidth,
+          parkedHeight,
+        )
       }
 
       if (!reduced) {
@@ -425,7 +436,7 @@ export default function MeadowBackground() {
           const height = blade.h * vh
           const gust = Math.sin(now * 0.0016 + blade.phase) * (8 + wind.x * 20) + wind.x * 12
           const distance = Math.abs(x - personX) / vw
-          ctx.globalAlpha = Math.min(0.72, 0.22 + distance * 1.1)
+          ctx.globalAlpha = distance < 0.14 ? 0.1 : Math.min(0.62, 0.18 + distance)
           ctx.strokeStyle = blade.shade > 0.55 ? 'rgb(92, 158, 58)' : 'rgb(46, 112, 42)'
           ctx.lineWidth = blade.width
           ctx.beginPath()

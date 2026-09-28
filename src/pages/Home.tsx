@@ -35,8 +35,8 @@ export default function Home() {
         <h1 className="sr-only">{profile.name}的个人网站</h1>
         <MeadowBackground />
         <div className="pointer-events-none absolute inset-0 z-10">
-          <div className="absolute inset-0 bg-black/20" />
-          <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-black/75 via-black/40 to-transparent" />
+          <div className="absolute inset-0 bg-black/15" />
+          <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/70 via-black/30 to-transparent" />
           <div
             className="absolute inset-0"
             style={{
