@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CircularGallery } from '@/components/ui/circular-gallery'
+import MeadowBackground from '@/src/components/MeadowBackground'
 import SiteHeader from '@/src/components/SiteHeader'
 import { homeGallery, profile } from '@/src/content'
 
@@ -29,19 +30,30 @@ export default function Home() {
   }, [])
 
   return (
-    <div className="bg-background text-foreground" style={{ height: '500vh' }}>
-      <div className="sticky top-0 h-dvh">
+    <div className="text-foreground" style={{ height: '500vh' }}>
+      <div className="sticky top-0 h-dvh overflow-hidden bg-[#2c7ed8]">
         <h1 className="sr-only">{profile.name}的个人网站</h1>
-        <div className="grid h-full grid-rows-[auto_minmax(0,1fr)_auto]">
-          <SiteHeader />
+        <MeadowBackground />
+        <div className="pointer-events-none absolute inset-0 z-10">
+          <div className="absolute inset-0 bg-black/20" />
+          <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-black/75 via-black/40 to-transparent" />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(ellipse 54% 50% at 50% 48%, rgba(0,0,0,0.58) 0%, rgba(0,0,0,0.3) 46%, rgba(0,0,0,0) 72%)',
+            }}
+          />
+          <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 to-transparent" />
+        </div>
+        <div className="relative z-20 grid h-full grid-rows-[auto_minmax(0,1fr)_auto]">
+          <SiteHeader onPhoto />
           <div className="relative min-h-0">
             <div className="absolute inset-0 max-sm:[zoom:0.78]">
               <CircularGallery items={homeGallery} radius={radius} autoRotateSpeed={0.03} />
             </div>
           </div>
-          <p className="bg-background px-6 py-3 text-center text-sm text-muted-foreground">
-            滚动页面，四张照片会转起来
-          </p>
+          <p className="px-6 py-3 text-center text-sm text-white/85">滚动页面，四张照片会转起来</p>
         </div>
       </div>
     </div>

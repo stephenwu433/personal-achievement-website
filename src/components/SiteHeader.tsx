@@ -11,29 +11,32 @@ const icons: Record<SiteSection['id'], typeof User> = {
 
 type SiteHeaderProps = {
   overlay?: boolean
+  onPhoto?: boolean
 }
 
-export default function SiteHeader({ overlay = false }: SiteHeaderProps) {
+export default function SiteHeader({ overlay = false, onPhoto = false }: SiteHeaderProps) {
   const { pathname } = useLocation()
 
   return (
     <header
       className={
-        overlay
-          ? 'absolute inset-x-0 top-0 z-20 px-4 pt-4 sm:px-6 sm:pt-5'
-          : 'sticky top-0 z-30 border-b border-border bg-background px-4 py-3 sm:px-6'
+        onPhoto
+          ? 'relative z-20 px-4 pt-4 pb-1 sm:px-6 sm:pt-5'
+          : overlay
+            ? 'absolute inset-x-0 top-0 z-20 px-4 pt-4 sm:px-6 sm:pt-5'
+            : 'sticky top-0 z-30 border-b border-border bg-background px-4 py-3 sm:px-6'
       }
     >
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
         <div className="flex items-center justify-between">
-          <Link to="/" className="text-lg tracking-tight">
-            Stephen<span className="text-muted-foreground">舞</span>
+          <Link to="/" className={`text-lg tracking-tight ${onPhoto ? 'text-white' : ''}`}>
+            Stephen<span className={onPhoto ? 'text-white/70' : 'text-muted-foreground'}>舞</span>
           </Link>
           <a
             href={profile.github}
             target="_blank"
             rel="noreferrer"
-            className="text-sm text-muted-foreground hover:text-foreground"
+            className={`text-sm hover:text-foreground ${onPhoto ? 'text-white/80 hover:text-white' : 'text-muted-foreground'}`}
           >
             GitHub
           </a>
@@ -50,7 +53,9 @@ export default function SiteHeader({ overlay = false }: SiteHeaderProps) {
                 className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
                   active
                     ? 'border-foreground/30 bg-foreground text-background'
-                    : 'border-border bg-card/75 text-foreground hover:bg-accent'
+                    : onPhoto
+                      ? 'border-white/20 bg-black/55 text-white backdrop-blur-md hover:bg-black/70'
+                      : 'border-border bg-card/75 text-foreground hover:bg-accent'
                 }`}
               >
                 <Icon className="size-4 shrink-0" aria-hidden="true" />
