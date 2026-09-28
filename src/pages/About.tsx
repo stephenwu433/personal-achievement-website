@@ -1,49 +1,62 @@
-import PageShell from '@/src/components/PageShell'
-import { profile, sections } from '@/src/content'
-
-const section = sections[0]
-
-const needed = [
-  '一句能放在名字下面的自我介绍',
-  '更完整的一段话：学校或所在城市、正在做的事',
-  '想公开的联系方式，例如邮箱',
-  '如果要换首页和这里的照片，发清晰的原图',
-]
+import { useRef, useState } from 'react'
+import SiteHeader from '@/src/components/SiteHeader'
+import { profile } from '@/src/content'
 
 export default function About() {
+  const frame = useRef<HTMLDivElement>(null)
+  const [tilt, setTilt] = useState({ x: 0, y: 0 })
+  const [light, setLight] = useState({ x: 50, y: 40 })
+
+  const onMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const px = (event.clientX - bounds.left) / bounds.width - 0.5
+    const py = (event.clientY - bounds.top) / bounds.height - 0.5
+    setTilt({ x: py * -16, y: px * 20 })
+    setLight({ x: (px + 0.5) * 100, y: (py + 0.5) * 100 })
+  }
+
   return (
-    <PageShell title={section.label} english={section.english} lede={section.summary}>
-      <div className="mt-10 flex flex-col gap-8 sm:flex-row sm:items-end">
-        <img
-          src={profile.portrait}
-          alt={profile.name}
-          className="h-56 w-56 rounded-2xl object-cover"
-        />
-        <div>
-          <h2 className="text-3xl font-semibold">{profile.name}</h2>
-          <a
-            href={profile.github}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-3 inline-flex text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            github.com/{profile.githubHandle}
-          </a>
+    <div className="relative min-h-dvh overflow-hidden bg-[#2b241f] text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,#8d6b52,transparent_42%),radial-gradient(circle_at_85%_80%,#3e5160,transparent_38%)]" />
+      <SiteHeader overlay />
+      <main className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-5 pt-40 pb-12">
+        <p className="mb-5 text-xs tracking-[0.22em] text-white/70 uppercase">个人介绍</p>
+        <div
+          ref={frame}
+          className="relative [perspective:1200px]"
+          onPointerMove={onMove}
+          onPointerLeave={() => setTilt({ x: 0, y: 0 })}
+        >
+          <img
+            src={profile.portrait}
+            alt={profile.name}
+            draggable={false}
+            className="w-[min(78vw,380px)] rounded-[28px] shadow-[0_30px_80px_rgba(0,0,0,0.35)] transition-transform duration-200 ease-out"
+            style={{
+              transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+              transformStyle: 'preserve-3d',
+            }}
+          />
+          <div
+            className="pointer-events-none absolute inset-0 rounded-[28px]"
+            style={{
+              background: `radial-gradient(circle at ${light.x}% ${light.y}%, rgba(255,255,255,0.28), transparent 36%)`,
+            }}
+          />
         </div>
-      </div>
-      <section className="mt-10 rounded-2xl border border-dashed border-border p-5">
-        <h2 className="text-lg font-medium">这段介绍还空着</h2>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          公开资料里目前只有名字和 GitHub。下面这些补上之后，这里会换成你的介绍。
+        <h2 className="mt-8 text-4xl font-semibold tracking-tight">{profile.name}</h2>
+        <a
+          href={profile.github}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 text-sm text-white/75 underline-offset-4 hover:underline"
+        >
+          github.com/{profile.githubHandle}
+        </a>
+        <p className="mt-6 max-w-md text-center text-sm leading-6 text-white/70">
+          移动光标，肖像会跟着倾斜。更长的自我介绍可以之后补在这里。
         </p>
-        <ul className="mt-4 space-y-2 text-sm leading-6">
-          {needed.map((item) => (
-            <li key={item} className="border-t border-border pt-2">
-              {item}
-            </li>
-          ))}
-        </ul>
-      </section>
-    </PageShell>
+      </main>
+    </div>
   )
 }
