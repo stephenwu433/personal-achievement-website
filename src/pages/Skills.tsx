@@ -85,8 +85,9 @@ export default function Skills() {
           x = drag.current.x - stageBox.left
           y = drag.current.y - stageBox.top
         }
-        x = Math.min(stageBox.width - 36, Math.max(36, x))
-        y = Math.min(stageBox.height - 28, Math.max(28, y))
+        const halfWidth = 28 + ability.label.length * 15
+        x = Math.min(stageBox.width - halfWidth, Math.max(halfWidth, x))
+        y = Math.min(stageBox.height - 28, Math.max(120, y))
         const opacity = reduced.current ? 1 : Math.min(1, Math.max(0, (reach - 36) / 48))
         const previous = posesRef.current[ability.id] ?? {
           x: originX,
