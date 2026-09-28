@@ -1,88 +1,227 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import SiteHeader from '@/src/components/SiteHeader'
+import { profile } from '@/src/content'
 
-type Node = {
+type Ability = {
   id: string
   label: string
-  x: number
-  y: number
+  angle: number
 }
 
-const initialNodes: Node[] = [
-  { id: 'language', label: '语言和工程', x: 32, y: 36 },
-  { id: 'tools', label: '工具', x: 68, y: 30 },
-  { id: 'direction', label: '方向', x: 48, y: 58 },
+type Pose = {
+  x: number
+  y: number
+  fromX: number
+  fromY: number
+  opacity: number
+}
+
+const abilities: Ability[] = [
+  { id: 'language', label: '语言和工程', angle: 158 },
+  { id: 'tools', label: '工具', angle: -28 },
+  { id: 'direction', label: '方向', angle: 212 },
 ]
 
-export default function Skills() {
-  const [nodes, setNodes] = useState(initialNodes)
-  const drag = useRef<{ id: string } | null>(null)
-  const field = useRef<HTMLDivElement>(null)
+const hiddenPose: Pose = { x: 0, y: 0, fromX: 0, fromY: 0, opacity: 0 }
 
-  const move = (id: string, clientX: number, clientY: number) => {
-    const bounds = field.current?.getBoundingClientRect()
-    if (!bounds) return
-    const x = ((clientX - bounds.left) / bounds.width) * 100
-    const y = ((clientY - bounds.top) / bounds.height) * 100
-    setNodes((current) =>
-      current.map((node) =>
-        node.id === id
-          ? {
-              ...node,
-              x: Math.min(82, Math.max(18, x)),
-              y: Math.min(78, Math.max(22, y)),
-            }
-          : node,
-      ),
-    )
-  }
+function angleDifference(a: number, b: number) {
+  return Math.atan2(Math.sin(a - b), Math.cos(a - b))
+}
+
+export default function Skills() {
+  const stageRef = useRef<HTMLDivElement>(null)
+  const photoRef = useRef<HTMLImageElement>(null)
+  const pointer = useRef({ x: 0, y: 0, active: false })
+  const drag = useRef<{ id: string; x: number; y: number } | null>(null)
+  const reduced = useRef(false)
+  const posesRef = useRef<Record<string, Pose>>({})
+  const frame = useRef(0)
+  const [poses, setPoses] = useState<Record<string, Pose>>(() =>
+    Object.fromEntries(abilities.map((ability) => [ability.id, hiddenPose])),
+  )
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const sync = () => {
+      reduced.current = media.matches
+    }
+    sync()
+    media.addEventListener('change', sync)
+
+    let running = false
+
+    const tick = () => {
+      const stage = stageRef.current
+      const photo = photoRef.current
+      if (!stage || !photo) {
+        running = false
+        return
+      }
+
+      const stageBox = stage.getBoundingClientRect()
+      const photoBox = photo.getBoundingClientRect()
+      const originX = photoBox.left + photoBox.width / 2 - stageBox.left
+      const originY = photoBox.top + photoBox.height / 2 - stageBox.top
+      const pointerX = pointer.current.x - stageBox.left
+      const pointerY = pointer.current.y - stageBox.top
+      const pointerAngle = Math.atan2(pointerY - originY, pointerX - originX)
+      const pointerDistance = Math.hypot(pointerX - originX, pointerY - originY)
+      const spread = pointer.current.active
+        ? Math.min(1, Math.max(0, (pointerDistance - photoBox.width * 0.28) / 260))
+        : 0
+
+      const next: Record<string, Pose> = {}
+      let moving = Boolean(drag.current) || pointer.current.active
+
+      for (const ability of abilities) {
+        const radians = (ability.angle * Math.PI) / 180
+        const align = pointer.current.active
+          ? Math.max(0, Math.cos(angleDifference(pointerAngle, radians)))
+          : 0
+        const reach = reduced.current ? 92 : 28 + spread * (110 + align * align * 170)
+        let x = originX + Math.cos(radians) * (photoBox.width * 0.46 + reach)
+        let y = originY + Math.sin(radians) * (photoBox.height * 0.46 + reach)
+        if (drag.current?.id === ability.id) {
+          x = drag.current.x - stageBox.left
+          y = drag.current.y - stageBox.top
+        }
+        x = Math.min(stageBox.width - 36, Math.max(36, x))
+        y = Math.min(stageBox.height - 28, Math.max(28, y))
+        const opacity = reduced.current ? 1 : Math.min(1, Math.max(0, (reach - 36) / 48))
+        const previous = posesRef.current[ability.id] ?? {
+          x: originX,
+          y: originY,
+          fromX: originX,
+          fromY: originY,
+          opacity: 0,
+        }
+        const pose = {
+          x: previous.x + (x - previous.x) * 0.16,
+          y: previous.y + (y - previous.y) * 0.16,
+          fromX: originX + Math.cos(radians) * photoBox.width * 0.42,
+          fromY: originY + Math.sin(radians) * photoBox.height * 0.42,
+          opacity: previous.opacity + (opacity - previous.opacity) * 0.16,
+        }
+        if (Math.hypot(pose.x - x, pose.y - y) > 0.6 || Math.abs(pose.opacity - opacity) > 0.02) {
+          moving = true
+        }
+        next[ability.id] = pose
+      }
+
+      posesRef.current = next
+      setPoses(next)
+      if (moving) frame.current = requestAnimationFrame(tick)
+      else running = false
+    }
+
+    const wake = () => {
+      if (running) return
+      running = true
+      frame.current = requestAnimationFrame(tick)
+    }
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (drag.current) {
+        drag.current = { ...drag.current, x: event.clientX, y: event.clientY }
+      }
+      pointer.current = { x: event.clientX, y: event.clientY, active: true }
+      wake()
+    }
+    const onPointerUp = () => {
+      drag.current = null
+      wake()
+    }
+    const onPointerLeave = () => {
+      pointer.current = { ...pointer.current, active: false }
+      wake()
+    }
+
+    wake()
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('pointercancel', onPointerUp)
+    document.documentElement.addEventListener('pointerleave', onPointerLeave)
+    window.addEventListener('blur', onPointerLeave)
+
+    return () => {
+      running = false
+      cancelAnimationFrame(frame.current)
+      media.removeEventListener('change', sync)
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('pointercancel', onPointerUp)
+      document.documentElement.removeEventListener('pointerleave', onPointerLeave)
+      window.removeEventListener('blur', onPointerLeave)
+    }
+  }, [])
 
   return (
-    <div className="relative min-h-dvh overflow-hidden bg-[#241826] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,#5a3d55,transparent_42%)]" />
+    <div ref={stageRef} className="relative min-h-dvh overflow-hidden bg-[#2b241f] text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,#8d6b52,transparent_42%),radial-gradient(circle_at_85%_80%,#3e5160,transparent_38%)]" />
+      <svg className="pointer-events-none absolute inset-0 z-10 h-full w-full" aria-hidden="true">
+        {abilities.map((ability) => {
+          const pose = poses[ability.id] ?? hiddenPose
+          if (pose.opacity < 0.04) return null
+          return (
+            <line
+              key={ability.id}
+              x1={pose.fromX}
+              y1={pose.fromY}
+              x2={pose.x}
+              y2={pose.y}
+              stroke={`rgba(255,255,255,${0.45 * pose.opacity})`}
+              strokeWidth="1.5"
+            />
+          )
+        })}
+      </svg>
       <SiteHeader overlay />
-      <main className="relative z-10 flex min-h-dvh flex-col px-5 pt-36 pb-8">
-        <div className="text-center">
-          <p className="text-xs tracking-[0.22em] text-white/65 uppercase">个人能力</p>
-          <h2 className="mt-2 text-3xl font-semibold">拖动这些点</h2>
-          <p className="mt-2 text-sm text-white/65">具体能力之后放进对应的点里。</p>
-        </div>
-        <div ref={field} className="relative mt-4 min-h-[460px] flex-1">
-          <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
-            {nodes.slice(1).map((node) => (
-              <line
-                key={node.id}
-                x1={`${nodes[0].x}%`}
-                y1={`${nodes[0].y}%`}
-                x2={`${node.x}%`}
-                y2={`${node.y}%`}
-                stroke="rgba(255,255,255,0.28)"
-              />
-            ))}
-          </svg>
-          {nodes.map((node) => (
-            <button
-              key={node.id}
-              type="button"
-              className="absolute grid h-28 w-28 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/30 bg-white/10 text-sm backdrop-blur-md"
-              style={{ left: `${node.x}%`, top: `${node.y}%` }}
-              onPointerDown={(event) => {
-                drag.current = { id: node.id }
-                event.currentTarget.setPointerCapture(event.pointerId)
-              }}
-              onPointerMove={(event) => {
-                if (drag.current?.id !== node.id) return
-                move(node.id, event.clientX, event.clientY)
-              }}
-              onPointerUp={() => {
-                drag.current = null
-              }}
-            >
-              {node.label}
-            </button>
-          ))}
-        </div>
+      <main className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-5 pt-40 pb-12">
+        <p className="mb-5 text-xs tracking-[0.22em] text-white/70">个人能力</p>
+        <img
+          ref={photoRef}
+          src="/photos/skills.png"
+          alt="个人能力"
+          draggable={false}
+          className="aspect-[4/3] w-[min(78vw,420px)] rounded-[28px] object-cover shadow-[0_30px_80px_rgba(0,0,0,0.35)]"
+          style={{ objectPosition: '70% 42%' }}
+        />
+        <h2 className="mt-8 text-4xl font-semibold tracking-tight">{profile.name}</h2>
+        <a
+          href={profile.github}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 text-sm text-white/75 underline-offset-4 hover:underline"
+        >
+          github.com/{profile.githubHandle}
+        </a>
+        <p className="mt-6 max-w-md text-center text-sm leading-6 text-white/70">
+          从照片向外移动，能力会散出来。拖住一项可以把它拉得更远。
+        </p>
       </main>
+      {abilities.map((ability) => {
+        const pose = poses[ability.id] ?? hiddenPose
+        return (
+          <button
+            key={ability.id}
+            type="button"
+            className="absolute z-20 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/30 bg-black/50 px-4 py-2 text-sm whitespace-nowrap text-white shadow-lg backdrop-blur-md"
+            style={{
+              left: pose.x,
+              top: pose.y,
+              opacity: pose.opacity,
+              pointerEvents: pose.opacity > 0.35 ? 'auto' : 'none',
+            }}
+            onPointerDown={(event) => {
+              drag.current = { id: ability.id, x: event.clientX, y: event.clientY }
+              event.currentTarget.setPointerCapture(event.pointerId)
+              event.stopPropagation()
+            }}
+          >
+            {ability.label}
+          </button>
+        )
+      })}
     </div>
   )
 }
