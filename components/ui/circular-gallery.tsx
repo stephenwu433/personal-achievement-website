@@ -114,6 +114,8 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
                 <img
                   src={item.photo.url}
                   alt={item.href ? '' : item.photo.text}
+                  fetchPriority="high"
+                  decoding="async"
                   className="absolute inset-0 w-full h-full object-cover"
                   style={{ objectPosition: item.photo.pos || 'center' }}
                 />

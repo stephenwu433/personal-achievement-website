@@ -332,8 +332,12 @@ export default function MeadowBackground() {
     const prepare = () => {
       if (prepared || !image.naturalWidth) return
       prepared = true
-      kite = buildKiteLayer(image)
       placeImage()
+      const build = () => {
+        if (!running) return
+        kite = buildKiteLayer(image)
+      }
+      window.requestIdleCallback(build, { timeout: 500 })
     }
 
     const onPointer = (event: PointerEvent) => {
@@ -503,6 +507,11 @@ export default function MeadowBackground() {
         src="/backgrounds/meadow.jpg"
         alt=""
         draggable={false}
+        fetchPriority="high"
+        decoding="async"
+        onLoad={() => {
+          document.documentElement.style.backgroundImage = 'none'
+        }}
         className="absolute max-w-none select-none"
       />
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />

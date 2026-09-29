@@ -4,7 +4,7 @@ export const profile = {
   name: 'Stephen舞',
   github: 'https://github.com/stephenwu433',
   githubHandle: 'stephenwu433',
-  portrait: '/photos/about.png',
+  portrait: '/photos/home-about.jpg',
 }
 
 export type SiteSection = {
@@ -53,7 +53,7 @@ export const homeGallery: GalleryItem[] = [
     binomial: 'About',
     href: '/about',
     photo: {
-      url: '/photos/about.png',
+      url: '/photos/home-about.jpg',
       text: '个人介绍',
       pos: '72% 42%',
       by: '',
@@ -64,7 +64,7 @@ export const homeGallery: GalleryItem[] = [
     binomial: 'Internships',
     href: '/internships',
     photo: {
-      url: '/photos/internships.png',
+      url: '/photos/home-internships.jpg',
       text: '实习目录',
       pos: '78% 40%',
       by: '',
@@ -75,7 +75,7 @@ export const homeGallery: GalleryItem[] = [
     binomial: 'Projects',
     href: '/projects',
     photo: {
-      url: '/photos/projects.png',
+      url: '/photos/home-projects.jpg',
       text: '项目列表',
       pos: '58% 36%',
       by: '',
@@ -86,7 +86,7 @@ export const homeGallery: GalleryItem[] = [
     binomial: 'Skills',
     href: '/skills',
     photo: {
-      url: '/photos/skills.png',
+      url: '/photos/home-skills.jpg',
       text: '个人能力',
       pos: '64% 34%',
       by: '',

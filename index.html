@@ -10,6 +10,16 @@
       content="Stephen舞的个人网站。首页可以滚动旋转，并进入个人介绍、实习目录、项目展示和个人能力。"
     />
     <title>Stephen舞 — 个人网站</title>
+    <link rel="preload" as="image" href="/backgrounds/meadow.jpg" fetchpriority="high" />
+    <link rel="preload" as="image" href="/photos/home-about.jpg" fetchpriority="high" />
+    <link rel="preload" as="image" href="/photos/home-internships.jpg" />
+    <link rel="preload" as="image" href="/photos/home-projects.jpg" />
+    <link rel="preload" as="image" href="/photos/home-skills.jpg" />
+    <style>
+      html {
+        background: #2c7ed8 url('/backgrounds/meadow.jpg') 72% 42% / cover no-repeat;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
