@@ -96,11 +96,11 @@ export const homeGallery: GalleryItem[] = [
 
 /** 项目列表上的五个小格子。大格子是人物，不作为项目入口。项目名称之后再补。 */
 export const projectCells = [
-  { id: 'diagrams', x: 1.2, y: 2, width: 31.5, height: 27 },
-  { id: 'charts', x: 33.2, y: 1.5, width: 31, height: 24 },
-  { id: 'desk', x: 65.5, y: 1.5, width: 33, height: 33 },
-  { id: 'globe', x: 64, y: 35.5, width: 34.5, height: 26 },
-  { id: 'map', x: 56, y: 62.5, width: 42.5, height: 35.5 },
+  { id: 'diagrams', x: 0, y: 0, width: 33, height: 35.5 },
+  { id: 'charts', x: 33, y: 0, width: 33.5, height: 35.5 },
+  { id: 'desk', x: 66.5, y: 0, width: 33.5, height: 35.5 },
+  { id: 'globe', x: 66.5, y: 35.5, width: 33.5, height: 29.5 },
+  { id: 'map', x: 66.5, y: 65, width: 33.5, height: 35 },
 ]
 
 export const projects = [

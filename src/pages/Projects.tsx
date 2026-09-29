@@ -49,7 +49,7 @@ export default function Projects() {
           {projectCells.map((cell, index) => (
             <div
               key={cell.id}
-              className="absolute flex items-end justify-center pb-[9%]"
+              className="absolute flex items-start justify-end"
               style={{
                 left: `${cell.x}%`,
                 top: `${cell.y}%`,
