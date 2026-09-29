@@ -15,23 +15,39 @@ export type StoryStation = {
   title: string
   place: string
   still: string
-  clip: string
-  clipWebm: string
-  focus: string
   hotspots: StoryHotspot[]
 }
 
-/** 正式介绍文案。视频文件还没有时，页面停在这些固定机位关键帧上。 */
+export type VideoSource = {
+  mp4: string
+  webm?: string
+}
+
+/**
+ * 正式城市短片的暂停点（秒），与六站一一对应。
+ * 只有 videoSources 六项都填上、并且文件能作为视频加载时才会使用。
+ */
+export const pauseTimes = [4, 8, 12, 16, 20, 24] as const
+
+/**
+ * 六段真实图生视频。现在全部留空，页面保持「关键帧交互预览」。
+ * 六项都换成真实文件后才会进入正式视频模式；不要用静图交叉淡入淡出填这里。
+ */
+export const videoSources: Array<VideoSource | null> = [null, null, null, null, null, null]
+
+export function segmentDuration(index: number) {
+  const previous = index === 0 ? 0 : pauseTimes[index - 1]
+  return pauseTimes[index] - previous
+}
+
+/** 正式介绍文案。顺序：创意街区 → 独立书店 → 城市路口 → 图书馆 → 游戏购物街区 → 江边步道。 */
 export const storyStations: StoryStation[] = [
   {
     id: 'introduction',
     index: '01',
     title: '初见',
-    place: '创意街区咖啡店外',
+    place: '创意街区',
     still: '/city/city-story-01-introduction.jpg',
-    clip: '/city/clip-01.mp4',
-    clipWebm: '/city/clip-01.webm',
-    focus: '72% 40%',
     hotspots: [
       {
         id: 'name',
@@ -52,11 +68,8 @@ export const storyStations: StoryStation[] = [
     id: 'ai-product',
     index: '02',
     title: 'AI 与产品',
-    place: '独立书店橱窗',
+    place: '独立书店',
     still: '/city/city-story-02-ai-product.jpg',
-    clip: '/city/clip-02.mp4',
-    clipWebm: '/city/clip-02.webm',
-    focus: '64% 42%',
     hotspots: [
       {
         id: 'ai',
@@ -93,11 +106,8 @@ export const storyStations: StoryStation[] = [
     id: 'direction',
     index: '03',
     title: '我的方向',
-    place: '城市十字路口',
+    place: '城市路口',
     still: '/city/city-story-03-direction.jpg',
-    clip: '/city/clip-03.mp4',
-    clipWebm: '/city/clip-03.webm',
-    focus: '70% 42%',
     hotspots: [
       {
         id: 'think-first',
@@ -125,11 +135,8 @@ export const storyStations: StoryStation[] = [
     id: 'effort',
     index: '04',
     title: '努力与成功',
-    place: '夜间图书馆',
+    place: '图书馆',
     still: '/city/city-story-04-effort.jpg',
-    clip: '/city/clip-04.mp4',
-    clipWebm: '/city/clip-04.webm',
-    focus: '68% 40%',
     hotspots: [
       {
         id: 'notebook',
@@ -158,11 +165,8 @@ export const storyStations: StoryStation[] = [
     id: 'life',
     index: '05',
     title: '生活里的我',
-    place: '游戏与购物街区',
+    place: '游戏购物街区',
     still: '/city/city-story-05-life.jpg',
-    clip: '/city/clip-05.mp4',
-    clipWebm: '/city/clip-05.webm',
-    focus: '66% 46%',
     hotspots: [
       {
         id: 'console',
@@ -193,9 +197,6 @@ export const storyStations: StoryStation[] = [
     title: '还在路上',
     place: '江边步道',
     still: '/city/city-story-06-future.jpg',
-    clip: '/city/clip-06.mp4',
-    clipWebm: '/city/clip-06.webm',
-    focus: '74% 42%',
     hotspots: [
       {
         id: 'future',

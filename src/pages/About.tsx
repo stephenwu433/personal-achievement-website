@@ -1,27 +1,57 @@
 import { useEffect, useId, useRef, useState, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
-import { storyStations, type StoryHotspot, type StoryStation } from '@/src/about/story'
+import {
+  pauseTimes,
+  segmentDuration,
+  storyStations,
+  videoSources,
+  type StoryHotspot,
+  type StoryStation,
+  type VideoSource,
+} from '@/src/about/story'
 import { profile } from '@/src/content'
+
+export type StoryPlayback = 'preview' | 'video'
 
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-async function clipSource(station: StoryStation) {
-  for (const src of [station.clipWebm, station.clip]) {
+async function sourcePlays(source: VideoSource) {
+  const urls = [source.webm, source.mp4].filter((url): url is string => Boolean(url))
+  for (const url of urls) {
     try {
-      const response = await fetch(src, { method: 'HEAD' })
+      const response = await fetch(url, { method: 'HEAD' })
       const type = response.headers.get('content-type') ?? ''
-      if (response.ok && type.startsWith('video/')) return src
+      if (response.ok && type.startsWith('video/')) return true
     } catch {
-      /* 没有视频文件时停在关键帧 */
+      /* 文件还不存在时保持预览模式 */
     }
   }
-  return null
+  return false
+}
+
+function useStoryPlayback(reduced: boolean) {
+  const [playback, setPlayback] = useState<StoryPlayback>('preview')
+
+  useEffect(() => {
+    const configured = videoSources.every((source) => source !== null)
+    if (reduced || !configured) return
+    let cancel = false
+    Promise.all(videoSources.map((source) => sourcePlays(source as VideoSource))).then((ready) => {
+      if (!cancel && ready.every(Boolean)) setPlayback('video')
+    })
+    return () => {
+      cancel = true
+    }
+  }, [reduced])
+
+  return playback
 }
 
 export default function About() {
   const [reduced] = useState(prefersReducedMotion)
+  const playback = useStoryPlayback(reduced)
   const [mode, setMode] = useState<'film' | 'read'>(reduced ? 'read' : 'film')
   const [index, setIndex] = useState(0)
 
@@ -29,6 +59,7 @@ export default function About() {
     return (
       <Reading
         reduced={reduced}
+        playback={playback}
         onReturn={
           reduced
             ? undefined
@@ -43,7 +74,7 @@ export default function About() {
   return (
     <Film
       index={index}
-      reduced={reduced}
+      playback={playback}
       onIndex={setIndex}
       onRead={() => setMode('read')}
     />
@@ -52,12 +83,12 @@ export default function About() {
 
 function Film({
   index,
-  reduced,
+  playback,
   onIndex,
   onRead,
 }: {
   index: number
-  reduced: boolean
+  playback: StoryPlayback
   onIndex: (index: number) => void
   onRead: () => void
 }) {
@@ -67,7 +98,7 @@ function Film({
       key={station.id}
       station={station}
       index={index}
-      reduced={reduced}
+      playback={playback}
       onIndex={onIndex}
       onRead={onRead}
     />
@@ -77,34 +108,39 @@ function Film({
 function FilmFrame({
   station,
   index,
-  reduced,
+  playback,
   onIndex,
   onRead,
 }: {
   station: StoryStation
   index: number
-  reduced: boolean
+  playback: StoryPlayback
   onIndex: (index: number) => void
   onRead: () => void
 }) {
+  const source = playback === 'video' ? videoSources[index] : null
   const [openId, setOpenId] = useState<string | null>(null)
-  const [playing, setPlaying] = useState(false)
-  const [clip, setClip] = useState<string | null>(null)
+  const [playing, setPlaying] = useState(playback === 'video')
+  const videoRef = useRef<HTMLVideoElement>(null)
   const panelRef = useRef<HTMLElement>(null)
   const titleId = useId()
   const open = station.hotspots.find((hotspot) => hotspot.id === openId) ?? null
   const last = index === storyStations.length - 1
+  const paused = !playing
 
-  useEffect(() => {
-    if (reduced) return
-    let cancel = false
-    clipSource(station).then((src) => {
-      if (!cancel) setClip(src)
-    })
-    return () => {
-      cancel = true
-    }
-  }, [station, reduced])
+  const holdAtPause = () => {
+    const video = videoRef.current
+    if (!video) return
+    const limit = segmentDuration(index)
+    if (video.currentTime > limit) video.currentTime = limit
+    video.pause()
+    setPlaying(false)
+  }
+
+  const openHotspot = (id: string) => {
+    if (playback === 'video') holdAtPause()
+    setOpenId(id)
+  }
 
   useEffect(() => {
     if (!open) return
@@ -121,14 +157,14 @@ function FilmFrame({
   }
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-[#17202b] text-white">
+    <div className="flex h-dvh flex-col overflow-hidden bg-[#17202b] text-white" data-playback={playback}>
       <div className="relative min-h-0 flex-1">
       <div className="absolute inset-0 flex items-center justify-center [container-type:size]">
       <div className="relative aspect-video w-[min(100cqw,calc(100cqh*16/9))]">
-      <img src={station.still} alt="" className="absolute inset-0 size-full object-cover" />
-      {clip ? (
+      <img src={station.still} alt="" className="absolute inset-0 size-full object-cover transition-none" />
+      {source ? (
         <video
-          key={clip}
+          ref={videoRef}
           className="absolute inset-0 size-full object-cover"
           autoPlay
           muted
@@ -136,16 +172,18 @@ function FilmFrame({
           preload="auto"
           poster={station.still}
           onPlaying={() => setPlaying(true)}
-          onEnded={() => setPlaying(false)}
-          onError={() => {
-            setClip(null)
-            setPlaying(false)
+          onTimeUpdate={() => {
+            const video = videoRef.current
+            if (video && video.currentTime >= segmentDuration(index)) holdAtPause()
           }}
+          onEnded={holdAtPause}
+          onError={() => setPlaying(false)}
         >
-          <source src={clip} />
+          {source.webm ? <source src={source.webm} type="video/webm" /> : null}
+          <source src={source.mp4} type="video/mp4" />
         </video>
       ) : null}
-      <div className={`pointer-events-none absolute inset-0 ${playing ? 'bg-transparent' : 'bg-black/12'}`} />
+      <div className={`pointer-events-none absolute inset-0 ${paused ? 'bg-black/12' : 'bg-transparent'}`} />
       {playing
         ? null
         : station.hotspots.map((hotspot) => (
@@ -154,7 +192,7 @@ function FilmFrame({
               type="button"
               aria-label={hotspot.label}
               aria-expanded={openId === hotspot.id}
-              onClick={() => setOpenId(hotspot.id)}
+              onClick={() => openHotspot(hotspot.id)}
               className="absolute z-20 flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
               style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%` }}
             >
@@ -174,13 +212,18 @@ function FilmFrame({
         <p className="rounded-2xl bg-black/35 px-3 py-2 text-right text-sm backdrop-blur-md">
           <span className="text-white/70">{station.index}</span> {station.title}
           <span className="mt-0.5 block text-xs text-white/75">{station.place}</span>
+          {playback === 'preview' ? (
+            <span className="mt-0.5 block text-xs text-amber-100/90">关键帧交互预览</span>
+          ) : null}
         </p>
       </header>
 
       <p className="sr-only" aria-live="polite">
-        {playing
-          ? `正在播放第 ${station.index} 站`
-          : `已停在第 ${station.index} 站，${station.title}。点场景或下方按钮阅读。`}
+        {playback === 'preview'
+          ? `关键帧交互预览。已停在第 ${station.index} 站，${station.place}。这不是最终动画。`
+          : playing
+            ? `正在播放第 ${station.index} 站，将在 ${pauseTimes[index]} 秒处暂停。`
+            : `已停在第 ${station.index} 站，${station.title}。点场景或下方按钮阅读。`}
       </p>
 
       {open ? (
@@ -195,8 +238,13 @@ function FilmFrame({
 
       <div className="relative z-40 shrink-0 px-3 py-3 sm:px-5">
         <div className="rounded-2xl border border-white/15 bg-black/40 px-3 py-3 backdrop-blur-md sm:px-4">
+          {playback === 'preview' ? (
+            <p className="mb-3 text-xs leading-5 text-white/75">
+              关键帧交互预览。正式城市短片还没有接入，画面停在暂停帧上，不是最终动画。
+            </p>
+          ) : null}
           {playing ? (
-            <p className="mb-3 text-sm text-white/80">这一段播完后会停住，再点场景阅读。</p>
+            <p className="mb-3 text-sm text-white/80">这一段会在暂停点停住，再点场景阅读。</p>
           ) : (
             <div className="mb-3 flex flex-wrap gap-2">
               {station.hotspots.map((hotspot) => (
@@ -204,7 +252,7 @@ function FilmFrame({
                   key={hotspot.id}
                   type="button"
                   aria-expanded={openId === hotspot.id}
-                  onClick={() => setOpenId(hotspot.id)}
+                  onClick={() => openHotspot(hotspot.id)}
                   className={`rounded-full px-3 py-2 text-sm ${
                     openId === hotspot.id ? 'bg-white text-[#17202b]' : 'bg-white/15 text-white'
                   }`}
@@ -244,10 +292,11 @@ function FilmFrame({
             </ol>
             <button
               type="button"
-              onClick={() => (last ? onRead() : go(index + 1))}
-              className="shrink-0 rounded-full bg-white px-3 py-2 text-sm whitespace-nowrap text-[#17202b]"
+              disabled={last}
+              onClick={() => go(index + 1)}
+              className="shrink-0 rounded-full bg-white px-3 py-2 text-sm whitespace-nowrap text-[#17202b] disabled:opacity-40"
             >
-              {last ? '阅读全部' : '继续探索'}
+              继续探索
             </button>
           </div>
           <button type="button" onClick={onRead} className="mt-2 text-xs text-white/75 underline-offset-4 hover:underline">
@@ -306,7 +355,15 @@ function StoryPanel({
   )
 }
 
-function Reading({ reduced, onReturn }: { reduced: boolean; onReturn?: () => void }) {
+function Reading({
+  reduced,
+  playback,
+  onReturn,
+}: {
+  reduced: boolean
+  playback: StoryPlayback
+  onReturn?: () => void
+}) {
   return (
     <div className="min-h-dvh bg-[#17202b] text-white">
       <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-white/10 bg-[#17202b]/90 px-4 py-3 backdrop-blur-md sm:px-6">
@@ -327,6 +384,11 @@ function Reading({ reduced, onReturn }: { reduced: boolean; onReturn?: () => voi
       <main className="mx-auto flex max-w-3xl flex-col gap-14 px-4 py-10 sm:px-6">
         <div>
           <h1 className="text-3xl font-semibold">个人介绍</h1>
+          {playback === 'preview' ? (
+            <p className="mt-3 text-sm leading-6 text-white/70">
+              关键帧交互预览。下面是六站暂停帧和全部文字，不是最终动画。
+            </p>
+          ) : null}
           {reduced ? (
             <p className="mt-3 text-sm leading-6 text-white/70">已按减少动态的设置，直接展示六站关键帧和全部文字。</p>
           ) : null}
@@ -337,7 +399,6 @@ function Reading({ reduced, onReturn }: { reduced: boolean; onReturn?: () => voi
               src={station.still}
               alt={`${station.index} ${station.title}，${station.place}`}
               className="aspect-video w-full rounded-3xl object-cover"
-              style={{ objectPosition: station.focus }}
             />
             <header>
               <p className="text-sm text-white/60">
