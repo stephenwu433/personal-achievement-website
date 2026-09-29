@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
 import SiteHeader from '@/src/components/SiteHeader'
 import { projectCells } from '@/src/content'
 
@@ -46,18 +47,18 @@ export default function Projects() {
             />
           )}
           {projectCells.map((cell, index) => (
-            <button
+            <div
               key={cell.id}
-              type="button"
-              aria-label={`第 ${index + 1} 个项目`}
-              className="absolute rounded-md border border-white/0 bg-transparent transition hover:border-white/80 hover:bg-white/10 focus-visible:border-white focus-visible:bg-white/15 focus-visible:outline-none"
+              className="absolute grid place-items-center"
               style={{
                 left: `${cell.x}%`,
                 top: `${cell.y}%`,
                 width: `${cell.width}%`,
                 height: `${cell.height}%`,
               }}
-            />
+            >
+              <LiquidMetalButton viewMode="icon" label={`第 ${index + 1} 个项目`} />
+            </div>
           ))}
         </div>
       </main>
