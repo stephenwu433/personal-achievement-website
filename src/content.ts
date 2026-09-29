@@ -21,7 +21,7 @@ export const sections: SiteSection[] = [
     href: '/about',
     label: '个人介绍',
     english: 'About',
-    summary: '关键帧交互预览：六站暂停后点开阅读。正式短片还没有接入。',
+    summary: '六站城市短片：每段播完停下，点热点阅读，再继续下一站。',
   },
   {
     id: 'internships',

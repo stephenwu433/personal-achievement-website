@@ -19,6 +19,15 @@
   font-display: swap;
 }
 
+@keyframes intro-panel-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
