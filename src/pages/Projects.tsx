@@ -49,7 +49,7 @@ export default function Projects() {
           {projectCells.map((cell, index) => (
             <div
               key={cell.id}
-              className="absolute grid place-items-center"
+              className="absolute flex items-end justify-center pb-[9%]"
               style={{
                 left: `${cell.x}%`,
                 top: `${cell.y}%`,
@@ -57,7 +57,12 @@ export default function Projects() {
                 height: `${cell.height}%`,
               }}
             >
-              <LiquidMetalButton viewMode="icon" label={`第 ${index + 1} 个项目`} />
+              <LiquidMetalButton
+                tone="sunset"
+                width={208}
+                label=""
+                ariaLabel={`第 ${index + 1} 个项目`}
+              />
             </div>
           ))}
         </div>
