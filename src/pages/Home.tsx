@@ -4,26 +4,30 @@ import MeadowBackground from '@/src/components/MeadowBackground'
 import SiteHeader from '@/src/components/SiteHeader'
 import { homeGallery, profile } from '@/src/content'
 
-function useGalleryRadius() {
-  const [radius, setRadius] = useState(460)
+function useGalleryFrame() {
+  const [frame, setFrame] = useState({ radius: 320, cardWidth: 220, cardHeight: 294 })
 
   useEffect(() => {
     const update = () => {
       const width = window.innerWidth
-      if (width < 640) setRadius(250)
-      else if (width < 1024) setRadius(340)
-      else setRadius(460)
+      const stage = Math.max(320, window.innerHeight - 128)
+      const perspective = 2000
+      const visual = Math.min(stage * 0.42, width < 640 ? 250 : 340)
+      const radius = width < 640 ? 168 : width < 1024 ? 250 : 300
+      const cardHeight = Math.round((visual * (perspective - radius)) / perspective)
+      const cardWidth = Math.round(cardHeight * 0.75)
+      setFrame({ radius, cardWidth, cardHeight })
     }
     update()
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
   }, [])
 
-  return radius
+  return frame
 }
 
 export default function Home() {
-  const radius = useGalleryRadius()
+  const { radius, cardWidth, cardHeight } = useGalleryFrame()
 
   useEffect(() => {
     document.title = `${profile.name} — 个人网站`
@@ -49,8 +53,14 @@ export default function Home() {
         <div className="relative z-20 grid h-full grid-rows-[auto_minmax(0,1fr)_auto]">
           <SiteHeader onPhoto />
           <div className="relative min-h-0">
-            <div className="absolute inset-0 max-sm:[zoom:0.78]">
-              <CircularGallery items={homeGallery} radius={radius} autoRotateSpeed={0.03} />
+            <div className="absolute inset-0">
+              <CircularGallery
+                items={homeGallery}
+                radius={radius}
+                cardWidth={cardWidth}
+                cardHeight={cardHeight}
+                autoRotateSpeed={0.08}
+              />
             </div>
           </div>
           <p className="px-6 py-3 text-center text-sm text-white/85">滚动让照片转动，点击照片进入</p>
