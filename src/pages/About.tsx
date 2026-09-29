@@ -123,17 +123,13 @@ function FilmFrame({
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-[#17202b] text-white">
       <div className="relative min-h-0 flex-1">
-      <img
-        src={station.still}
-        alt=""
-        className="absolute inset-0 size-full object-cover"
-        style={{ objectPosition: station.focus }}
-      />
+      <div className="absolute inset-0 flex items-center justify-center [container-type:size]">
+      <div className="relative aspect-video w-[min(100cqw,calc(100cqh*16/9))]">
+      <img src={station.still} alt="" className="absolute inset-0 size-full object-cover" />
       {clip ? (
         <video
           key={clip}
           className="absolute inset-0 size-full object-cover"
-          style={{ objectPosition: station.focus }}
           autoPlay
           muted
           playsInline
@@ -150,23 +146,6 @@ function FilmFrame({
         </video>
       ) : null}
       <div className={`pointer-events-none absolute inset-0 ${playing ? 'bg-transparent' : 'bg-black/12'}`} />
-
-      <header className="absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 px-4 pt-4 sm:px-6">
-        <Link to="/" className="shrink-0 rounded-full bg-black/35 px-3 py-2 text-sm backdrop-blur-md">
-          返回首页
-        </Link>
-        <p className="rounded-2xl bg-black/35 px-3 py-2 text-right text-sm backdrop-blur-md">
-          <span className="text-white/70">{station.index}</span> {station.title}
-          <span className="mt-0.5 block text-xs text-white/75">{station.place}</span>
-        </p>
-      </header>
-
-      <p className="sr-only" aria-live="polite">
-        {playing
-          ? `正在播放第 ${station.index} 站`
-          : `已停在第 ${station.index} 站，${station.title}。点场景或下方按钮阅读。`}
-      </p>
-
       {playing
         ? null
         : station.hotspots.map((hotspot) => (
@@ -186,6 +165,23 @@ function FilmFrame({
               />
             </button>
           ))}
+      </div>
+      </div>
+      <header className="absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 px-4 pt-4 sm:px-6">
+        <Link to="/" className="shrink-0 rounded-full bg-black/35 px-3 py-2 text-sm backdrop-blur-md">
+          返回首页
+        </Link>
+        <p className="rounded-2xl bg-black/35 px-3 py-2 text-right text-sm backdrop-blur-md">
+          <span className="text-white/70">{station.index}</span> {station.title}
+          <span className="mt-0.5 block text-xs text-white/75">{station.place}</span>
+        </p>
+      </header>
+
+      <p className="sr-only" aria-live="polite">
+        {playing
+          ? `正在播放第 ${station.index} 站`
+          : `已停在第 ${station.index} 站，${station.title}。点场景或下方按钮阅读。`}
+      </p>
 
       {open ? (
         <StoryPanel
@@ -218,16 +214,16 @@ function FilmFrame({
               ))}
             </div>
           )}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <button
               type="button"
               disabled={index === 0}
               onClick={() => go(index - 1)}
-              className="rounded-full bg-white/15 px-3 py-2 text-sm disabled:opacity-40"
+              className="shrink-0 rounded-full bg-white/15 px-3 py-2 text-sm whitespace-nowrap disabled:opacity-40"
             >
               上一站
             </button>
-            <ol className="flex flex-1 justify-center gap-2" aria-label="六站进度">
+            <ol className="order-last flex w-full justify-center gap-1 sm:order-none sm:w-auto sm:flex-1 sm:gap-2" aria-label="六站进度">
               {storyStations.map((item, itemIndex) => (
                 <li key={item.id}>
                   <button
@@ -235,17 +231,21 @@ function FilmFrame({
                     aria-label={`${item.index} ${item.title}`}
                     aria-current={itemIndex === index ? 'step' : undefined}
                     onClick={() => go(itemIndex)}
-                    className={`block size-2.5 rounded-full ${
-                      itemIndex === index ? 'bg-white' : 'bg-white/35'
-                    }`}
-                  />
+                    className="flex size-8 items-center justify-center"
+                  >
+                    <span
+                      className={`block size-2.5 rounded-full ${
+                        itemIndex === index ? 'bg-white' : 'bg-white/35'
+                      }`}
+                    />
+                  </button>
                 </li>
               ))}
             </ol>
             <button
               type="button"
               onClick={() => (last ? onRead() : go(index + 1))}
-              className="rounded-full bg-white px-3 py-2 text-sm text-[#17202b]"
+              className="shrink-0 rounded-full bg-white px-3 py-2 text-sm whitespace-nowrap text-[#17202b]"
             >
               {last ? '阅读全部' : '继续探索'}
             </button>

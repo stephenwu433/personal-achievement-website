@@ -61,8 +61,8 @@ export const storyStations: StoryStation[] = [
       {
         id: 'ai',
         label: 'AI',
-        x: 52,
-        y: 78,
+        x: 55,
+        y: 84,
         paragraphs: [
           '我对 AI 的兴趣，来自它带来的可能性。',
           '它可以处理大量信息，可以辅助人完成重复任务，也可以给人提供新的思考角度。但我觉得更有意思的问题是：当 AI 越来越强之后，人到底应该把哪些工作交给它，哪些判断依然需要自己完成？',
@@ -71,8 +71,8 @@ export const storyStations: StoryStation[] = [
       {
         id: 'product',
         label: '产品',
-        x: 30,
-        y: 42,
+        x: 48,
+        y: 52,
         paragraphs: [
           '我喜欢看一项技术怎样改变人的工作方式，也会关注一个产品为什么能被真正使用。很多时候，功能本身并不难理解，真正困难的是它能不能进入具体的生活和工作场景，能不能让人愿意相信、愿意持续使用。',
           '我希望自己以后能参与到这类产品的设计里。让 AI 的能力真正服务于人，也让使用者知道它能做到什么、暂时做不到什么。技术发展很快，产品设计需要把它放回真实世界里看。',
@@ -81,8 +81,8 @@ export const storyStations: StoryStation[] = [
       {
         id: 'world-model',
         label: '世界模型',
-        x: 38,
-        y: 24,
+        x: 44,
+        y: 22,
         paragraphs: [
           '我对世界模型尤其感兴趣。未来的 AI 如果能更好地理解环境、理解变化、理解任务之间的关联，人和 AI 的关系可能会更接近真正的协同。人提出目标、做价值判断、承担责任；AI 在信息整理、推演和执行上提供帮助。这样的关系比单纯追求“更聪明的工具”更值得研究。',
         ],
@@ -135,7 +135,7 @@ export const storyStations: StoryStation[] = [
         id: 'notebook',
         label: '笔记本',
         x: 16,
-        y: 78,
+        y: 88,
         paragraphs: [
           '我知道很多目标需要很长时间才能看到结果。学习新的知识、建立能力、找到适合自己的位置，都不会一开始就很顺利。这个过程可能会有反复，也可能会遇到不知道该怎么走的时候。',
           '但我比较愿意坚持。只要我还认可一件事，我就愿意继续学、继续做、继续把它往前推一点。',
@@ -178,8 +178,8 @@ export const storyStations: StoryStation[] = [
       {
         id: 'bag',
         label: '购物袋',
-        x: 16,
-        y: 74,
+        x: 24,
+        y: 72,
         paragraphs: [
           '我也喜欢去购物，看看不同品牌的产品、空间和表达方式。一个包装、一家店的陈列、一件衣服的设计，都会影响人对品牌的第一感觉。我会留意这些细节，也会思考它们为什么能让人停下来、产生兴趣，甚至愿意分享给别人。',
           '这些兴趣看起来很日常，但它们让我对“体验”这件事有了更具体的感受。',
@@ -213,8 +213,8 @@ export const storyStations: StoryStation[] = [
       {
         id: 'contact',
         label: '联系我',
-        x: 62,
-        y: 58,
+        x: 50,
+        y: 62,
         paragraphs: [],
         link: { href: profile.github, label: `github.com/${profile.githubHandle}` },
       },
