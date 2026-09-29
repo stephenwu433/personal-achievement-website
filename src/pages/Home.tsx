@@ -4,26 +4,33 @@ import MeadowBackground from '@/src/components/MeadowBackground'
 import SiteHeader from '@/src/components/SiteHeader'
 import { homeGallery, profile } from '@/src/content'
 
-function useGalleryRadius() {
-  const [radius, setRadius] = useState(460)
+function useGalleryFrame() {
+  const [frame, setFrame] = useState({ radius: 480, cardWidth: 444, cardHeight: 482 })
 
   useEffect(() => {
     const update = () => {
       const width = window.innerWidth
-      if (width < 640) setRadius(250)
-      else if (width < 1024) setRadius(340)
-      else setRadius(460)
+      const stage = Math.max(320, window.innerHeight - 128)
+      const perspective = 2000
+      const aspect = 0.92
+      const visualHeight = Math.min(stage * (width < 640 ? 0.72 : 0.82), width < 640 ? 560 : 700)
+      const visualWidth = Math.min(visualHeight * aspect, width * (width < 640 ? 0.88 : 0.5))
+      const radius = Math.round(Math.min(perspective * 0.32, Math.max(width < 640 ? 240 : 460, visualWidth * 0.84)))
+      const depth = (perspective - radius) / perspective
+      const cardHeight = Math.round(visualHeight * depth)
+      const cardWidth = Math.round(visualWidth * depth)
+      setFrame({ radius, cardWidth, cardHeight })
     }
     update()
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
   }, [])
 
-  return radius
+  return frame
 }
 
 export default function Home() {
-  const radius = useGalleryRadius()
+  const { radius, cardWidth, cardHeight } = useGalleryFrame()
 
   useEffect(() => {
     document.title = `${profile.name} — 个人网站`
@@ -49,8 +56,14 @@ export default function Home() {
         <div className="relative z-20 grid h-full grid-rows-[auto_minmax(0,1fr)_auto]">
           <SiteHeader onPhoto />
           <div className="relative min-h-0">
-            <div className="absolute inset-0 max-sm:[zoom:0.78]">
-              <CircularGallery items={homeGallery} radius={radius} autoRotateSpeed={0.03} />
+            <div className="absolute inset-0">
+              <CircularGallery
+                items={homeGallery}
+                radius={radius}
+                cardWidth={cardWidth}
+                cardHeight={cardHeight}
+                autoRotateSpeed={0.08}
+              />
             </div>
           </div>
           <p className="px-6 py-3 text-center text-sm text-white/85">滚动让照片转动，点击照片进入</p>

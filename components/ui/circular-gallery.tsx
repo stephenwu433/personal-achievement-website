@@ -25,12 +25,15 @@ interface CircularGalleryProps extends HTMLAttributes<HTMLDivElement> {
   items: GalleryItem[];
   /** Controls how far the items are from the center. */
   radius?: number;
+  /** Card size before perspective. */
+  cardWidth?: number;
+  cardHeight?: number;
   /** Controls the speed of auto-rotation when not scrolling. */
   autoRotateSpeed?: number;
 }
 
 const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
-  ({ items, className, radius = 600, autoRotateSpeed = 0.02, ...props }, ref) => {
+  ({ items, className, radius = 600, cardWidth = 240, cardHeight = 320, autoRotateSpeed = 0.02, ...props }, ref) => {
     const [rotation, setRotation] = useState(0);
     const [isScrolling, setIsScrolling] = useState(false);
     const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -111,6 +114,8 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
                 <img
                   src={item.photo.url}
                   alt={item.href ? '' : item.photo.text}
+                  fetchPriority="high"
+                  decoding="async"
                   className="absolute inset-0 w-full h-full object-cover"
                   style={{ objectPosition: item.photo.pos || 'center' }}
                 />
@@ -125,13 +130,15 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
             return (
               <div
                 key={item.photo.url}
-                className="absolute w-[300px] h-[400px]"
+                className="absolute"
                 style={{
+                  width: cardWidth,
+                  height: cardHeight,
                   transform: `rotateY(${itemAngle}deg) translateZ(${radius}px)`,
                   left: '50%',
                   top: '50%',
-                  marginLeft: '-150px',
-                  marginTop: '-200px',
+                  marginLeft: -cardWidth / 2,
+                  marginTop: -cardHeight / 2,
                   opacity: opacity,
                   transition: 'opacity 0.3s linear'
                 }}

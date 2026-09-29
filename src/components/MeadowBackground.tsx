@@ -332,8 +332,12 @@ export default function MeadowBackground() {
     const prepare = () => {
       if (prepared || !image.naturalWidth) return
       prepared = true
-      kite = buildKiteLayer(image)
       placeImage()
+      const build = () => {
+        if (!running) return
+        kite = buildKiteLayer(image)
+      }
+      window.requestIdleCallback(build, { timeout: 500 })
     }
 
     const onPointer = (event: PointerEvent) => {
@@ -373,17 +377,16 @@ export default function MeadowBackground() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, vw, vh)
-      if (!kite) return
 
-      const photoPinX = left + kite.pinX * scale
-      const photoPinY = top + kite.pinY * scale
+      const photoPinX = kite ? left + kite.pinX * scale : -1
+      const photoPinY = kite ? top + kite.pinY * scale : -1
       const handX = left + HAND.x * scale
       const handY = top + HAND.y * scale
       const kiteOnPhoto = photoPinX > 24 && photoPinX < vw * 0.62 && photoPinY > 12 && photoPinY < vh * 0.62
-      const offsetX = reduced ? 0 : wind.x * 40
-      const offsetY = reduced ? 0 : wind.y * 18 - Math.abs(wind.x) * 8
+      const offsetX = reduced ? 0 : wind.x * 86
+      const offsetY = reduced ? 0 : wind.y * 40 - Math.abs(wind.x) * 16
 
-      ctx.drawImage(kite.erase, left, top, layout.dw, layout.dh)
+      if (kite) ctx.drawImage(kite.erase, left, top, layout.dw, layout.dh)
 
       if (!reduced) {
         ctx.save()
@@ -394,12 +397,13 @@ export default function MeadowBackground() {
         ctx.restore()
       }
 
-      const parkedWidth = Math.min(150, vw * 0.34)
-      const parkedHeight = kite.sprite.width ? parkedWidth * (kite.sprite.height / kite.sprite.width) : parkedWidth
-      const pinRy = kite.sprite.height ? (kite.pinY - kite.originY) / kite.sprite.height : 0.4
+      const parkedWidth = kite ? Math.min(150, vw * 0.34) : 0
+      const parkedHeight = kite?.sprite.width ? parkedWidth * (kite.sprite.height / kite.sprite.width) : parkedWidth
+      const pinRy = kite?.sprite.height ? (kite.pinY - kite.originY) / kite.sprite.height : 0.4
       const kiteX = kiteOnPhoto ? photoPinX + offsetX : fallbackPinX(vw) + offsetX
       const kiteY = kiteOnPhoto ? photoPinY + offsetY : vh * 0.2 + pinRy * parkedHeight + offsetY
-      const sway = reduced ? 0 : Math.sin(now * 0.0013) * (6 + Math.abs(wind.x) * 18)
+      if (kite) {
+      const sway = reduced ? 0 : Math.sin(now * 0.0016) * (12 + Math.abs(wind.x) * 32)
       const midX = (kiteX + handX) / 2 + sway
       const midY = (kiteY + handY) / 2 + (reduced ? 10 : Math.sin(now * 0.001 + 0.6) * 8)
       ctx.strokeStyle = 'rgba(255,255,255,0.78)'
@@ -428,13 +432,14 @@ export default function MeadowBackground() {
           parkedHeight,
         )
       }
+      }
 
       if (!reduced) {
         const personX = left + PERSON.x * scale
         for (const blade of blades) {
           const x = blade.x * vw
           const height = blade.h * vh
-          const gust = Math.sin(now * 0.0016 + blade.phase) * (8 + wind.x * 20) + wind.x * 12
+          const gust = Math.sin(now * 0.0022 + blade.phase) * (16 + wind.x * 42) + wind.x * 26
           const distance = Math.abs(x - personX) / vw
           ctx.globalAlpha = distance < 0.14 ? 0.1 : Math.min(0.62, 0.18 + distance)
           ctx.strokeStyle = blade.shade > 0.55 ? 'rgb(92, 158, 58)' : 'rgb(46, 112, 42)'
@@ -502,6 +507,11 @@ export default function MeadowBackground() {
         src="/backgrounds/meadow.jpg"
         alt=""
         draggable={false}
+        fetchPriority="high"
+        decoding="async"
+        onLoad={() => {
+          document.documentElement.style.backgroundImage = 'none'
+        }}
         className="absolute max-w-none select-none"
       />
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />

@@ -201,7 +201,7 @@ export default function Skills() {
         <p className="mb-5 text-xs tracking-[0.22em] text-white/70">个人能力</p>
         <div ref={photoRef} className="relative w-[min(78vw,420px)] [perspective:1200px]">
           <img
-            src="/photos/skills.png"
+            src="/photos/home-skills.jpg"
             alt="个人能力"
             draggable={false}
             className="aspect-[4/3] w-full rounded-[28px] object-cover shadow-[0_30px_80px_rgba(0,0,0,0.35)]"
