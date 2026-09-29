@@ -207,8 +207,8 @@ export const storyStations: StoryStation[] = [
       {
         id: 'contact',
         label: '联系我',
-        x: 74,
-        y: 48,
+        x: 80,
+        y: 72,
         paragraphs: [],
         link: { href: profile.github, label: `github.com/${profile.githubHandle}` },
       },

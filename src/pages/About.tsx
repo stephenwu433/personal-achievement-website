@@ -505,7 +505,9 @@ function StoryPanel({
       key={reduced ? station.id : undefined}
       aria-labelledby={titleId}
       style={reduced ? { animation: 'intro-panel-in 480ms ease' } : undefined}
-      className="flex min-h-0 flex-1 flex-col rounded-t-3xl border border-white/15 bg-[#2a3648]/80 p-4 shadow-2xl backdrop-blur-md md:flex-none md:rounded-3xl md:max-h-full"
+      className={`flex min-h-0 flex-col rounded-t-3xl border border-white/15 bg-[#2a3648]/80 p-4 shadow-2xl backdrop-blur-md md:max-h-full md:flex-none md:rounded-3xl ${
+        expanded ? 'flex-1' : ''
+      }`}
     >
       <div className="shrink-0">
         <p className="text-xs tracking-wide text-[#e6b15c]">
