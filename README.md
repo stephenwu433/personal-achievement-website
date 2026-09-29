@@ -42,6 +42,7 @@ npm run preview
 把内容发过来之后，会替换掉页面上标着「待补充」的部分。
 
 - 首页画廊背景：把动态背景视频放到 `public/backgrounds/gallery-background.mp4`。没有这个文件时，页面继续显示草地静帧
+- 项目列表背景：把循环视频放到 `public/projects/project-gallery-natural-motion-loop.webm`。画面上五个小格子可点，大格子里的人物不是项目入口。项目名称之后再补
 - 个人介绍：六张静帧和原文已经放上。五段视频需要放到上面的 `public/assets/personal-intro/` 文件名下，页面会按每段的结束事件停下。联系方式只有公开的 GitHub
 - 实习目录：每一段的机构、岗位、起止时间、具体做了什么，以及对应的图片
 - 项目展示：封面图。名称和仓库说明已经放上 Planflow、智能售后服务 Agent
