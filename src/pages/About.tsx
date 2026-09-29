@@ -1,61 +1,365 @@
-import { useRef, useState } from 'react'
-import SiteHeader from '@/src/components/SiteHeader'
+import { useEffect, useId, useRef, useState, type RefObject } from 'react'
+import { Link } from 'react-router-dom'
+import { storyStations, type StoryHotspot, type StoryStation } from '@/src/about/story'
 import { profile } from '@/src/content'
 
-export default function About() {
-  const frame = useRef<HTMLDivElement>(null)
-  const [tilt, setTilt] = useState({ x: 0, y: 0 })
-  const [light, setLight] = useState({ x: 50, y: 40 })
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
 
-  const onMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    const bounds = event.currentTarget.getBoundingClientRect()
-    const px = (event.clientX - bounds.left) / bounds.width - 0.5
-    const py = (event.clientY - bounds.top) / bounds.height - 0.5
-    setTilt({ x: py * -16, y: px * 20 })
-    setLight({ x: (px + 0.5) * 100, y: (py + 0.5) * 100 })
+async function clipSource(station: StoryStation) {
+  for (const src of [station.clipWebm, station.clip]) {
+    try {
+      const response = await fetch(src, { method: 'HEAD' })
+      const type = response.headers.get('content-type') ?? ''
+      if (response.ok && type.startsWith('video/')) return src
+    } catch {
+      /* 没有视频文件时停在关键帧 */
+    }
+  }
+  return null
+}
+
+export default function About() {
+  const [reduced] = useState(prefersReducedMotion)
+  const [mode, setMode] = useState<'film' | 'read'>(reduced ? 'read' : 'film')
+  const [index, setIndex] = useState(0)
+
+  if (mode === 'read') {
+    return (
+      <Reading
+        reduced={reduced}
+        onReturn={
+          reduced
+            ? undefined
+            : () => {
+                setMode('film')
+              }
+        }
+      />
+    )
   }
 
   return (
-    <div className="relative min-h-dvh overflow-hidden bg-[#2b241f] text-white">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,#8d6b52,transparent_42%),radial-gradient(circle_at_85%_80%,#3e5160,transparent_38%)]" />
-      <SiteHeader overlay />
-      <main className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-5 pt-40 pb-12">
-        <p className="mb-5 text-xs tracking-[0.22em] text-white/70 uppercase">个人介绍</p>
-        <div
-          ref={frame}
-          className="relative [perspective:1200px]"
-          onPointerMove={onMove}
-          onPointerLeave={() => setTilt({ x: 0, y: 0 })}
+    <Film
+      index={index}
+      reduced={reduced}
+      onIndex={setIndex}
+      onRead={() => setMode('read')}
+    />
+  )
+}
+
+function Film({
+  index,
+  reduced,
+  onIndex,
+  onRead,
+}: {
+  index: number
+  reduced: boolean
+  onIndex: (index: number) => void
+  onRead: () => void
+}) {
+  const station = storyStations[index]
+  return (
+    <FilmFrame
+      key={station.id}
+      station={station}
+      index={index}
+      reduced={reduced}
+      onIndex={onIndex}
+      onRead={onRead}
+    />
+  )
+}
+
+function FilmFrame({
+  station,
+  index,
+  reduced,
+  onIndex,
+  onRead,
+}: {
+  station: StoryStation
+  index: number
+  reduced: boolean
+  onIndex: (index: number) => void
+  onRead: () => void
+}) {
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const [clip, setClip] = useState<string | null>(null)
+  const panelRef = useRef<HTMLElement>(null)
+  const titleId = useId()
+  const open = station.hotspots.find((hotspot) => hotspot.id === openId) ?? null
+  const last = index === storyStations.length - 1
+
+  useEffect(() => {
+    if (reduced) return
+    let cancel = false
+    clipSource(station).then((src) => {
+      if (!cancel) setClip(src)
+    })
+    return () => {
+      cancel = true
+    }
+  }, [station, reduced])
+
+  useEffect(() => {
+    if (!open) return
+    panelRef.current?.focus()
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenId(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
+  const go = (next: number) => {
+    onIndex(next)
+  }
+
+  return (
+    <div className="flex h-dvh flex-col overflow-hidden bg-[#17202b] text-white">
+      <div className="relative min-h-0 flex-1">
+      <img
+        src={station.still}
+        alt=""
+        className="absolute inset-0 size-full object-cover"
+        style={{ objectPosition: station.focus }}
+      />
+      {clip ? (
+        <video
+          key={clip}
+          className="absolute inset-0 size-full object-cover"
+          style={{ objectPosition: station.focus }}
+          autoPlay
+          muted
+          playsInline
+          preload="auto"
+          poster={station.still}
+          onPlaying={() => setPlaying(true)}
+          onEnded={() => setPlaying(false)}
+          onError={() => {
+            setClip(null)
+            setPlaying(false)
+          }}
         >
-          <img
-            src={profile.portrait}
-            alt={profile.name}
-            draggable={false}
-            className="w-[min(78vw,380px)] rounded-[28px] shadow-[0_30px_80px_rgba(0,0,0,0.35)] transition-transform duration-200 ease-out"
-            style={{
-              transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
-              transformStyle: 'preserve-3d',
-            }}
-          />
-          <div
-            className="pointer-events-none absolute inset-0 rounded-[28px]"
-            style={{
-              background: `radial-gradient(circle at ${light.x}% ${light.y}%, rgba(255,255,255,0.28), transparent 36%)`,
-            }}
-          />
-        </div>
-        <h2 className="mt-8 text-4xl font-semibold tracking-tight">{profile.name}</h2>
-        <a
-          href={profile.github}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-3 text-sm text-white/75 underline-offset-4 hover:underline"
-        >
-          github.com/{profile.githubHandle}
-        </a>
-        <p className="mt-6 max-w-md text-center text-sm leading-6 text-white/70">
-          移动光标，肖像会跟着倾斜。更长的自我介绍可以之后补在这里。
+          <source src={clip} />
+        </video>
+      ) : null}
+      <div className={`pointer-events-none absolute inset-0 ${playing ? 'bg-transparent' : 'bg-black/12'}`} />
+
+      <header className="absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 px-4 pt-4 sm:px-6">
+        <Link to="/" className="shrink-0 rounded-full bg-black/35 px-3 py-2 text-sm backdrop-blur-md">
+          返回首页
+        </Link>
+        <p className="rounded-2xl bg-black/35 px-3 py-2 text-right text-sm backdrop-blur-md">
+          <span className="text-white/70">{station.index}</span> {station.title}
+          <span className="mt-0.5 block text-xs text-white/75">{station.place}</span>
         </p>
+      </header>
+
+      <p className="sr-only" aria-live="polite">
+        {playing
+          ? `正在播放第 ${station.index} 站`
+          : `已停在第 ${station.index} 站，${station.title}。点场景或下方按钮阅读。`}
+      </p>
+
+      {playing
+        ? null
+        : station.hotspots.map((hotspot) => (
+            <button
+              key={hotspot.id}
+              type="button"
+              aria-label={hotspot.label}
+              aria-expanded={openId === hotspot.id}
+              onClick={() => setOpenId(hotspot.id)}
+              className="absolute z-20 flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+              style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%` }}
+            >
+              <span
+                className={`size-3.5 rounded-full border border-white/90 bg-white/25 shadow-[0_0_0_6px_rgba(255,255,255,0.16)] ${
+                  openId === hotspot.id ? 'scale-125 bg-white' : 'motion-safe:animate-pulse'
+                }`}
+              />
+            </button>
+          ))}
+
+      {open ? (
+        <StoryPanel
+          hotspot={open}
+          titleId={titleId}
+          panelRef={panelRef}
+          onClose={() => setOpenId(null)}
+        />
+      ) : null}
+      </div>
+
+      <div className="relative z-40 shrink-0 px-3 py-3 sm:px-5">
+        <div className="rounded-2xl border border-white/15 bg-black/40 px-3 py-3 backdrop-blur-md sm:px-4">
+          {playing ? (
+            <p className="mb-3 text-sm text-white/80">这一段播完后会停住，再点场景阅读。</p>
+          ) : (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {station.hotspots.map((hotspot) => (
+                <button
+                  key={hotspot.id}
+                  type="button"
+                  aria-expanded={openId === hotspot.id}
+                  onClick={() => setOpenId(hotspot.id)}
+                  className={`rounded-full px-3 py-2 text-sm ${
+                    openId === hotspot.id ? 'bg-white text-[#17202b]' : 'bg-white/15 text-white'
+                  }`}
+                >
+                  {hotspot.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              disabled={index === 0}
+              onClick={() => go(index - 1)}
+              className="rounded-full bg-white/15 px-3 py-2 text-sm disabled:opacity-40"
+            >
+              上一站
+            </button>
+            <ol className="flex flex-1 justify-center gap-2" aria-label="六站进度">
+              {storyStations.map((item, itemIndex) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    aria-label={`${item.index} ${item.title}`}
+                    aria-current={itemIndex === index ? 'step' : undefined}
+                    onClick={() => go(itemIndex)}
+                    className={`block size-2.5 rounded-full ${
+                      itemIndex === index ? 'bg-white' : 'bg-white/35'
+                    }`}
+                  />
+                </li>
+              ))}
+            </ol>
+            <button
+              type="button"
+              onClick={() => (last ? onRead() : go(index + 1))}
+              className="rounded-full bg-white px-3 py-2 text-sm text-[#17202b]"
+            >
+              {last ? '阅读全部' : '继续探索'}
+            </button>
+          </div>
+          <button type="button" onClick={onRead} className="mt-2 text-xs text-white/75 underline-offset-4 hover:underline">
+            跳过动画直接阅读
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function StoryPanel({
+  hotspot,
+  titleId,
+  panelRef,
+  onClose,
+}: {
+  hotspot: StoryHotspot
+  titleId: string
+  panelRef: RefObject<HTMLElement | null>
+  onClose: () => void
+}) {
+  const body = (
+    <>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <h2 id={titleId} className="text-lg font-semibold">
+          {hotspot.label}
+        </h2>
+        <button type="button" onClick={onClose} className="rounded-full bg-white/15 px-3 py-1.5 text-sm">
+          关闭
+        </button>
+      </div>
+      <div className="space-y-3 text-sm leading-7 text-white/90 select-text">
+        {hotspot.paragraphs.map((paragraph) => (
+          <p key={paragraph}>{paragraph}</p>
+        ))}
+        {hotspot.link ? (
+          <a href={hotspot.link.href} target="_blank" rel="noreferrer" className="inline-block underline underline-offset-4">
+            {hotspot.link.label}
+          </a>
+        ) : null}
+      </div>
+    </>
+  )
+
+  return (
+    <aside
+      ref={panelRef}
+      tabIndex={-1}
+      role="dialog"
+      aria-labelledby={titleId}
+      className="absolute z-40 overflow-y-auto border border-white/15 bg-black/55 p-4 text-white shadow-2xl backdrop-blur-md outline-none inset-x-3 bottom-3 max-h-[62%] rounded-3xl md:inset-x-auto md:top-16 md:bottom-4 md:left-4 md:max-h-none md:w-[min(24rem,36vw)]"
+    >
+      {body}
+    </aside>
+  )
+}
+
+function Reading({ reduced, onReturn }: { reduced: boolean; onReturn?: () => void }) {
+  return (
+    <div className="min-h-dvh bg-[#17202b] text-white">
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-white/10 bg-[#17202b]/90 px-4 py-3 backdrop-blur-md sm:px-6">
+        <Link to="/" className="text-sm">
+          Stephen<span className="text-white/70">舞</span>
+        </Link>
+        <div className="flex items-center gap-4 text-sm">
+          {onReturn ? (
+            <button type="button" onClick={onReturn} className="text-white/80">
+              返回场景
+            </button>
+          ) : null}
+          <a href={profile.github} target="_blank" rel="noreferrer" className="text-white/80">
+            GitHub
+          </a>
+        </div>
+      </header>
+      <main className="mx-auto flex max-w-3xl flex-col gap-14 px-4 py-10 sm:px-6">
+        <div>
+          <h1 className="text-3xl font-semibold">个人介绍</h1>
+          {reduced ? (
+            <p className="mt-3 text-sm leading-6 text-white/70">已按减少动态的设置，直接展示六站关键帧和全部文字。</p>
+          ) : null}
+        </div>
+        {storyStations.map((station) => (
+          <article key={station.id} className="space-y-5">
+            <img
+              src={station.still}
+              alt={`${station.index} ${station.title}，${station.place}`}
+              className="aspect-video w-full rounded-3xl object-cover"
+              style={{ objectPosition: station.focus }}
+            />
+            <header>
+              <p className="text-sm text-white/60">
+                {station.index} {station.place}
+              </p>
+              <h2 className="mt-1 text-2xl font-semibold">{station.title}</h2>
+            </header>
+            {station.hotspots.map((hotspot) => (
+              <section key={hotspot.id} className="space-y-3 text-[15px] leading-7 text-white/90 select-text">
+                <h3 className="text-base font-semibold text-white">{hotspot.label}</h3>
+                {hotspot.paragraphs.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+                {hotspot.link ? (
+                  <a href={hotspot.link.href} target="_blank" rel="noreferrer" className="inline-block underline underline-offset-4">
+                    {hotspot.link.label}
+                  </a>
+                ) : null}
+              </section>
+            ))}
+          </article>
+        ))}
       </main>
     </div>
   )

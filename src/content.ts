@@ -21,7 +21,7 @@ export const sections: SiteSection[] = [
     href: '/about',
     label: '个人介绍',
     english: 'About',
-    summary: '你是谁，现在在做什么，别人可以怎么找到你。',
+    summary: '傍晚城市里的六站介绍，停在关键帧后点开阅读。',
   },
   {
     id: 'internships',
