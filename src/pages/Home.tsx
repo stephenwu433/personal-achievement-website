@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CircularGallery } from '@/components/ui/circular-gallery'
-import GalleryVideoBackground from '@/src/components/GalleryVideoBackground'
+import MeadowBackground from '@/src/components/MeadowBackground'
 import SiteHeader from '@/src/components/SiteHeader'
 import { homeGallery, profile } from '@/src/content'
 
@@ -40,7 +40,7 @@ export default function Home() {
     <div className="text-foreground" style={{ height: '500vh' }}>
       <div className="sticky top-0 h-dvh overflow-hidden bg-[#2c7ed8]">
         <h1 className="sr-only">{profile.name}的个人网站</h1>
-        <GalleryVideoBackground />
+        <MeadowBackground />
         <div className="pointer-events-none absolute inset-0 z-10">
           <div className="absolute inset-0 bg-black/15" />
           <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/70 via-black/30 to-transparent" />
