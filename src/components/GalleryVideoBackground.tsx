@@ -23,7 +23,14 @@ export default function GalleryVideoBackground() {
     const video = videoRef.current
     if (!video || reduced || failed) return
     video.muted = true
-    void video.play().catch(() => setFailed(true))
+    const play = () => {
+      void video.play().catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+      })
+    }
+    if (video.readyState >= 2) play()
+    else video.addEventListener('canplay', play, { once: true })
+    return () => video.removeEventListener('canplay', play)
   }, [reduced, failed])
 
   return (
