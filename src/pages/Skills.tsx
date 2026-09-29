@@ -23,6 +23,12 @@ const abilities: Ability[] = [
 ]
 
 const hiddenPose: Pose = { x: 0, y: 0, fromX: 0, fromY: 0, opacity: 0 }
+const INTRO_VIDEO = '/skills/skills-intro.mp4'
+const INTRO_POSTER = '/skills/skills-intro.jpg'
+
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
 
 function angleDifference(a: number, b: number) {
   return Math.atan2(Math.sin(a - b), Math.cos(a - b))
@@ -41,6 +47,30 @@ export default function Skills() {
     Object.fromEntries(abilities.map((ability) => [ability.id, hiddenPose])),
   )
   const [tilt, setTilt] = useState({ x: 0, y: 0, lightX: 50, lightY: 40 })
+  const [phase, setPhase] = useState<'intro' | 'settle' | 'page'>(() =>
+    prefersReducedMotion() ? 'page' : 'intro',
+  )
+  const introRef = useRef<HTMLVideoElement>(null)
+  const settleTimer = useRef(0)
+
+  useEffect(() => {
+    if (phase !== 'intro') return
+    const video = introRef.current
+    if (!video) return
+    video.muted = true
+    void video.play().catch(() => setPhase('page'))
+  }, [phase])
+
+  useEffect(() => () => window.clearTimeout(settleTimer.current), [])
+
+  const finishIntro = () => {
+    setPhase((current) => {
+      if (current !== 'intro') return current
+      window.clearTimeout(settleTimer.current)
+      settleTimer.current = window.setTimeout(() => setPhase('page'), 1200)
+      return 'settle'
+    })
+  }
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -176,8 +206,14 @@ export default function Skills() {
     }
   }, [])
 
+  const introVisible = phase !== 'page'
+
   return (
     <div ref={stageRef} className="relative min-h-dvh overflow-hidden bg-[#2b241f] text-white">
+      <div
+        className="min-h-dvh"
+        style={{ opacity: phase === 'intro' ? 0 : 1, transition: 'opacity 1.15s ease' }}
+      >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,#8d6b52,transparent_42%),radial-gradient(circle_at_85%_80%,#3e5160,transparent_38%)]" />
       <svg className="pointer-events-none absolute inset-0 z-10 h-full w-full" aria-hidden="true">
         {abilities.map((ability) => {
@@ -250,10 +286,38 @@ export default function Skills() {
               event.stopPropagation()
             }}
           >
-            {ability.label}
-          </button>
+          {ability.label}
+        </button>
         )
       })}
+      </div>
+      {introVisible ? (
+        <div
+          className="absolute inset-0 z-40 bg-[#2b241f]"
+          style={{
+            opacity: phase === 'intro' ? 1 : 0,
+            transition: 'opacity 1.15s ease',
+            pointerEvents: phase === 'intro' ? 'auto' : 'none',
+          }}
+        >
+          <img src={INTRO_POSTER} alt="" className="absolute inset-0 size-full object-cover" />
+          <video
+            ref={introRef}
+            className="absolute inset-0 size-full object-cover"
+            style={{
+              transform: phase === 'intro' ? 'scale(1)' : 'scale(1.05)',
+              transition: 'transform 1.15s ease',
+            }}
+            src={INTRO_VIDEO}
+            poster={INTRO_POSTER}
+            muted
+            playsInline
+            preload="auto"
+            onEnded={finishIntro}
+            onError={() => setPhase('page')}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }
