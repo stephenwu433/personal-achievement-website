@@ -5,15 +5,15 @@ import SiteHeader from '@/src/components/SiteHeader'
 import { homeGallery, profile } from '@/src/content'
 
 function useGalleryFrame() {
-  const [frame, setFrame] = useState({ radius: 370, cardWidth: 264, cardHeight: 352 })
+  const [frame, setFrame] = useState({ radius: 410, cardWidth: 300, cardHeight: 400 })
 
   useEffect(() => {
     const update = () => {
       const width = window.innerWidth
       const stage = Math.max(320, window.innerHeight - 128)
       const perspective = 2000
-      const visual = Math.min(stage * 0.56, width < 640 ? 340 : 460)
-      const radius = width < 640 ? 200 : width < 1024 ? 290 : 370
+      const visual = Math.min(stage * (width < 640 ? 0.56 : 0.63), width < 640 ? 430 : 500)
+      const radius = width < 640 ? 220 : width < 1024 ? 320 : 410
       const cardHeight = Math.round((visual * (perspective - radius)) / perspective)
       const cardWidth = Math.round(cardHeight * 0.75)
       setFrame({ radius, cardWidth, cardHeight })
