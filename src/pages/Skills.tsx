@@ -1,103 +1,43 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import SiteHeader from '@/src/components/SiteHeader'
 import { profile } from '@/src/content'
 
-const SEGMENT = 1100
-const BASE = 420
-const HALL_W = 1480
-const HALL_H = 860
-const HALL_COUNT = 7
-
-type Side = 'left' | 'right'
-type Pose = 'wave' | 'walk' | 'point'
-
-type Ability = {
+type Piece = {
   id: string
+  index: string
   title: string
-  item: string
-  side: Side
+  image: string
   body: string
 }
 
-type Beat = {
-  at: number
-  travel: number
-  pose: Pose
-  stop: string | null
-}
-
-const abilities: Ability[] = [
+const pieces: Piece[] = [
   {
     id: 'language',
+    index: '01',
     title: '语言和工程',
-    item: '笔记本',
-    side: 'left',
+    image: '/photos/home-skills.jpg',
     body: '这一组放语言和工程方面的能力。具体条目之后写在这里。',
   },
   {
     id: 'tools',
+    index: '02',
     title: '工具',
-    item: '工具盒',
-    side: 'right',
+    image: '/photos/home-projects.jpg',
     body: '这一组放会用的工具。具体条目之后写在这里。',
   },
   {
     id: 'direction',
+    index: '03',
     title: '方向',
-    item: '路牌',
-    side: 'left',
+    image: '/photos/home-about.jpg',
     body: '这一组放正在靠近的方向。具体内容之后写在这里。',
   },
 ]
 
-const beats: Beat[] = [
-  { at: 0, travel: 0, pose: 'wave', stop: null },
-  { at: 0.1, travel: 80, pose: 'wave', stop: null },
-  { at: 0.26, travel: 1400, pose: 'walk', stop: null },
-  { at: 0.4, travel: 1480, pose: 'point', stop: 'language' },
-  { at: 0.54, travel: 2800, pose: 'walk', stop: null },
-  { at: 0.66, travel: 2880, pose: 'point', stop: 'tools' },
-  { at: 0.8, travel: 4200, pose: 'walk', stop: null },
-  { at: 0.9, travel: 4280, pose: 'point', stop: 'direction' },
-  { at: 1, travel: 5400, pose: 'wave', stop: null },
-]
-
-const face: CSSProperties = {
-  position: 'absolute',
-  backfaceVisibility: 'hidden',
-}
+const serif = '"Iowan Old Style", Palatino, "Palatino Linotype", "Songti SC", "Noto Serif SC", serif'
 
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
-function sampleScene(progress: number) {
-  const p = Math.min(1, Math.max(0, progress))
-  for (let index = 0; index < beats.length - 1; index += 1) {
-    const from = beats[index]
-    const to = beats[index + 1]
-    const last = index === beats.length - 2
-    if (p <= to.at || last) {
-      const span = to.at - from.at || 1
-      const t = Math.min(1, Math.max(0, (p - from.at) / span))
-      const travel = from.travel + (to.travel - from.travel) * t
-      const moving = Math.abs(to.travel - from.travel) > 220 && t < 0.9
-      return {
-        travel,
-        pose: moving ? 'walk' : to.pose,
-        stop: !moving ? to.stop : null,
-      }
-    }
-  }
-  const end = beats[beats.length - 1]
-  return { travel: end.travel, pose: end.pose, stop: end.stop }
-}
-
-function cueFor(pose: Pose, stop: Ability | null, progress: number) {
-  if (pose === 'point' && stop) return `他停下来，指向${stop.item}。点开它，看这一段能力。`
-  if (pose === 'walk') return '跟着他往前走。移动鼠标，可以看向两侧。'
-  if (progress > 0.92) return '走到尽头了。'
-  return '他在前面挥手。向下滚动，跟着他往前走。'
 }
 
 export default function Skills() {
@@ -111,23 +51,24 @@ export default function Skills() {
   }, [])
 
   if (reduced) return <SkillsReading />
-  return <SkillsCorridor />
+  return <SkillsGallery />
 }
 
-function SkillsCorridor() {
+function SkillsGallery() {
   const rootRef = useRef<HTMLDivElement>(null)
-  const stageRef = useRef<HTMLDivElement>(null)
-  const rigRef = useRef<HTMLDivElement>(null)
-  const progressRef = useRef(0)
-  const pointer = useRef({ x: 0, y: 0, active: false })
-  const look = useRef({ yaw: 0, pitch: 0, strafe: 0, lift: 0 })
+  const focus = useRef(0)
+  const target = useRef(0)
+  const pointer = useRef({ x: 0, y: 0 })
+  const look = useRef({ x: 0, y: 0 })
   const frame = useRef(0)
-  const [scene, setScene] = useState(() => sampleScene(0))
+  const slideRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const [active, setActive] = useState(0)
   const [progress, setProgress] = useState(0)
+  const [hovering, setHovering] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
 
   useEffect(() => {
-    const readProgress = () => {
+    const read = () => {
       const root = rootRef.current
       if (!root) return 0
       const total = root.offsetHeight - window.innerHeight
@@ -137,317 +78,154 @@ function SkillsCorridor() {
     }
 
     const paint = () => {
-      const rig = rigRef.current
-      const stage = stageRef.current
-      if (!rig || !stage) return
-      const width = stage.clientWidth || 1
-      const height = stage.clientHeight || 1
-      const nx = pointer.current.active ? (pointer.current.x / width) * 2 - 1 : 0
-      const ny = pointer.current.active ? (pointer.current.y / height) * 2 - 1 : 0
-      const aim = look.current
-      aim.yaw += (-nx * 22 - aim.yaw) * 0.08
-      aim.pitch += (ny * 6 - aim.pitch) * 0.08
-      aim.strafe += (nx * 48 - aim.strafe) * 0.08
-      aim.lift += (ny * 12 - aim.lift) * 0.08
-      const next = sampleScene(progressRef.current)
-      rig.style.transform = `translate3d(${aim.strafe}px, ${aim.lift}px, 0) rotateX(${-aim.pitch}deg) rotateY(${aim.yaw}deg) translateZ(${next.travel}px)`
+      const nextTarget = read() * (pieces.length - 1)
+      target.current = nextTarget
+      focus.current += (nextTarget - focus.current) * 0.08
+      look.current.x += (pointer.current.x - look.current.x) * 0.06
+      look.current.y += (pointer.current.y - look.current.y) * 0.06
+      const focusNow = focus.current
+      slideRefs.current.forEach((slide, index) => {
+        if (!slide) return
+        const delta = index - focusNow
+        const x = delta * 58 + look.current.x * 1.4
+        const z = -Math.abs(delta) * 220
+        const rot = delta * -14 + look.current.x * -1.5
+        const lift = look.current.y * -8
+        slide.style.transform = `translate3d(${x}vw, ${lift}px, ${z}px) rotateY(${rot}deg)`
+        slide.style.opacity = String(Math.max(0.28, 1 - Math.abs(delta) * 0.42))
+        slide.style.zIndex = String(20 - Math.round(Math.abs(delta) * 5))
+      })
+      const nearest = Math.min(pieces.length - 1, Math.max(0, Math.round(focusNow)))
+      setActive((current) => (current === nearest ? current : nearest))
+      setProgress((current) => (Math.abs(current - nextTarget / (pieces.length - 1)) < 0.004 ? current : nextTarget / (pieces.length - 1)))
+      frame.current = requestAnimationFrame(paint)
     }
 
-    const tick = () => {
-      paint()
-      frame.current = requestAnimationFrame(tick)
-    }
-    frame.current = requestAnimationFrame(tick)
-
-    const onScroll = () => {
-      const nextProgress = readProgress()
-      progressRef.current = nextProgress
-      const next = sampleScene(nextProgress)
-      setProgress((current) => (Math.abs(current - nextProgress) < 0.004 ? current : nextProgress))
-      setScene((current) =>
-        current.pose === next.pose && current.stop === next.stop ? current : next,
-      )
-      setOpenId((current) => (current && current !== next.stop ? null : current))
-    }
+    frame.current = requestAnimationFrame(paint)
     const onPointerMove = (event: PointerEvent) => {
-      const stage = stageRef.current
-      if (!stage) return
-      const box = stage.getBoundingClientRect()
-      pointer.current = { x: event.clientX - box.left, y: event.clientY - box.top, active: true }
+      pointer.current = {
+        x: event.clientX / window.innerWidth * 2 - 1,
+        y: event.clientY / window.innerHeight * 2 - 1,
+      }
     }
-    const onPointerLeave = () => {
-      pointer.current = { ...pointer.current, active: false }
+    const onLeave = () => {
+      pointer.current = { x: 0, y: 0 }
     }
-
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('resize', onScroll)
     window.addEventListener('pointermove', onPointerMove)
-    window.addEventListener('pointerleave', onPointerLeave)
-    window.addEventListener('blur', onPointerLeave)
-
+    window.addEventListener('pointerleave', onLeave)
+    window.addEventListener('blur', onLeave)
     return () => {
       cancelAnimationFrame(frame.current)
-      window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('resize', onScroll)
       window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('pointerleave', onPointerLeave)
-      window.removeEventListener('blur', onPointerLeave)
+      window.removeEventListener('pointerleave', onLeave)
+      window.removeEventListener('blur', onLeave)
     }
   }, [])
 
-  const active = abilities.find((ability) => ability.id === scene.stop) ?? null
-  const opened = abilities.find((ability) => ability.id === openId) ?? null
+  const scrollToIndex = (index: number) => {
+    const root = rootRef.current
+    if (!root) return
+    const total = root.offsetHeight - window.innerHeight
+    const next = Math.min(pieces.length - 1, Math.max(0, index))
+    const top = root.offsetTop + (total * next) / (pieces.length - 1)
+    window.scrollTo({ top, behavior: 'smooth' })
+  }
+
+  const opened = pieces.find((piece) => piece.id === openId) ?? null
+  const current = pieces[active]
+  const intro = progress < 0.08
 
   return (
-    <div ref={rootRef} style={{ height: '820vh' }}>
-      <div ref={stageRef} className="sticky top-0 h-dvh overflow-hidden bg-[#140e0b] text-white">
-        <div className="absolute inset-0" style={{ perspective: '680px', perspectiveOrigin: '50% 46%' }}>
-          <div ref={rigRef} className="absolute inset-0" style={{ transformStyle: 'preserve-3d' }}>
-            {Array.from({ length: HALL_COUNT }, (_, index) => (
-              <HallSegment key={index} index={index} end={index === HALL_COUNT - 1} />
+    <div ref={rootRef} className="bg-[#f7f5f2] text-[#1a1a1a]" style={{ height: `${(pieces.length + 1) * 100}vh` }}>
+      <div className="sticky top-0 h-dvh overflow-hidden">
+        <SiteHeader />
+        <p className="pointer-events-none absolute top-28 right-6 z-20 text-xs tracking-[0.22em] text-black/45" style={{ fontFamily: serif }}>
+          {current.index} / {pieces[pieces.length - 1].index}
+        </p>
+        <div
+          className="pointer-events-none absolute inset-x-0 top-[38%] z-20 text-center transition-opacity duration-700"
+          style={{ opacity: intro ? 1 : 0, fontFamily: serif }}
+        >
+          <p className="text-5xl font-normal tracking-tight sm:text-7xl">{profile.name}</p>
+          <p className="mt-3 text-sm tracking-[0.28em] text-black/55">个人能力</p>
+        </div>
+        <div className="absolute inset-0" style={{ perspective: '1400px', perspectiveOrigin: '50% 58%' }}>
+          <div
+            className="absolute top-[18%] left-1/2 h-[58vh] w-[min(68vw,760px)]"
+            style={{ marginLeft: 'calc(min(68vw, 760px) / -2)', transformStyle: 'preserve-3d' }}
+          >
+            {pieces.map((piece, index) => (
+              <button
+                key={piece.id}
+                ref={(node) => {
+                  slideRefs.current[index] = node
+                }}
+                type="button"
+                aria-label={`${piece.title}，探索`}
+                className="absolute top-0 left-0 h-full w-full overflow-hidden bg-[#e7e2dc] shadow-[0_30px_80px_rgba(0,0,0,0.12)]"
+                style={{ transformStyle: 'preserve-3d' }}
+                onMouseEnter={() => {
+                  if (index === active) setHovering(true)
+                }}
+                onMouseLeave={() => setHovering(false)}
+                onClick={() => {
+                  if (Math.abs(index - focus.current) > 0.45) scrollToIndex(index)
+                  else setOpenId(piece.id)
+                }}
+              >
+                <img src={piece.image} alt="" className="size-full object-cover" draggable={false} />
+                <span className="absolute bottom-4 left-4 text-left text-white" style={{ fontFamily: serif }}>
+                  <span className="block text-[10px] tracking-[0.22em] text-white/80">{piece.index}</span>
+                  <span className="mt-1 block text-2xl">{piece.title}</span>
+                </span>
+              </button>
             ))}
           </div>
         </div>
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_52%,rgba(8,5,3,0.5)_100%)]" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/55 to-transparent" />
-        <Guide pose={scene.pose} side={active?.side ?? 'right'} />
-        {active ? <ItemButton ability={active} onOpen={() => setOpenId(active.id)} /> : null}
-        {opened ? <AbilityCard ability={opened} onClose={() => setOpenId(null)} /> : null}
-        <SiteHeader overlay />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-4 pb-5 text-center">
-          <p className="text-sm text-white/90">{active ? active.title : progress > 0.92 ? '尽头' : '跟着他走'}</p>
-          <div className="mx-auto mt-2 h-1 w-36 overflow-hidden rounded-full bg-white/20">
-            <div className="h-full bg-[#e6b15c]" style={{ width: `${Math.round(progress * 100)}%` }} />
-          </div>
-          <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-white/75">{cueFor(scene.pose, active, progress)}</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function Guide({ pose, side }: { pose: Pose; side: Side }) {
-  const poseClass = pose === 'walk' ? 'guide-walk' : pose === 'wave' ? 'guide-wave' : 'guide-point'
-  return (
-    <div className={`guide ${poseClass} ${side === 'left' ? 'point-left' : 'point-right'}`} aria-hidden="true">
-      <div className="guide-bob">
-        <img className="guide-head" src="/photos/home-skills.jpg" alt="" draggable={false} />
-        <div className="guide-torso" />
-        <div className="guide-arm left" />
-        <div className="guide-arm right" />
-        <div className="guide-leg left" />
-        <div className="guide-leg right" />
-      </div>
-    </div>
-  )
-}
-
-function ItemButton({ ability, onOpen }: { ability: Ability; onOpen: () => void }) {
-  const place = ability.side === 'left' ? 'left-[7%] sm:left-[16%]' : 'right-[7%] sm:right-[16%]'
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className={`absolute bottom-[24%] z-30 flex w-28 flex-col items-center gap-2 rounded-2xl border border-[#e6b15c]/70 bg-[#1c140f]/80 px-3 py-3 text-white backdrop-blur-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e6b15c] ${place}`}
-      style={{ animation: 'guide-item-pulse 1.6s ease-in-out infinite' }}
-    >
-      <ItemGlyph id={ability.id} />
-      <span className="text-xs leading-4">点开{ability.item}</span>
-    </button>
-  )
-}
-
-function ItemGlyph({ id }: { id: string }) {
-  if (id === 'tools') {
-    return <span className="block h-10 w-12 rounded-md border-2 border-[#e6b15c] bg-[#8a5a38]" />
-  }
-  if (id === 'direction') {
-    return (
-      <span className="relative block h-10 w-10">
-        <span className="absolute top-0 left-1/2 h-10 w-1 -translate-x-1/2 bg-[#e6b15c]" />
-        <span className="absolute top-1 left-1/2 h-4 w-6 -translate-x-1 rounded-sm bg-[#f3e6d2]" />
-      </span>
-    )
-  }
-  return (
-    <span className="flex h-10 w-9 flex-col justify-center gap-1 rounded-sm bg-[#f3e6d2] px-1.5">
-      <span className="h-0.5 bg-[#1c140f]/50" />
-      <span className="h-0.5 bg-[#1c140f]/50" />
-      <span className="h-0.5 w-2/3 bg-[#1c140f]/50" />
-    </span>
-  )
-}
-
-function AbilityCard({ ability, onClose }: { ability: Ability; onClose: () => void }) {
-  return (
-    <section
-      role="dialog"
-      aria-labelledby="ability-title"
-      className="absolute top-1/2 left-1/2 z-40 w-[min(92vw,26rem)] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-white/15 bg-[#1c140f]/90 p-5 text-white shadow-2xl backdrop-blur-md"
-    >
-      <p className="text-xs tracking-[0.18em] text-[#e6b15c]">{ability.item}</p>
-      <h2 id="ability-title" className="mt-2 text-3xl font-semibold">
-        {ability.title}
-      </h2>
-      <p className="mt-3 text-sm leading-7 text-white/85">{ability.body}</p>
-      <button
-        type="button"
-        onClick={onClose}
-        className="mt-5 rounded-full bg-[#e6b15c] px-4 py-2 text-sm font-medium text-[#1b2430]"
-      >
-        继续跟着他走
-      </button>
-    </section>
-  )
-}
-
-function HallSegment({ index, end }: { index: number; end: boolean }) {
-  const shell: CSSProperties = {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    width: HALL_W,
-    height: HALL_H,
-    marginLeft: -HALL_W / 2,
-    marginTop: -HALL_H / 2,
-    transform: `translateZ(${-(BASE + index * SEGMENT)}px)`,
-    transformStyle: 'preserve-3d',
-  }
-
-  return (
-    <div style={shell}>
-      <div
-        style={{
-          ...face,
-          left: 0,
-          width: '100%',
-          height: SEGMENT,
-          bottom: 0,
-          transformOrigin: 'bottom center',
-          transform: 'rotateX(90deg)',
-          background: 'linear-gradient(90deg, #3a2416 0%, #8a5a38 20%, #c4845a 50%, #8a5a38 80%, #3a2416 100%)',
-        }}
-      >
-        <div style={{ position: 'absolute', left: '36%', width: '28%', top: 0, bottom: 0, background: 'rgba(232, 196, 150, 0.16)' }} />
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'repeating-linear-gradient(to bottom, transparent 0 70px, rgba(0,0,0,0.22) 70px 74px)',
-          }}
-        />
-      </div>
-      <div
-        style={{
-          ...face,
-          left: 0,
-          width: '100%',
-          height: SEGMENT,
-          top: 0,
-          transformOrigin: 'top center',
-          transform: 'rotateX(-90deg)',
-          background: 'linear-gradient(#2a2118, #4a3a2c)',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: '42%',
-            width: 92,
-            height: 16,
-            transform: 'translate(-50%, -50%)',
-            borderRadius: 999,
-            background: '#f3d7a1',
-            boxShadow: '0 0 36px 10px rgba(243,215,161,0.55)',
-          }}
-        />
-      </div>
-      <div
-        style={{
-          ...face,
-          top: 0,
-          height: '100%',
-          width: SEGMENT,
-          left: 0,
-          transformOrigin: 'left center',
-          transform: 'rotateY(90deg)',
-          background: 'linear-gradient(#8a6848 0%, #f6ead8 12%, #fff6ea 62%, #a87858 62%, #5c4030 100%)',
-        }}
-      >
-        <WallWindow />
-      </div>
-      <div
-        style={{
-          ...face,
-          top: 0,
-          height: '100%',
-          width: SEGMENT,
-          right: 0,
-          transformOrigin: 'right center',
-          transform: 'rotateY(-90deg)',
-          background: 'linear-gradient(#8a6848 0%, #f6ead8 12%, #fff6ea 62%, #a87858 62%, #5c4030 100%)',
-        }}
-      >
-        {end ? null : <WallWindow />}
-      </div>
-      <div
-        style={{
-          ...face,
-          inset: 0,
-          border: '26px solid #241810',
-          boxShadow: 'inset 0 0 0 3px rgba(230,177,92,0.35)',
-          pointerEvents: 'none',
-        }}
-      />
-      {end ? (
-        <div
-          style={{
-            ...face,
-            inset: 0,
-            transform: `translateZ(${-SEGMENT}px)`,
-            display: 'grid',
-            placeItems: 'center',
-            background: 'linear-gradient(#3a2a1c, #1a120e)',
-          }}
+        <button
+          type="button"
+          aria-label="上一件"
+          className="absolute top-1/2 left-5 z-20 hidden size-8 -translate-y-1/2 text-xl text-black/50 sm:block"
+          onClick={() => scrollToIndex(active - 1)}
         >
-          <div className="w-[min(78%,420px)] rounded-3xl border border-white/15 bg-black/45 px-6 py-7 text-center shadow-2xl">
-            <p className="text-xs tracking-[0.22em] text-[#e6b15c]">尽头</p>
-            <h2 className="mt-3 text-4xl font-semibold">{profile.name}</h2>
-            <a
-              href={profile.github}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 inline-block text-sm text-white/80 underline underline-offset-4"
-            >
-              github.com/{profile.githubHandle}
-            </a>
-          </div>
-        </div>
-      ) : null}
+          +
+        </button>
+        <button
+          type="button"
+          aria-label="下一件"
+          className="absolute top-1/2 right-5 z-20 hidden size-8 -translate-y-1/2 text-xl text-black/50 sm:block"
+          onClick={() => scrollToIndex(active + 1)}
+        >
+          +
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpenId(current.id)}
+          className="absolute bottom-8 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-3 text-[10px] tracking-[0.32em] text-black/70"
+        >
+          <span className="block size-2.5 rotate-45 border border-black/70" />
+          {hovering ? '探索' : '发现'}
+        </button>
+        {opened ? <PieceDetail piece={opened} onClose={() => setOpenId(null)} /> : null}
+      </div>
     </div>
   )
 }
 
-function WallWindow() {
+function PieceDetail({ piece, onClose }: { piece: Piece; onClose: () => void }) {
   return (
-    <div
-      style={{
-        position: 'absolute',
-        left: '62%',
-        top: '38%',
-        width: 150,
-        height: 200,
-        transform: 'translate(-50%, -50%)',
-        borderRadius: 8,
-        border: '10px solid #5c4030',
-        background: 'linear-gradient(160deg, rgba(186,214,224,0.55), rgba(92,122,138,0.35) 46%, rgba(40,24,16,0.15))',
-        boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.25), inset 0 0 28px rgba(40,70,90,0.35)',
-      }}
-    >
-      <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 8, transform: 'translateX(-50%)', background: '#5c4030' }} />
-      <div style={{ position: 'absolute', top: '46%', left: 0, right: 0, height: 8, background: '#5c4030' }} />
+    <div className="absolute inset-0 z-40 overflow-y-auto bg-[#f7f5f2]">
+      <div className="mx-auto grid min-h-dvh max-w-6xl items-center gap-8 px-5 py-24 md:grid-cols-[1.2fr_0.8fr]">
+        <img src={piece.image} alt="" className="aspect-[4/3] w-full object-cover" />
+        <div style={{ fontFamily: serif }}>
+          <p className="text-xs tracking-[0.22em] text-black/45">{piece.index}</p>
+          <h2 className="mt-3 text-5xl">{piece.title}</h2>
+          <p className="mt-6 max-w-md text-base leading-8 text-black/75">{piece.body}</p>
+          <button type="button" onClick={onClose} className="mt-8 text-sm tracking-[0.18em] underline underline-offset-4">
+            返回
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -455,33 +233,27 @@ function WallWindow() {
 function SkillsReading() {
   const [openId, setOpenId] = useState<string | null>(null)
   return (
-    <div className="min-h-dvh bg-[#1a120e] text-white">
-      <SiteHeader overlay />
-      <main className="mx-auto flex max-w-3xl flex-col gap-6 px-5 pt-40 pb-16">
-        <p className="text-xs tracking-[0.22em] text-[#e6b15c]">个人能力</p>
-        <img
-          src="/photos/home-skills.jpg"
-          alt="个人能力"
-          className="aspect-[4/3] w-full max-w-md rounded-3xl object-cover"
-          style={{ objectPosition: '70% 42%' }}
-        />
-        {abilities.map((ability) => {
-          const open = openId === ability.id
+    <div className="min-h-dvh bg-[#f7f5f2] text-[#1a1a1a]">
+      <SiteHeader />
+      <main className="mx-auto flex max-w-3xl flex-col gap-8 px-5 py-16" style={{ fontFamily: serif }}>
+        <p className="text-xs tracking-[0.22em] text-black/45">个人能力</p>
+        <h1 className="text-5xl">{profile.name}</h1>
+        {pieces.map((piece) => {
+          const open = openId === piece.id
           return (
-            <section key={ability.id}>
-              <button type="button" className="text-left text-3xl font-semibold" aria-expanded={open} onClick={() => setOpenId(open ? null : ability.id)}>
-                {ability.title}
+            <section key={piece.id} className="border-t border-black/10 pt-6">
+              <button type="button" className="text-left text-3xl" aria-expanded={open} onClick={() => setOpenId(open ? null : piece.id)}>
+                {piece.index} {piece.title}
               </button>
-              {open ? <p className="mt-2 max-w-xl text-sm leading-7 text-white/80">{ability.body}</p> : null}
+              {open ? (
+                <div className="mt-4">
+                  <img src={piece.image} alt="" className="mb-4 aspect-[4/3] w-full max-w-md object-cover" />
+                  <p className="max-w-xl text-sm leading-7 text-black/75">{piece.body}</p>
+                </div>
+              ) : null}
             </section>
           )
         })}
-        <section>
-          <h2 className="text-4xl font-semibold">{profile.name}</h2>
-          <a href={profile.github} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm text-white/75 underline underline-offset-4">
-            github.com/{profile.githubHandle}
-          </a>
-        </section>
       </main>
     </div>
   )
