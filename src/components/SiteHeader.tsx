@@ -16,7 +16,7 @@ type SiteHeaderProps = {
 
 export default function SiteHeader({ overlay = false, onPhoto = false }: SiteHeaderProps) {
   const { pathname } = useLocation()
-  const bare = pathname === '/skills'
+  const bare = false
 
   return (
     <header
