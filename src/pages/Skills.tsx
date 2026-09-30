@@ -7,6 +7,7 @@ type Piece = {
   index: string
   title: string
   image: string
+  line: string
   body: string
 }
 
@@ -16,21 +17,24 @@ const pieces: Piece[] = [
     index: '01',
     title: '语言和工程',
     image: '/photos/home-skills.jpg',
-    body: '这一组放语言和工程方面的能力。具体条目之后写在这里。',
+    line: '这一组放语言和工程方面的能力。',
+    body: '具体条目之后写在这里。',
   },
   {
     id: 'tools',
     index: '02',
     title: '工具',
     image: '/photos/home-projects.jpg',
-    body: '这一组放会用的工具。具体条目之后写在这里。',
+    line: '这一组放会用的工具。',
+    body: '具体条目之后写在这里。',
   },
   {
     id: 'direction',
     index: '03',
     title: '方向',
     image: '/photos/home-about.jpg',
-    body: '这一组放正在靠近的方向。具体内容之后写在这里。',
+    line: '这一组放正在靠近的方向。',
+    body: '具体内容之后写在这里。',
   },
 ]
 
@@ -42,6 +46,8 @@ function prefersReducedMotion() {
 
 export default function Skills() {
   const [reduced, setReduced] = useState(prefersReducedMotion)
+  const [openId, setOpenId] = useState<string | null>(null)
+  const opened = pieces.find((piece) => piece.id === openId) ?? null
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -50,179 +56,96 @@ export default function Skills() {
     return () => media.removeEventListener('change', onChange)
   }, [])
 
-  if (reduced) return <SkillsReading />
-  return <SkillsGallery />
+  return (
+    <div className="bg-[#111] text-white">
+      {reduced ? (
+        <SkillsReading onOpen={setOpenId} />
+      ) : (
+        pieces.map((piece) => <Chapter key={piece.id} piece={piece} onOpen={() => setOpenId(piece.id)} />)
+      )}
+      {opened ? <PieceDetail piece={opened} onClose={() => setOpenId(null)} /> : null}
+    </div>
+  )
 }
 
-function SkillsGallery() {
-  const rootRef = useRef<HTMLDivElement>(null)
-  const focus = useRef(0)
-  const target = useRef(0)
-  const pointer = useRef({ x: 0, y: 0 })
-  const look = useRef({ x: 0, y: 0 })
-  const frame = useRef(0)
-  const slideRefs = useRef<Array<HTMLButtonElement | null>>([])
-  const [active, setActive] = useState(0)
+function Chapter({ piece, onOpen }: { piece: Piece; onOpen: () => void }) {
+  const rootRef = useRef<HTMLElement>(null)
   const [progress, setProgress] = useState(0)
-  const [hovering, setHovering] = useState(false)
-  const [openId, setOpenId] = useState<string | null>(null)
 
   useEffect(() => {
     const read = () => {
       const root = rootRef.current
-      if (!root) return 0
+      if (!root) return
       const total = root.offsetHeight - window.innerHeight
-      if (total <= 0) return 0
-      const scrolled = Math.min(total, Math.max(0, -root.getBoundingClientRect().top))
-      return scrolled / total
-    }
-
-    const paint = () => {
-      const nextTarget = read() * (pieces.length - 1)
-      target.current = nextTarget
-      focus.current += (nextTarget - focus.current) * 0.08
-      look.current.x += (pointer.current.x - look.current.x) * 0.06
-      look.current.y += (pointer.current.y - look.current.y) * 0.06
-      const focusNow = focus.current
-      slideRefs.current.forEach((slide, index) => {
-        if (!slide) return
-        const delta = index - focusNow
-        const x = delta * 58 + look.current.x * 1.4
-        const z = -Math.abs(delta) * 220
-        const rot = delta * -14 + look.current.x * -1.5
-        const lift = look.current.y * -8
-        slide.style.transform = `translate3d(${x}vw, ${lift}px, ${z}px) rotateY(${rot}deg)`
-        slide.style.opacity = String(Math.max(0.28, 1 - Math.abs(delta) * 0.42))
-        slide.style.zIndex = String(20 - Math.round(Math.abs(delta) * 5))
-      })
-      const nearest = Math.min(pieces.length - 1, Math.max(0, Math.round(focusNow)))
-      setActive((current) => (current === nearest ? current : nearest))
-      setProgress((current) => (Math.abs(current - nextTarget / (pieces.length - 1)) < 0.004 ? current : nextTarget / (pieces.length - 1)))
-      frame.current = requestAnimationFrame(paint)
-    }
-
-    frame.current = requestAnimationFrame(paint)
-    const onPointerMove = (event: PointerEvent) => {
-      pointer.current = {
-        x: event.clientX / window.innerWidth * 2 - 1,
-        y: event.clientY / window.innerHeight * 2 - 1,
+      if (total <= 0) {
+        setProgress(0)
+        return
       }
+      const scrolled = Math.min(total, Math.max(0, -root.getBoundingClientRect().top))
+      const next = scrolled / total
+      setProgress((current) => (Math.abs(current - next) < 0.004 ? current : next))
     }
-    const onLeave = () => {
-      pointer.current = { x: 0, y: 0 }
-    }
-    window.addEventListener('pointermove', onPointerMove)
-    window.addEventListener('pointerleave', onLeave)
-    window.addEventListener('blur', onLeave)
+    read()
+    window.addEventListener('scroll', read, { passive: true })
+    window.addEventListener('resize', read)
     return () => {
-      cancelAnimationFrame(frame.current)
-      window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('pointerleave', onLeave)
-      window.removeEventListener('blur', onLeave)
+      window.removeEventListener('scroll', read)
+      window.removeEventListener('resize', read)
     }
   }, [])
 
-  const scrollToIndex = (index: number) => {
-    const root = rootRef.current
-    if (!root) return
-    const total = root.offsetHeight - window.innerHeight
-    const next = Math.min(pieces.length - 1, Math.max(0, index))
-    const top = root.offsetTop + (total * next) / (pieces.length - 1)
-    window.scrollTo({ top, behavior: 'smooth' })
-  }
-
-  const opened = pieces.find((piece) => piece.id === openId) ?? null
-  const current = pieces[active]
-  const intro = progress < 0.08
+  const fade = progress < 0.72 ? 1 : Math.max(0, 1 - (progress - 0.72) / 0.28)
 
   return (
-    <div ref={rootRef} className="bg-[#f7f5f2] text-[#1a1a1a]" style={{ height: `${(pieces.length + 1) * 100}vh` }}>
+    <section ref={rootRef} className="relative h-[190vh]">
       <div className="sticky top-0 h-dvh overflow-hidden">
-        <SiteHeader />
-        <p className="pointer-events-none absolute top-28 right-6 z-20 text-xs tracking-[0.22em] text-black/45" style={{ fontFamily: serif }}>
-          {current.index} / {pieces[pieces.length - 1].index}
-        </p>
+        <img
+          src={piece.image}
+          alt=""
+          className="absolute inset-x-0 top-[-12%] h-[124%] w-full object-cover"
+          style={{ transform: `translate3d(0, ${(progress - 0.5) * 8}%, 0)` }}
+          draggable={false}
+        />
+        <div className="absolute inset-0 bg-black/35" />
+        <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/55 to-transparent" />
+        <SiteHeader overlay />
         <div
-          className="pointer-events-none absolute inset-x-0 top-[38%] z-20 text-center transition-opacity duration-700"
-          style={{ opacity: intro ? 1 : 0, fontFamily: serif }}
+          className="absolute inset-0 flex items-center justify-center px-6 transition-opacity duration-500"
+          style={{ opacity: fade, fontFamily: serif }}
         >
-          <p className="text-5xl font-normal tracking-tight sm:text-7xl">{profile.name}</p>
-          <p className="mt-3 text-sm tracking-[0.28em] text-black/55">个人能力</p>
-        </div>
-        <div className="absolute inset-0" style={{ perspective: '1400px', perspectiveOrigin: '50% 58%' }}>
-          <div
-            className="absolute top-[18%] left-1/2 h-[58vh] w-[min(68vw,760px)]"
-            style={{ marginLeft: 'calc(min(68vw, 760px) / -2)', transformStyle: 'preserve-3d' }}
-          >
-            {pieces.map((piece, index) => (
-              <button
-                key={piece.id}
-                ref={(node) => {
-                  slideRefs.current[index] = node
-                }}
-                type="button"
-                aria-label={`${piece.title}，探索`}
-                className="absolute top-0 left-0 h-full w-full overflow-hidden bg-[#e7e2dc] shadow-[0_30px_80px_rgba(0,0,0,0.12)]"
-                style={{ transformStyle: 'preserve-3d' }}
-                onMouseEnter={() => {
-                  if (index === active) setHovering(true)
-                }}
-                onMouseLeave={() => setHovering(false)}
-                onClick={() => {
-                  if (Math.abs(index - focus.current) > 0.45) scrollToIndex(index)
-                  else setOpenId(piece.id)
-                }}
-              >
-                <img src={piece.image} alt="" className="size-full object-cover" draggable={false} />
-                <span className="absolute bottom-4 left-4 text-left text-white" style={{ fontFamily: serif }}>
-                  <span className="block text-[10px] tracking-[0.22em] text-white/80">{piece.index}</span>
-                  <span className="mt-1 block text-2xl">{piece.title}</span>
-                </span>
-              </button>
-            ))}
+          <div className="w-full max-w-3xl text-center">
+            <p className="text-[11px] tracking-[0.28em] text-white/70">{piece.index} 个人能力</p>
+            <h2 className="mt-4 text-5xl sm:text-7xl">{piece.title}</h2>
+            <div className="mx-auto mt-6 h-px w-full max-w-xl bg-white/50" />
+            <p className="mx-auto mt-6 max-w-md text-lg leading-8 text-white/90">{piece.line}</p>
+            <div className="mx-auto mt-6 h-px w-full max-w-xl bg-white/50" />
+            <button
+              type="button"
+              onClick={onOpen}
+              className="mt-8 text-sm tracking-[0.22em] underline underline-offset-8"
+            >
+              进入这一段
+            </button>
           </div>
         </div>
-        <button
-          type="button"
-          aria-label="上一件"
-          className="absolute top-1/2 left-5 z-20 hidden size-8 -translate-y-1/2 text-xl text-black/50 sm:block"
-          onClick={() => scrollToIndex(active - 1)}
-        >
-          +
-        </button>
-        <button
-          type="button"
-          aria-label="下一件"
-          className="absolute top-1/2 right-5 z-20 hidden size-8 -translate-y-1/2 text-xl text-black/50 sm:block"
-          onClick={() => scrollToIndex(active + 1)}
-        >
-          +
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpenId(current.id)}
-          className="absolute bottom-8 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-3 text-[10px] tracking-[0.32em] text-black/70"
-        >
-          <span className="block size-2.5 rotate-45 border border-black/70" />
-          {hovering ? '探索' : '发现'}
-        </button>
-        {opened ? <PieceDetail piece={opened} onClose={() => setOpenId(null)} /> : null}
       </div>
-    </div>
+    </section>
   )
 }
 
 function PieceDetail({ piece, onClose }: { piece: Piece; onClose: () => void }) {
   return (
-    <div className="absolute inset-0 z-40 overflow-y-auto bg-[#f7f5f2]">
-      <div className="mx-auto grid min-h-dvh max-w-6xl items-center gap-8 px-5 py-24 md:grid-cols-[1.2fr_0.8fr]">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 text-white backdrop-blur-sm">
+      <div className="mx-auto grid min-h-dvh max-w-5xl items-center gap-8 px-5 py-20 md:grid-cols-[1.1fr_0.9fr]">
         <img src={piece.image} alt="" className="aspect-[4/3] w-full object-cover" />
         <div style={{ fontFamily: serif }}>
-          <p className="text-xs tracking-[0.22em] text-black/45">{piece.index}</p>
+          <p className="text-[11px] tracking-[0.28em] text-white/60">{piece.index}</p>
           <h2 className="mt-3 text-5xl">{piece.title}</h2>
-          <p className="mt-6 max-w-md text-base leading-8 text-black/75">{piece.body}</p>
-          <button type="button" onClick={onClose} className="mt-8 text-sm tracking-[0.18em] underline underline-offset-4">
-            返回
+          <div className="mt-6 h-px w-full bg-white/40" />
+          <p className="mt-6 text-lg leading-8">{piece.line}</p>
+          <p className="mt-3 text-base leading-8 text-white/75">{piece.body}</p>
+          <button type="button" onClick={onClose} className="mt-8 text-sm tracking-[0.2em] underline underline-offset-8">
+            关闭
           </button>
         </div>
       </div>
@@ -230,30 +153,22 @@ function PieceDetail({ piece, onClose }: { piece: Piece; onClose: () => void }) 
   )
 }
 
-function SkillsReading() {
-  const [openId, setOpenId] = useState<string | null>(null)
+function SkillsReading({ onOpen }: { onOpen: (id: string) => void }) {
   return (
-    <div className="min-h-dvh bg-[#f7f5f2] text-[#1a1a1a]">
+    <div className="min-h-dvh bg-[#111] text-white">
       <SiteHeader />
-      <main className="mx-auto flex max-w-3xl flex-col gap-8 px-5 py-16" style={{ fontFamily: serif }}>
-        <p className="text-xs tracking-[0.22em] text-black/45">个人能力</p>
+      <main className="mx-auto flex max-w-3xl flex-col gap-10 px-5 py-16" style={{ fontFamily: serif }}>
+        <p className="text-[11px] tracking-[0.28em] text-white/50">个人能力</p>
         <h1 className="text-5xl">{profile.name}</h1>
-        {pieces.map((piece) => {
-          const open = openId === piece.id
-          return (
-            <section key={piece.id} className="border-t border-black/10 pt-6">
-              <button type="button" className="text-left text-3xl" aria-expanded={open} onClick={() => setOpenId(open ? null : piece.id)}>
-                {piece.index} {piece.title}
-              </button>
-              {open ? (
-                <div className="mt-4">
-                  <img src={piece.image} alt="" className="mb-4 aspect-[4/3] w-full max-w-md object-cover" />
-                  <p className="max-w-xl text-sm leading-7 text-black/75">{piece.body}</p>
-                </div>
-              ) : null}
-            </section>
-          )
-        })}
+        {pieces.map((piece) => (
+          <section key={piece.id} className="border-t border-white/15 pt-6">
+            <h2 className="text-3xl">{piece.title}</h2>
+            <p className="mt-3 text-white/75">{piece.line}</p>
+            <button type="button" onClick={() => onOpen(piece.id)} className="mt-4 text-sm tracking-[0.16em] underline underline-offset-4">
+              进入这一段
+            </button>
+          </section>
+        ))}
       </main>
     </div>
   )
