@@ -28,6 +28,162 @@
   }
 }
 
+@keyframes guide-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(7px);
+  }
+}
+
+@keyframes guide-swing {
+  0%,
+  100% {
+    transform: rotate(24deg);
+  }
+  50% {
+    transform: rotate(-24deg);
+  }
+}
+
+@keyframes guide-wave {
+  0%,
+  100% {
+    transform: rotate(8deg);
+  }
+  50% {
+    transform: rotate(-62deg);
+  }
+}
+
+@keyframes guide-item-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(230, 177, 92, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(230, 177, 92, 0);
+  }
+}
+
+.guide {
+  position: absolute;
+  left: 50%;
+  bottom: 16%;
+  z-index: 25;
+  width: 118px;
+  height: 248px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.guide::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 86px;
+  height: 16px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.38);
+}
+
+.guide-bob {
+  position: relative;
+  height: 100%;
+}
+
+.guide-head {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 2;
+  width: 74px;
+  height: 74px;
+  transform: translateX(-50%);
+  border: 3px solid #f6ead8;
+  border-radius: 999px;
+  object-fit: cover;
+  object-position: 70% 28%;
+}
+
+.guide-torso {
+  position: absolute;
+  top: 62px;
+  left: 50%;
+  width: 56px;
+  height: 72px;
+  transform: translateX(-50%);
+  border-radius: 18px 18px 12px 12px;
+  background: linear-gradient(#3d6cb5, #243e74);
+}
+
+.guide-arm,
+.guide-leg {
+  position: absolute;
+  transform-origin: top center;
+  border-radius: 999px;
+}
+
+.guide-arm {
+  top: 70px;
+  width: 12px;
+  height: 62px;
+  background: #2c4f90;
+}
+
+.guide-arm.left {
+  left: 18px;
+}
+
+.guide-arm.right {
+  right: 18px;
+}
+
+.guide-leg {
+  bottom: 10px;
+  width: 13px;
+  height: 84px;
+  background: #241910;
+}
+
+.guide-leg.left {
+  left: 40px;
+}
+
+.guide-leg.right {
+  right: 40px;
+}
+
+.guide-walk .guide-bob {
+  animation: guide-bob 0.55s ease-in-out infinite;
+}
+
+.guide-walk .guide-leg.left,
+.guide-walk .guide-arm.right {
+  animation: guide-swing 0.55s ease-in-out infinite;
+}
+
+.guide-walk .guide-leg.right,
+.guide-walk .guide-arm.left {
+  animation: guide-swing 0.55s ease-in-out infinite reverse;
+}
+
+.guide-wave .guide-arm.right {
+  animation: guide-wave 1.15s ease-in-out infinite;
+}
+
+.guide-point.point-left .guide-arm.left {
+  transform: rotate(62deg);
+}
+
+.guide-point.point-right .guide-arm.right {
+  transform: rotate(-62deg);
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
