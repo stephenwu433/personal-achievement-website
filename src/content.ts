@@ -94,15 +94,21 @@ export const homeGallery: GalleryItem[] = [
   },
 ]
 
+/** 项目列表上的五个小格子。大格子是人物，不作为项目入口。项目名称之后再补。 */
+export const projectCells = [
+  { id: 'diagrams', x: 0, y: 0, width: 33, height: 35.5 },
+  { id: 'charts', x: 33, y: 0, width: 33.5, height: 35.5 },
+  { id: 'desk', x: 66.5, y: 0, width: 33.5, height: 35.5 },
+  { id: 'globe', x: 66.5, y: 35.5, width: 33.5, height: 29.5 },
+  { id: 'map', x: 66.5, y: 65, width: 33.5, height: 35 },
+]
+
 export const projects = [
-  {
-    title: 'Planflow',
-    summary: '公开仓库中的项目。仓库里还没有详细介绍，源代码和后续更新都在 GitHub。',
-    href: 'https://github.com/stephenwu433/planflow-app',
-  },
-  {
-    title: '智能售后服务 Agent',
-    summary: '聚焦故障定位、排障引导，以及升级到人工处理的闭环。',
-    href: 'https://github.com/stephenwu433/smart-service-agent',
-  },
+  { title: '梅见', image: '/projects/meijian.png' },
+  { title: '安克创新', image: '/projects/anker.png' },
+  { title: '欧莱雅', image: '/projects/loreal.png' },
+  { title: 'HR 招聘', image: '/projects/hr.png' },
+  { title: '海外压缩沙发', image: '/projects/sofa.png' },
+  { title: 'Muse Select', image: '/projects/muse-select.png' },
+  { title: 'PlanFlow', image: '/projects/planflow.png' },
 ]
