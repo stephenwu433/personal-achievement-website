@@ -65,6 +65,19 @@
   }
 }
 
+.project-diamond {
+  width: 9px;
+  height: 9px;
+  transition:
+    width 0.55s cubic-bezier(0.22, 0.61, 0.36, 1),
+    height 0.55s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.project-card:hover .project-diamond {
+  width: 14px;
+  height: 14px;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

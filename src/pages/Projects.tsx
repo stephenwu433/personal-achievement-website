@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import SiteHeader from '@/src/components/SiteHeader'
 import { profile } from '@/src/content'
 
@@ -98,6 +98,23 @@ function easeInOutCubic(value: number) {
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2
 }
 
+function easeOutCubic(value: number) {
+  return 1 - (1 - clamp01(value)) ** 3
+}
+
+function easeInCubic(value: number) {
+  const t = clamp01(value)
+  return t * t * t
+}
+
+type Pose = { x: number; y: number; w: number; h: number; opacity: number }
+
+function bowedPoint(start: number, end: number, control: number, amount: number) {
+  const t = clamp01(amount)
+  const inverse = 1 - t
+  return inverse * inverse * start + 2 * inverse * t * control + t * t * end
+}
+
 function glide(value: number) {
   return 1 - (1 - clamp01(value)) ** 3
 }
@@ -177,8 +194,18 @@ function ProjectStage() {
   const labelRefs = useRef<Array<HTMLSpanElement | null>>([])
   const sliderSize = useRef({ w: 250, h: 360 })
   const layoutTarget = useRef(0)
-  const layoutBlend = useRef(0)
   const drive = useRef<'scroll' | 'glide'>('scroll')
+  const morph = useRef<{ to: 0 | 1; start: number; poses: Pose[] } | null>(null)
+  const focusPrev = useRef(0)
+  const focusVel = useRef(0)
+  const aboutExit = useRef(0)
+  const counterRef = useRef<HTMLDivElement>(null)
+  const counterSlideRef = useRef<HTMLDivElement>(null)
+  const aboutSlideRef = useRef<HTMLDivElement>(null)
+  const categorySlideRef = useRef<HTMLDivElement>(null)
+  const lineLeftRef = useRef<HTMLSpanElement>(null)
+  const lineRightRef = useRef<HTMLSpanElement>(null)
+  const wipeRefs = useRef<Array<HTMLSpanElement | null>>([])
   const glideFrom = useRef(0)
   const glideToIndex = useRef(0)
   const glideStart = useRef(0)
@@ -188,6 +215,7 @@ function ProjectStage() {
   const titleRef = useRef<HTMLParagraphElement>(null)
   const aboutRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
   const [active, setActive] = useState(0)
   const [mode, setMode] = useState<'slider' | 'grid'>('slider')
   const [compact, setCompact] = useState(false)
@@ -295,7 +323,6 @@ function ProjectStage() {
     if (phase !== 'ready') return
     readyAt.current = performance.now()
     let last = performance.now()
-    let locked = false
     const release = () => {
       if (drive.current === 'glide') drive.current = 'scroll'
     }
@@ -308,19 +335,28 @@ function ProjectStage() {
       const root = rootRef.current
       const width = window.innerWidth
       const height = window.innerHeight
-      layoutBlend.current += (layoutTarget.current - layoutBlend.current) * (1 - Math.exp(-dt / 0.42))
-      const blend = layoutBlend.current
-      const spread = easeInOutCubic(blend)
+      const motion = morph.current
+      const elapsed = motion ? (now - motion.start) / 1000 : 0
+      const morphDuration = motion?.to === 1 ? 1.42 : 1.95
+      if (motion && elapsed >= morphDuration) {
+        layoutTarget.current = motion.to
+        morph.current = null
+        setMode(motion.to === 1 ? 'grid' : 'slider')
+        setCompact(motion.to === 1)
+      }
+      const traveling = morph.current
 
-      if (drive.current === 'glide') {
+      if (traveling) {
+        drive.current = 'scroll'
+      } else if (drive.current === 'glide') {
         const raw = clamp01((now - glideStart.current) / 780)
         focus.current = glideFrom.current + (glideToIndex.current - glideFrom.current) * easeInOutCubic(raw)
         if (raw === 1) drive.current = 'scroll'
-        if (root && spread < 0.04) {
+        if (root && layoutTarget.current < 0.5) {
           const total = root.offsetHeight - height
           window.scrollTo(0, root.offsetTop + (total * focus.current) / (pieces.length - 1))
         }
-      } else if (root && spread < 0.04 && layoutTarget.current < 0.5) {
+      } else if (root && !traveling && layoutTarget.current < 0.5) {
         const total = root.offsetHeight - height
         if (total > 0) {
           const scrolled = Math.min(total, Math.max(0, -root.getBoundingClientRect().top))
@@ -330,62 +366,124 @@ function ProjectStage() {
         }
       }
 
-      const wantLock = spread > 0.9 && layoutTarget.current > 0.5
-      if (wantLock && !locked) {
-        locked = true
-        setCompact(true)
-      } else if (!wantLock && locked && layoutTarget.current < 0.5) {
-        locked = false
-        setCompact(false)
-      }
+      const focusDelta = focus.current - focusPrev.current
+      focusVel.current += (focusDelta / Math.max(dt, 0.008) - focusVel.current) * 0.4
+      focusPrev.current = focus.current
+      const stretch = traveling || layoutTarget.current > 0.5 ? 0 : Math.min(0.1, Math.abs(focusVel.current) * 0.075)
 
       const base = sliderSize.current
       const cells = fittedGrid(width, height)
       const reveal = clamp01((now - readyAt.current) / 720)
+      const leavingAbout = aboutExit.current > 0 ? clamp01((now - aboutExit.current) / 420) : 0
+      if (aboutExit.current && now - aboutExit.current > 460) {
+        aboutExit.current = 0
+        navigate('/about')
+      }
 
       slideRefs.current.forEach((slide, index) => {
         if (!slide) return
         const distance = Math.abs(index - focus.current)
         const look = stackLook(distance)
-        const sw = base.w * look.scale
-        const sh = base.h * look.scale
-        const cell = cells[index]
-        const x = (cell?.x ?? 0) * spread
-        const y = (index - focus.current) * base.h * 1.18 * (1 - spread) + (cell?.y ?? 0) * spread
-        const w = sw + ((cell?.w ?? sw) - sw) * spread
-        const h = sh + ((cell?.h ?? sh) - sh) * spread
-        if (spread < 0.012) {
-          slide.style.width = ''
-          slide.style.height = ''
-          slide.style.transform = `translate3d(-50%, calc(-50% + ${(index - focus.current) * 118}%), 0) scale(${look.scale})`
-        } else {
-          slide.style.width = `${w}px`
-          slide.style.height = `${h}px`
-          slide.style.transform = `translate3d(calc(-50% + ${x}px), calc(-50% + ${y}px), 0)`
+        const cell = cells[index] ?? { x: 0, y: 0, w: base.w, h: base.h }
+        const sliderPose = {
+          x: 0,
+          y: (index - focus.current) * base.h * 1.18,
+          w: base.w * look.scale,
+          h: base.h * look.scale,
+          opacity: look.opacity,
+        }
+        const gridPose = { x: cell.x, y: cell.y, w: cell.w, h: cell.h, opacity: 1 }
+        let pose = layoutTarget.current > 0.5 ? gridPose : sliderPose
+        let spin = 0
+        let squash = 1
+        let bulge = 1
+        const flight = morph.current
+        if (flight) {
+          const travelStart = flight.to === 1 ? 0.38 : 0
+          const amount = easeInOutCubic((elapsed - travelStart) / 1)
+          const from = flight.poses[index] ?? sliderPose
+          const goal = flight.to === 1 ? gridPose : sliderPose
+          const dx = goal.x - from.x
+          const dy = goal.y - from.y
+          const length = Math.hypot(dx, dy) || 1
+          const midX = (from.x + goal.x) / 2
+          const midY = (from.y + goal.y) / 2
+          const outward = Math.hypot(midX, midY) || 1
+          const controlX = midX + (midX / outward) * length * 0.2
+          const controlY = midY + (midY / outward) * length * 0.2
+          const sway = Math.sin(amount * Math.PI)
+          pose = {
+            x: bowedPoint(from.x, goal.x, controlX, amount),
+            y: bowedPoint(from.y, goal.y, controlY, amount),
+            w: from.w + (goal.w - from.w) * amount,
+            h: from.h + (goal.h - from.h) * amount,
+            opacity: from.opacity + (goal.opacity - from.opacity) * amount,
+          }
+          spin = (sway * Math.atan2(dy, dx) * 0.05 * 180) / Math.PI
+          const horizontal = Math.abs(dx) > Math.abs(dy)
+          squash = horizontal ? 1 - sway * 0.08 : 1 + sway * 0.04
+          bulge = horizontal ? 1 + sway * 0.04 : 1 - sway * 0.08
         }
         const hidden = openIdRef.current === pieces[index]?.id
-        slide.style.opacity = hidden ? '0' : String(look.opacity + (1 - look.opacity) * spread)
+        const restingSlider = !flight && layoutTarget.current < 0.5
+        if (restingSlider) {
+          slide.style.width = ''
+          slide.style.height = ''
+          slide.style.transform = `translate3d(-50%, calc(-50% + ${(index - focus.current) * 118}%), 0) scale(${look.scale}, ${look.scale * (1 + stretch)})`
+        } else {
+          slide.style.width = `${pose.w}px`
+          slide.style.height = `${pose.h}px`
+          slide.style.transform = `translate3d(calc(-50% + ${pose.x}px), calc(-50% + ${pose.y}px), 0) rotate(${spin}deg) scale(${squash}, ${bulge})`
+        }
+        slide.style.opacity = hidden ? '0' : String(pose.opacity)
         slide.style.zIndex = String(20 - Math.round(distance))
         const label = labelRefs.current[index]
         if (label) {
-          label.style.opacity = String(hidden ? 0 : Math.max(0, (spread - 0.4) / 0.6))
-          label.style.transform = `translate3d(calc(-50% + ${x}px), calc(-50% + ${y + h / 2 + 14}px), 0)`
+          const labelAmount = flight?.to === 1 ? easeInOutCubic((elapsed - 0.7) / 0.6) : flight ? 1 - easeInOutCubic(elapsed / 0.35) : layoutTarget.current
+          label.style.opacity = String(hidden ? 0 : labelAmount)
+          label.style.transform = `translate3d(calc(-50% + ${pose.x}px), calc(-50% + ${pose.y + pose.h / 2 + 14}px), 0)`
+        }
+        const wipe = wipeRefs.current[index]
+        if (wipe) {
+          const cover = flight?.to === 0 && look.opacity < 0.15 ? easeInCubic(elapsed / 0.45) : 0
+          wipe.style.transform = `scaleX(${cover})`
         }
       })
 
-      if (spread < 0.012) {
+      if (!traveling && layoutTarget.current < 0.5) {
         const resting = slideRefs.current[0]
-        if (resting) sliderSize.current = { w: resting.offsetWidth, h: resting.offsetHeight }
+        if (resting && !resting.style.width) sliderSize.current = { w: resting.offsetWidth, h: resting.offsetHeight }
       }
 
-      const chromeOpacity = String(reveal * (1 - spread))
-      if (chromeRef.current) {
-        chromeRef.current.style.opacity = chromeOpacity
-        chromeRef.current.style.pointerEvents = spread > 0.35 ? 'none' : 'auto'
+      let lineScale = reveal
+      let chromeShift = leavingAbout
+      if (motion && elapsed < morphDuration) {
+        if (motion.to === 1) {
+          lineScale = 1 - easeOutCubic(elapsed / 0.6)
+          chromeShift = Math.max(chromeShift, easeOutCubic(elapsed / 0.35))
+        } else {
+          lineScale = easeOutCubic((elapsed - 1.3) / 0.6)
+          chromeShift = Math.max(chromeShift, 1 - easeOutCubic((elapsed - 1.15) / 0.45))
+        }
+      } else if (layoutTarget.current > 0.5) {
+        lineScale = 0
+        chromeShift = 1
       }
-      if (metaRef.current) metaRef.current.style.opacity = chromeOpacity
-      if (aboutRef.current) aboutRef.current.style.pointerEvents = reveal * (1 - spread) > 0.65 ? 'auto' : 'none'
-      if (titleRef.current) titleRef.current.style.opacity = chromeOpacity
+      const shift = `translateY(${-chromeShift * 110}%)`
+      if (lineLeftRef.current) lineLeftRef.current.style.transform = `scaleX(${lineScale})`
+      if (lineRightRef.current) lineRightRef.current.style.transform = `scaleX(${lineScale})`
+      if (counterSlideRef.current) counterSlideRef.current.style.transform = shift
+      if (aboutSlideRef.current) aboutSlideRef.current.style.transform = shift
+      if (categorySlideRef.current) categorySlideRef.current.style.transform = shift
+      if (titleRef.current) titleRef.current.style.transform = shift
+      if (counterRef.current) counterRef.current.style.transform = `translateY(${-focus.current * 1.05}em)`
+      if (chromeRef.current) {
+        chromeRef.current.style.opacity = String(reveal)
+        chromeRef.current.style.pointerEvents = chromeShift > 0.45 ? 'none' : 'auto'
+      }
+      if (metaRef.current) metaRef.current.style.opacity = String(reveal)
+      if (aboutRef.current) aboutRef.current.style.pointerEvents = chromeShift < 0.2 && reveal > 0.65 ? 'auto' : 'none'
+      if (titleRef.current) titleRef.current.style.opacity = String(reveal)
       if (headerRef.current) {
         headerRef.current.style.opacity = String(reveal)
         headerRef.current.style.transform = `translateY(${(1 - reveal) * -10}px)`
@@ -434,12 +532,39 @@ function ProjectStage() {
   const current = pieces[active]
   const opened = pieces.find((piece) => piece.id === openId) ?? null
 
-  const chooseMode = (next: 'slider' | 'grid') => {
-    if (next === 'grid' && mode === 'grid') return
-    if (next === 'slider' && mode === 'slider') return
-    layoutTarget.current = next === 'grid' ? 1 : 0
-    setMode(next)
+  const beginMorph = (to: 0 | 1) => {
+    if (morph.current || to === layoutTarget.current) return
+    const width = window.innerWidth
+    const height = window.innerHeight
+    const cells = fittedGrid(width, height)
+    const poses = slideRefs.current.map((slide, index) => {
+      const rect = slide?.getBoundingClientRect()
+      const pose = rect
+        ? {
+            x: rect.left + rect.width / 2 - width / 2,
+            y: rect.top + rect.height / 2 - height / 2,
+            w: rect.width,
+            h: rect.height,
+            opacity: Number.parseFloat(slide?.style.opacity || '1'),
+          }
+        : { x: 0, y: 0, w: sliderSize.current.w, h: sliderSize.current.h, opacity: 1 }
+      if (to !== 1 || pose.opacity >= 0.08) return pose
+      const cell = cells[index]
+      if (!cell) return pose
+      const reach = Math.hypot(cell.x, cell.y) || 1
+      return {
+        x: cell.x + (cell.x / reach) * width * 0.62,
+        y: cell.y + (cell.y / reach) * height * 0.42,
+        w: cell.w,
+        h: cell.h,
+        opacity: 0,
+      }
+    })
+    morph.current = { to, start: performance.now(), poses }
+    layoutTarget.current = to
   }
+
+  const chooseMode = (next: 'slider' | 'grid') => beginMorph(next === 'grid' ? 1 : 0)
 
   return (
     <div
@@ -464,12 +589,11 @@ function ProjectStage() {
               }}
               type="button"
               aria-label={piece.title}
-              className="pointer-events-auto absolute top-1/2 left-1/2 h-[34vh] w-[min(26vw,250px)] overflow-hidden bg-[#ddd8d0]"
+              className="project-card pointer-events-auto absolute top-1/2 left-1/2 h-[34vh] w-[min(26vw,250px)] overflow-hidden bg-[#ddd8d0]"
               style={{ pointerEvents: phase === 'ready' ? undefined : 'none' }}
               onClick={() => {
-                if (phase !== 'ready') return
-                const spreadNow = easeInOutCubic(layoutBlend.current)
-                const centered = spreadNow > 0.85 || Math.abs(index - focus.current) < 0.42
+                if (phase !== 'ready' || morph.current) return
+                const centered = layoutTarget.current > 0.5 || Math.abs(index - focus.current) < 0.42
                 if (!centered) {
                   glideTo(index)
                   return
@@ -481,8 +605,15 @@ function ProjectStage() {
               }}
             >
               <img src={piece.image} alt="" className="size-full object-cover" draggable={false} />
+              <span
+                ref={(node) => {
+                  wipeRefs.current[index] = node
+                }}
+                className="pointer-events-none absolute inset-0 origin-right bg-[#f7f5f2]"
+                style={{ transform: 'scaleX(0)' }}
+              />
               {phase === 'ready' && mode === 'slider' && index === active ? (
-                <span className="absolute top-1/2 left-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-white" />
+                <span className="project-diamond absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-white" />
               ) : null}
             </button>
           ))}
@@ -503,19 +634,41 @@ function ProjectStage() {
           ref={metaRef}
           className="pointer-events-none absolute inset-x-0 top-28 bottom-8 z-20 grid grid-cols-[1fr_minmax(180px,280px)_1fr] items-center px-6 sm:px-10"
         >
-          <div className="flex items-center gap-4 pr-4">
-            <p key={current.index} className="text-4xl italic sm:text-5xl" style={{ fontFamily: serif, animation: 'projects-meta-in 0.45s cubic-bezier(0.22, 1, 0.36, 1)' }}>
-              {current.index}
-              <span className="text-2xl not-italic text-black/35"> / {pieces[pieces.length - 1].index}</span>
-            </p>
-            <span className="hidden h-px min-w-8 flex-1 bg-black/25 sm:block" />
+          <div className="overflow-hidden pr-4">
+            <div ref={counterSlideRef} className="flex items-center gap-4">
+              <div className="h-[1.05em] overflow-hidden leading-none">
+                <div ref={counterRef}>
+                  {pieces.map((piece) => (
+                    <p key={piece.id} className="h-[1.05em] text-4xl italic sm:text-5xl" style={{ fontFamily: serif }}>
+                      {piece.index}
+                    </p>
+                  ))}
+                </div>
+              </div>
+              <span className="text-2xl text-black/35 sm:text-3xl" style={{ fontFamily: serif }}>
+                / {pieces[pieces.length - 1].index}
+              </span>
+              <span ref={lineLeftRef} className="hidden h-px min-w-8 flex-1 origin-left bg-black/25 sm:block" />
+            </div>
           </div>
           <div />
-          <div ref={aboutRef} className="pointer-events-none flex items-center gap-4 pl-4">
-            <span className="hidden h-px min-w-8 flex-1 bg-black/25 sm:block" />
-            <Link to="/about" className="text-xs tracking-[0.22em]">
-              关于
-            </Link>
+          <div className="overflow-hidden pl-4">
+            <div ref={aboutSlideRef} className="flex items-center gap-4">
+              <span ref={lineRightRef} className="hidden h-px min-w-8 flex-1 origin-right bg-black/25 sm:block" />
+              <div ref={aboutRef} className="pointer-events-none">
+                <Link
+                  to="/about"
+                  className="text-xs tracking-[0.22em]"
+                  onClick={(event) => {
+                    event.preventDefault()
+                    if (aboutExit.current || morph.current) return
+                    aboutExit.current = performance.now()
+                  }}
+                >
+                  关于
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
         <div className={phase === 'ready' ? undefined : 'pointer-events-none'}>
@@ -523,25 +676,24 @@ function ProjectStage() {
             current={current}
             mode={mode}
             categoryRef={chromeRef}
+            categorySlideRef={categorySlideRef}
             onMode={chooseMode}
             onPick={(index) => {
-              if (mode === 'grid') {
+              if (morph.current) return
+              if (layoutTarget.current > 0.5) {
                 focus.current = index
-                drive.current = 'scroll'
-                chooseMode('slider')
+                beginMorph(0)
                 return
               }
               glideTo(index)
             }}
           />
         </div>
-        <p
-          ref={titleRef}
-          className="absolute bottom-6 left-8 text-[11px] tracking-[0.18em] text-black/55"
-          style={{ fontFamily: serif }}
-        >
-          {current.title}
-        </p>
+        <div className="absolute bottom-6 left-8 overflow-hidden">
+          <p ref={titleRef} className="text-[11px] tracking-[0.18em] text-black/55" style={{ fontFamily: serif }}>
+            {current.title}
+          </p>
+        </div>
         {opened ? (
           <PieceDetail
             piece={opened}
@@ -561,18 +713,21 @@ function ProjectChrome({
   current,
   mode,
   categoryRef,
+  categorySlideRef,
   onMode,
   onPick,
 }: {
   current: Piece
   mode: 'slider' | 'grid'
   categoryRef: RefObject<HTMLDivElement | null>
+  categorySlideRef: RefObject<HTMLDivElement | null>
   onMode: (mode: 'slider' | 'grid') => void
   onPick: (index: number) => void
 }) {
   return (
     <>
-      <div ref={categoryRef} className="absolute top-28 right-6 z-30 hidden text-right opacity-0 sm:block" style={{ fontFamily: serif }}>
+      <div ref={categoryRef} className="absolute top-28 right-6 z-30 hidden overflow-hidden text-right sm:block">
+        <div ref={categorySlideRef} style={{ fontFamily: serif }}>
         <p className="text-sm tracking-[0.14em] underline decoration-black/70 underline-offset-4">项目</p>
         <ul className="mt-3 space-y-1 text-xs text-black/55">
           {pieces.map((piece, index) => (
@@ -587,6 +742,7 @@ function ProjectChrome({
             </li>
           ))}
         </ul>
+        </div>
       </div>
       <div className="absolute right-6 bottom-6 z-30 text-right" style={{ fontFamily: serif }}>
         <p className="text-sm tracking-[0.14em] underline decoration-black/70 underline-offset-4">展示</p>
@@ -651,12 +807,10 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
   }
 
   return (
-    <div
-      className="absolute inset-0 z-50 overflow-y-auto bg-[#f7f5f2]"
-      style={{ opacity: veil, transition: 'opacity 0.32s ease' }}
-    >
-      <div className="mx-auto grid min-h-dvh max-w-6xl items-center gap-8 px-5 py-24 md:grid-cols-[1.3fr_0.7fr]">
-        <img ref={imgRef} src={piece.image} alt="" className="w-full object-cover" />
+    <div className="absolute inset-0 z-50 overflow-y-auto">
+      <div className="absolute inset-0 bg-[#f7f5f2]" style={{ opacity: veil, transition: 'opacity 0.45s ease' }} />
+      <div className="relative mx-auto grid min-h-dvh max-w-6xl items-center gap-8 px-5 py-24 md:grid-cols-[1.3fr_0.7fr]">
+        <img ref={imgRef} src={piece.image} alt="" className="relative w-full object-cover" />
         <div style={{ fontFamily: serif, opacity: veil, transform: `translateY(${(1 - veil) * 12}px)`, transition: 'opacity 0.45s ease, transform 0.45s ease' }}>
           <p className="text-xs tracking-[0.22em] text-black/45">{piece.index}</p>
           <h2 className="mt-3 text-5xl">{piece.title}</h2>
