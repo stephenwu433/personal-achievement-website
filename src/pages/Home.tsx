@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CircularGallery } from '@/components/ui/circular-gallery'
 import GalleryVideoBackground from '@/src/components/GalleryVideoBackground'
+import HomeArchive from '@/src/components/HomeArchive'
 import SiteHeader from '@/src/components/SiteHeader'
 import { homeGallery, profile } from '@/src/content'
 
@@ -37,7 +38,9 @@ export default function Home() {
   }, [])
 
   return (
-    <div className="text-foreground" style={{ height: '500vh' }}>
+    <div className="text-foreground">
+      <HomeArchive />
+      <div id="gallery" style={{ height: '500vh' }}>
       <div className="sticky top-0 h-dvh overflow-hidden bg-[#2c7ed8]">
         <h1 className="sr-only">{profile.name}的个人网站</h1>
         <GalleryVideoBackground />
@@ -68,6 +71,7 @@ export default function Home() {
           </div>
           <p className="px-6 py-3 text-center text-sm text-white/85">滚动让照片转动，点击照片进入</p>
         </div>
+      </div>
       </div>
     </div>
   )
