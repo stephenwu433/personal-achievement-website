@@ -1,5 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+
+gsap.registerPlugin(ScrollTrigger)
 import SiteHeader from '@/src/components/SiteHeader'
 import { profile } from '@/src/content'
 
@@ -194,7 +198,8 @@ function ProjectStage() {
   const labelRefs = useRef<Array<HTMLSpanElement | null>>([])
   const sliderSize = useRef({ w: 250, h: 360 })
   const layoutTarget = useRef(0)
-  const drive = useRef<'scroll' | 'glide'>('scroll')
+  const scrollTween = useRef<gsap.core.Tween | null>(null)
+  const scrollTriggerRef = useRef<ScrollTrigger | null>(null)
   const morph = useRef<{ to: 0 | 1; start: number; poses: Pose[] } | null>(null)
   const focusPrev = useRef(0)
   const focusVel = useRef(0)
@@ -206,9 +211,6 @@ function ProjectStage() {
   const lineLeftRef = useRef<HTMLSpanElement>(null)
   const lineRightRef = useRef<HTMLSpanElement>(null)
   const wipeRefs = useRef<Array<HTMLSpanElement | null>>([])
-  const glideFrom = useRef(0)
-  const glideToIndex = useRef(0)
-  const glideStart = useRef(0)
   const readyAt = useRef(0)
   const chromeRef = useRef<HTMLDivElement>(null)
   const metaRef = useRef<HTMLDivElement>(null)
@@ -324,15 +326,34 @@ function ProjectStage() {
     readyAt.current = performance.now()
     let last = performance.now()
     const release = () => {
-      if (drive.current === 'glide') drive.current = 'scroll'
+      scrollTween.current?.kill()
     }
     window.addEventListener('wheel', release, { passive: true })
     window.addEventListener('touchstart', release, { passive: true })
+    const ctx = gsap.context(() => {
+      const root = rootRef.current
+      if (!root) return
+      const playhead = { p: 0 }
+      const tween = gsap.to(playhead, {
+        p: 1,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: root,
+          start: 'top top',
+          end: 'bottom bottom',
+          scrub: 0.6,
+        },
+        onUpdate: () => {
+          if (morph.current || layoutTarget.current > 0.5) return
+          focus.current = playhead.p * (pieces.length - 1)
+        },
+      })
+      scrollTriggerRef.current = tween.scrollTrigger ?? null
+    }, rootRef.current || undefined)
 
     const paint = (now: number) => {
       const dt = Math.min(0.048, (now - last) / 1000)
       last = now
-      const root = rootRef.current
       const width = window.innerWidth
       const height = window.innerHeight
       const motion = morph.current
@@ -341,30 +362,14 @@ function ProjectStage() {
       if (motion && elapsed >= morphDuration) {
         layoutTarget.current = motion.to
         morph.current = null
+        if (motion.to === 1) scrollTriggerRef.current?.disable()
+        else scrollTriggerRef.current?.enable()
         setMode(motion.to === 1 ? 'grid' : 'slider')
         setCompact(motion.to === 1)
       }
       const traveling = morph.current
 
-      if (traveling) {
-        drive.current = 'scroll'
-      } else if (drive.current === 'glide') {
-        const raw = clamp01((now - glideStart.current) / 780)
-        focus.current = glideFrom.current + (glideToIndex.current - glideFrom.current) * easeInOutCubic(raw)
-        if (raw === 1) drive.current = 'scroll'
-        if (root && layoutTarget.current < 0.5) {
-          const total = root.offsetHeight - height
-          window.scrollTo(0, root.offsetTop + (total * focus.current) / (pieces.length - 1))
-        }
-      } else if (root && !traveling && layoutTarget.current < 0.5) {
-        const total = root.offsetHeight - height
-        if (total > 0) {
-          const scrolled = Math.min(total, Math.max(0, -root.getBoundingClientRect().top))
-          const target = (scrolled / total) * (pieces.length - 1)
-          const follow = 1 - Math.exp(-dt / 0.16)
-          focus.current += (target - focus.current) * follow
-        }
-      }
+      if (traveling) scrollTween.current?.kill()
 
       const focusDelta = focus.current - focusPrev.current
       focusVel.current += (focusDelta / Math.max(dt, 0.008) - focusVel.current) * 0.4
@@ -499,6 +504,8 @@ function ProjectStage() {
       cancelAnimationFrame(frame.current)
       window.removeEventListener('wheel', release)
       window.removeEventListener('touchstart', release)
+      ctx.revert()
+      scrollTriggerRef.current = null
     }
   }, [phase])
 
@@ -516,14 +523,24 @@ function ProjectStage() {
     if (!root) return
     const total = root.offsetHeight - window.innerHeight
     window.scrollTo(0, root.offsetTop + (total * focus.current) / (pieces.length - 1))
+    ScrollTrigger.refresh()
   }, [compact, phase])
 
   const glideTo = (index: number) => {
+    const root = rootRef.current
+    if (!root || morph.current) return
     const next = Math.min(pieces.length - 1, Math.max(0, index))
-    glideFrom.current = focus.current
-    glideToIndex.current = next
-    glideStart.current = performance.now()
-    drive.current = 'glide'
+    const total = root.offsetHeight - window.innerHeight
+    const dest = root.offsetTop + (total * next) / (pieces.length - 1)
+    scrollTween.current?.kill()
+    const proxy = { y: window.scrollY }
+    scrollTween.current = gsap.to(proxy, {
+      y: dest,
+      duration: 0.9,
+      ease: 'power3.inOut',
+      overwrite: true,
+      onUpdate: () => window.scrollTo(0, proxy.y),
+    })
   }
 
   const openIdRef = useRef<string | null>(null)
