@@ -104,14 +104,11 @@ export const projectCells = [
 ]
 
 export const projects = [
-  {
-    title: 'Planflow',
-    summary: '公开仓库中的项目。仓库里还没有详细介绍，源代码和后续更新都在 GitHub。',
-    href: 'https://github.com/stephenwu433/planflow-app',
-  },
-  {
-    title: '智能售后服务 Agent',
-    summary: '聚焦故障定位、排障引导，以及升级到人工处理的闭环。',
-    href: 'https://github.com/stephenwu433/smart-service-agent',
-  },
+  { title: '梅见', image: '/projects/meijian.png' },
+  { title: '安克创新', image: '/projects/anker.png' },
+  { title: '欧莱雅', image: '/projects/loreal.png' },
+  { title: 'HR 招聘', image: '/projects/hr.png' },
+  { title: '海外压缩沙发', image: '/projects/sofa.png' },
+  { title: 'Muse Select', image: '/projects/muse-select.png' },
+  { title: 'PlanFlow', image: '/projects/planflow.png' },
 ]
