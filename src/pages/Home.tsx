@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CircularGallery } from '@/components/ui/circular-gallery'
 import GalleryVideoBackground from '@/src/components/GalleryVideoBackground'
 import HomeArchive from '@/src/components/HomeArchive'
@@ -32,19 +32,40 @@ function useGalleryFrame() {
 
 export default function Home() {
   const { radius, cardWidth, cardHeight } = useGalleryFrame()
+  const rootRef = useRef<HTMLDivElement>(null)
+  const [blend, setBlend] = useState(0)
 
   useEffect(() => {
     document.title = `${profile.name} — 个人网站`
   }, [])
 
+  useEffect(() => {
+    const read = () => {
+      const root = rootRef.current
+      if (!root) return
+      const total = root.offsetHeight - window.innerHeight
+      const scrolled = total <= 0 ? 0 : Math.min(total, Math.max(0, -root.getBoundingClientRect().top))
+      const progress = total <= 0 ? 0 : scrolled / total
+      const fade = Math.min(1, Math.max(0, (progress - 0.035) / 0.16))
+      const eased = fade * fade * (3 - 2 * fade)
+      setBlend((current) => (Math.abs(current - eased) < 0.008 ? current : eased))
+    }
+    read()
+    window.addEventListener('scroll', read, { passive: true })
+    window.addEventListener('resize', read)
+    return () => {
+      window.removeEventListener('scroll', read)
+      window.removeEventListener('resize', read)
+    }
+  }, [])
+
   return (
-    <div className="text-foreground">
-      <HomeArchive />
-      <div id="gallery" style={{ height: '500vh' }}>
+    <div ref={rootRef} className="relative text-foreground" style={{ height: '640vh' }}>
+      <div id="gallery" className="pointer-events-none absolute left-0 w-full" style={{ top: '22%' }} />
       <div className="sticky top-0 h-dvh overflow-hidden bg-[#2c7ed8]">
         <h1 className="sr-only">{profile.name}的个人网站</h1>
         <GalleryVideoBackground />
-        <div className="pointer-events-none absolute inset-0 z-10">
+        <div className="pointer-events-none absolute inset-0 z-10" style={{ opacity: blend }}>
           <div className="absolute inset-0 bg-black/15" />
           <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/70 via-black/30 to-transparent" />
           <div
@@ -56,7 +77,24 @@ export default function Home() {
           />
           <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 to-transparent" />
         </div>
-        <div className="relative z-20 grid h-full grid-rows-[auto_minmax(0,1fr)_auto]">
+        <div
+          className="absolute inset-0 z-20"
+          style={{
+            opacity: 1 - blend,
+            transform: `translateY(${blend * -28}px)`,
+            pointerEvents: blend > 0.55 ? 'none' : 'auto',
+          }}
+        >
+          <HomeArchive />
+        </div>
+        <div
+          className="relative z-20 grid h-full grid-rows-[auto_minmax(0,1fr)_auto]"
+          style={{
+            opacity: blend,
+            transform: `translateY(${(1 - blend) * 28}px)`,
+            pointerEvents: blend < 0.45 ? 'none' : 'auto',
+          }}
+        >
           <SiteHeader onPhoto />
           <div className="relative min-h-0">
             <div className="absolute inset-0">
@@ -71,7 +109,6 @@ export default function Home() {
           </div>
           <p className="px-6 py-3 text-center text-sm text-white/85">滚动让照片转动，点击照片进入</p>
         </div>
-      </div>
       </div>
     </div>
   )

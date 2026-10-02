@@ -1,5 +1,3 @@
-import GalleryVideoBackground from '@/src/components/GalleryVideoBackground'
-
 const archiveStats = [
   { value: '7', label: '项目实践' },
   { value: '4', label: '实习经历' },
@@ -25,8 +23,7 @@ function Stat({ value, label }: { value: string; label: string }) {
 
 export default function HomeArchive() {
   return (
-    <section className="relative h-dvh overflow-hidden text-white">
-      <GalleryVideoBackground />
+    <section className="relative h-full overflow-hidden text-white">
       <div className="pointer-events-none absolute inset-0 bg-black/20" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_18%,rgba(0,0,0,0.42)_100%)]" />
       <div className="relative z-10 mx-auto flex h-full max-w-5xl flex-col px-5 py-6 sm:px-8">
