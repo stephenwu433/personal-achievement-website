@@ -1,34 +1,24 @@
 import GalleryVideoBackground from '@/src/components/GalleryVideoBackground'
 
-function FeaturedStat({
-  value,
-  label,
-  emphasized = false,
-}: {
-  value: string
-  label: string
-  emphasized?: boolean
-}) {
-  return (
-    <div
-      className={`flex h-full items-center justify-between gap-3 rounded-[28px] px-5 py-5 shadow-[0_18px_50px_rgba(0,0,0,0.2)] backdrop-blur-md ${
-        emphasized
-          ? 'border border-[#e6b15c]/80 bg-white/18'
-          : 'border border-white/28 bg-white/10'
-      }`}
-    >
-      <p className={`font-semibold tracking-tight text-white ${value.length > 2 ? 'text-4xl' : 'text-5xl'}`}>{value}</p>
-      <p className="max-w-[7rem] text-right text-sm leading-5 text-white/80">{label}</p>
-    </div>
-  )
-}
+const archiveStats = [
+  { value: '7', label: '项目实践' },
+  { value: '4', label: '实习经历' },
+  { value: '100K+', label: '内容累计浏览' },
+  { value: '5', label: '黑客松 / 竞赛' },
+  { value: '4', label: 'AI 产品系统' },
+  { value: '6', label: '业务场景' },
+]
 
-function LineStat({ value, label }: { value: string; label: string }) {
+function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="px-2 py-3 text-center">
-      <p className="text-3xl font-medium tracking-tight text-white">{value}</p>
-      <span className="mx-auto mt-3 block h-px w-10 bg-white/70" />
-      <p className="mt-3 text-xs tracking-[0.14em] text-white/75">{label}</p>
+    <div className="flex min-h-28 flex-col items-center justify-center rounded-[28px] border border-white/35 bg-white/14 px-4 py-5 text-center shadow-[0_18px_50px_rgba(0,0,0,0.22)] backdrop-blur-md">
+      <p className={`font-extrabold tracking-tight text-white ${value.length > 2 ? 'text-4xl' : 'text-5xl'}`}>{value}</p>
+      <p
+        className="mt-2 text-sm tracking-[0.12em] text-white/90"
+        style={{ fontFamily: '"Noto Serif SC Archive", "Songti SC", serif', fontWeight: 600 }}
+      >
+        {label}
+      </p>
     </div>
   )
 }
@@ -45,17 +35,17 @@ export default function HomeArchive() {
           <img
             src="/photos/archive-hero.png"
             alt="Stephen舞"
-            className="h-44 w-36 rounded-[28px] object-cover object-[center_18%] shadow-[0_24px_60px_rgba(0,0,0,0.35)] ring-1 ring-white/40 sm:h-52 sm:w-44"
+            className="h-40 w-32 rounded-[28px] object-cover object-[center_18%] shadow-[0_24px_60px_rgba(0,0,0,0.35)] ring-1 ring-white/40 sm:h-48 sm:w-40"
           />
-          <div className="grid w-full gap-3 sm:grid-cols-3">
-            <FeaturedStat value="7" label="项目实践" />
-            <FeaturedStat value="4" label="实习经历" emphasized />
-            <FeaturedStat value="100K+" label="内容累计浏览" />
+          <div className="grid w-full grid-cols-3 gap-3">
+            {archiveStats.slice(0, 3).map((item) => (
+              <Stat key={item.label} value={item.value} label={item.label} />
+            ))}
           </div>
-          <div className="grid w-full grid-cols-3">
-            <LineStat value="5" label="黑客松 / 竞赛" />
-            <LineStat value="4" label="AI 产品系统" />
-            <LineStat value="6" label="业务场景" />
+          <div className="grid w-full grid-cols-3 gap-3">
+            {archiveStats.slice(3).map((item) => (
+              <Stat key={item.label} value={item.value} label={item.label} />
+            ))}
           </div>
         </div>
         <a href="#gallery" className="pb-1 text-center text-xs tracking-[0.22em] text-white/80">
