@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
 import SiteHeader from '@/src/components/SiteHeader'
 import { profile } from '@/src/content'
@@ -132,16 +132,40 @@ function buildOpening(gap: number, width: number): OpeningSpot[] {
   })
 }
 
-function paintStack(slides: Array<HTMLButtonElement | null>, focusNow: number) {
-  slides.forEach((slide, index) => {
-    if (!slide) return
-    const delta = index - focusNow
-    const distance = Math.abs(delta)
-    slide.style.width = ''
-    slide.style.height = ''
-    slide.style.transform = `translate3d(-50%, calc(-50% + ${delta * 118}%), 0)`
-    slide.style.opacity = distance > 1.65 ? '0' : String(Math.max(0.35, 1 - distance * 0.28))
-    slide.style.zIndex = String(10 - Math.round(distance))
+function stackLook(distance: number) {
+  const opacity = distance >= 2.35 ? 0 : Math.max(0, 1 - Math.max(0, distance - 0.15) * 0.46)
+  const scale = 1 - Math.min(distance, 1.15) * 0.055
+  return { opacity, scale }
+}
+
+type GridCell = { x: number; y: number; w: number; h: number }
+
+function fittedGrid(width: number, height: number): GridCell[] {
+  const cols = width < 640 ? 2 : 3
+  const rows = Math.ceil(pieces.length / cols)
+  const top = width < 640 ? 108 : 128
+  const bottom = 68
+  const side = width < 640 ? 20 : 72
+  const gap = 16
+  const maxW = (width - side * 2 - gap * (cols - 1)) / cols
+  const maxH = (height - top - bottom - gap * (rows - 1)) / rows
+  let cellH = maxW * 1.18
+  let cellW = maxW
+  if (cellH > maxH) {
+    cellH = maxH
+    cellW = cellH / 1.18
+  }
+  const gridW = cols * cellW + (cols - 1) * gap
+  const originX = (width - gridW) / 2
+  return pieces.map((_, index) => {
+    const col = index % cols
+    const row = Math.floor(index / cols)
+    return {
+      x: originX + col * (cellW + gap) + cellW / 2 - width / 2,
+      y: top + row * (cellH + gap) + cellH / 2 - height / 2,
+      w: cellW,
+      h: cellH,
+    }
   })
 }
 
@@ -150,9 +174,25 @@ function ProjectStage() {
   const focus = useRef(0)
   const frame = useRef(0)
   const slideRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const labelRefs = useRef<Array<HTMLSpanElement | null>>([])
+  const sliderSize = useRef({ w: 250, h: 360 })
+  const layoutTarget = useRef(0)
+  const layoutBlend = useRef(0)
+  const drive = useRef<'scroll' | 'glide'>('scroll')
+  const glideFrom = useRef(0)
+  const glideToIndex = useRef(0)
+  const glideStart = useRef(0)
+  const readyAt = useRef(0)
+  const chromeRef = useRef<HTMLDivElement>(null)
+  const metaRef = useRef<HTMLDivElement>(null)
+  const titleRef = useRef<HTMLParagraphElement>(null)
+  const aboutRef = useRef<HTMLDivElement>(null)
+  const headerRef = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)
   const [mode, setMode] = useState<'slider' | 'grid'>('slider')
+  const [compact, setCompact] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
+  const [origin, setOrigin] = useState<DOMRect | null>(null)
   const [phase, setPhase] = useState<'opening' | 'ready'>('opening')
   const [titlePhase, setTitlePhase] = useState<'in' | 'out' | 'gone'>('in')
 
@@ -160,6 +200,10 @@ function ProjectStage() {
     slideRefs.current.forEach((slide) => {
       if (slide) slide.style.opacity = '0'
     })
+    if (headerRef.current) headerRef.current.style.opacity = '0'
+    if (metaRef.current) metaRef.current.style.opacity = '0'
+    if (titleRef.current) titleRef.current.style.opacity = '0'
+    if (chromeRef.current) chromeRef.current.style.opacity = '0'
   }, [])
 
   useEffect(() => {
@@ -235,7 +279,6 @@ function ProjectStage() {
 
       if (imageTime < foldAt + foldDuration) raf = requestAnimationFrame(tick)
       else {
-        paintStack(slideRefs.current, 0)
         document.body.style.overflow = previousOverflow
         setPhase('ready')
       }
@@ -248,71 +291,169 @@ function ProjectStage() {
     }
   }, [phase])
 
-  useEffect(() => {
-    if (mode !== 'slider' || phase !== 'ready') return
-    const read = () => {
-      const root = rootRef.current
-      if (!root) return 0
-      const total = root.offsetHeight - window.innerHeight
-      if (total <= 0) return 0
-      const scrolled = Math.min(total, Math.max(0, -root.getBoundingClientRect().top))
-      return scrolled / total
+  useLayoutEffect(() => {
+    if (phase !== 'ready') return
+    readyAt.current = performance.now()
+    let last = performance.now()
+    let locked = false
+    const release = () => {
+      if (drive.current === 'glide') drive.current = 'scroll'
     }
-    const paint = () => {
-      const next = read() * (pieces.length - 1)
-      focus.current += (next - focus.current) * 0.1
-      paintStack(slideRefs.current, focus.current)
+    window.addEventListener('wheel', release, { passive: true })
+    window.addEventListener('touchstart', release, { passive: true })
+
+    const paint = (now: number) => {
+      const dt = Math.min(0.048, (now - last) / 1000)
+      last = now
+      const root = rootRef.current
+      const width = window.innerWidth
+      const height = window.innerHeight
+      layoutBlend.current += (layoutTarget.current - layoutBlend.current) * (1 - Math.exp(-dt / 0.42))
+      const blend = layoutBlend.current
+      const spread = easeInOutCubic(blend)
+
+      if (drive.current === 'glide') {
+        const raw = clamp01((now - glideStart.current) / 780)
+        focus.current = glideFrom.current + (glideToIndex.current - glideFrom.current) * easeInOutCubic(raw)
+        if (raw === 1) drive.current = 'scroll'
+        if (root && spread < 0.04) {
+          const total = root.offsetHeight - height
+          window.scrollTo(0, root.offsetTop + (total * focus.current) / (pieces.length - 1))
+        }
+      } else if (root && spread < 0.04 && layoutTarget.current < 0.5) {
+        const total = root.offsetHeight - height
+        if (total > 0) {
+          const scrolled = Math.min(total, Math.max(0, -root.getBoundingClientRect().top))
+          const target = (scrolled / total) * (pieces.length - 1)
+          const follow = 1 - Math.exp(-dt / 0.16)
+          focus.current += (target - focus.current) * follow
+        }
+      }
+
+      const wantLock = spread > 0.9 && layoutTarget.current > 0.5
+      if (wantLock && !locked) {
+        locked = true
+        setCompact(true)
+      } else if (!wantLock && locked && layoutTarget.current < 0.5) {
+        locked = false
+        setCompact(false)
+      }
+
+      const base = sliderSize.current
+      const cells = fittedGrid(width, height)
+      const reveal = clamp01((now - readyAt.current) / 720)
+
+      slideRefs.current.forEach((slide, index) => {
+        if (!slide) return
+        const distance = Math.abs(index - focus.current)
+        const look = stackLook(distance)
+        const sw = base.w * look.scale
+        const sh = base.h * look.scale
+        const cell = cells[index]
+        const x = (cell?.x ?? 0) * spread
+        const y = (index - focus.current) * base.h * 1.18 * (1 - spread) + (cell?.y ?? 0) * spread
+        const w = sw + ((cell?.w ?? sw) - sw) * spread
+        const h = sh + ((cell?.h ?? sh) - sh) * spread
+        if (spread < 0.012) {
+          slide.style.width = ''
+          slide.style.height = ''
+          slide.style.transform = `translate3d(-50%, calc(-50% + ${(index - focus.current) * 118}%), 0) scale(${look.scale})`
+        } else {
+          slide.style.width = `${w}px`
+          slide.style.height = `${h}px`
+          slide.style.transform = `translate3d(calc(-50% + ${x}px), calc(-50% + ${y}px), 0)`
+        }
+        const hidden = openIdRef.current === pieces[index]?.id
+        slide.style.opacity = hidden ? '0' : String(look.opacity + (1 - look.opacity) * spread)
+        slide.style.zIndex = String(20 - Math.round(distance))
+        const label = labelRefs.current[index]
+        if (label) {
+          label.style.opacity = String(hidden ? 0 : Math.max(0, (spread - 0.4) / 0.6))
+          label.style.transform = `translate3d(calc(-50% + ${x}px), calc(-50% + ${y + h / 2 + 14}px), 0)`
+        }
+      })
+
+      if (spread < 0.012) {
+        const resting = slideRefs.current[0]
+        if (resting) sliderSize.current = { w: resting.offsetWidth, h: resting.offsetHeight }
+      }
+
+      const chromeOpacity = String(reveal * (1 - spread))
+      if (chromeRef.current) {
+        chromeRef.current.style.opacity = chromeOpacity
+        chromeRef.current.style.pointerEvents = spread > 0.35 ? 'none' : 'auto'
+      }
+      if (metaRef.current) metaRef.current.style.opacity = chromeOpacity
+      if (aboutRef.current) aboutRef.current.style.pointerEvents = reveal * (1 - spread) > 0.65 ? 'auto' : 'none'
+      if (titleRef.current) titleRef.current.style.opacity = chromeOpacity
+      if (headerRef.current) {
+        headerRef.current.style.opacity = String(reveal)
+        headerRef.current.style.transform = `translateY(${(1 - reveal) * -10}px)`
+      }
+
       const nearest = Math.min(pieces.length - 1, Math.max(0, Math.round(focus.current)))
       setActive((current) => (current === nearest ? current : nearest))
       frame.current = requestAnimationFrame(paint)
     }
-    frame.current = requestAnimationFrame(paint)
-    return () => cancelAnimationFrame(frame.current)
-  }, [mode, phase])
 
-  const scrollToIndex = (index: number) => {
+    frame.current = requestAnimationFrame(paint)
+    return () => {
+      cancelAnimationFrame(frame.current)
+      window.removeEventListener('wheel', release)
+      window.removeEventListener('touchstart', release)
+    }
+  }, [phase])
+
+  useEffect(() => {
+    if (phase !== 'ready') return
+    if (compact) {
+      window.scrollTo(0, 0)
+      const previous = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = previous
+      }
+    }
     const root = rootRef.current
     if (!root) return
     const total = root.offsetHeight - window.innerHeight
+    window.scrollTo(0, root.offsetTop + (total * focus.current) / (pieces.length - 1))
+  }, [compact, phase])
+
+  const glideTo = (index: number) => {
     const next = Math.min(pieces.length - 1, Math.max(0, index))
-    window.scrollTo({ top: root.offsetTop + (total * next) / (pieces.length - 1), behavior: 'smooth' })
+    glideFrom.current = focus.current
+    glideToIndex.current = next
+    glideStart.current = performance.now()
+    drive.current = 'glide'
   }
+
+  const openIdRef = useRef<string | null>(null)
+  openIdRef.current = openId
 
   const current = pieces[active]
   const opened = pieces.find((piece) => piece.id === openId) ?? null
 
-  if (mode === 'grid') {
-    return (
-      <div className="min-h-dvh bg-[#f7f5f2] text-[#1a1a1a]">
-        <SiteHeader />
-        <ProjectChrome
-          current={current}
-          mode={mode}
-          onMode={setMode}
-          onPick={(index) => {
-            setMode('slider')
-            window.setTimeout(() => scrollToIndex(index), 40)
-          }}
-        />
-        <main className="mx-auto grid max-w-5xl grid-cols-2 gap-6 px-6 pt-36 pb-16 md:grid-cols-3">
-          {pieces.map((piece) => (
-            <button key={piece.id} type="button" className="text-left" onClick={() => setOpenId(piece.id)}>
-              <img src={piece.image} alt="" className="aspect-[4/5] w-full object-cover" />
-              <span className="mt-2 block text-sm" style={{ fontFamily: serif }}>
-                {piece.index} {piece.title}
-              </span>
-            </button>
-          ))}
-        </main>
-        {opened ? <PieceDetail piece={opened} onClose={() => setOpenId(null)} /> : null}
-      </div>
-    )
+  const chooseMode = (next: 'slider' | 'grid') => {
+    if (next === 'grid' && mode === 'grid') return
+    if (next === 'slider' && mode === 'slider') return
+    layoutTarget.current = next === 'grid' ? 1 : 0
+    setMode(next)
   }
 
   return (
-    <div ref={rootRef} className="bg-[#f7f5f2] text-[#1a1a1a]" style={{ height: `${pieces.length * 70 + 100}vh` }}>
+    <div
+      ref={rootRef}
+      className="bg-[#f7f5f2] text-[#1a1a1a]"
+      style={{ height: compact ? '100vh' : `${pieces.length * 70 + 100}vh` }}
+    >
       <div className="sticky top-0 h-dvh overflow-hidden">
-        {phase === 'ready' ? <SiteHeader /> : null}
+        <div
+          ref={headerRef}
+          className={`relative z-30 ${phase === 'ready' ? '' : 'pointer-events-none'}`}
+        >
+          <SiteHeader />
+        </div>
         {titlePhase !== 'gone' ? <ProjectIntro leaving={titlePhase === 'out'} /> : null}
         <div className="pointer-events-none absolute inset-0 z-10">
           {pieces.map((piece, index) => (
@@ -327,49 +468,90 @@ function ProjectStage() {
               style={{ pointerEvents: phase === 'ready' ? undefined : 'none' }}
               onClick={() => {
                 if (phase !== 'ready') return
-                if (Math.abs(index - focus.current) > 0.4) scrollToIndex(index)
-                else setOpenId(piece.id)
+                const spreadNow = easeInOutCubic(layoutBlend.current)
+                const centered = spreadNow > 0.85 || Math.abs(index - focus.current) < 0.42
+                if (!centered) {
+                  glideTo(index)
+                  return
+                }
+                const slide = slideRefs.current[index]
+                if (slide) slide.style.opacity = '0'
+                setOrigin(slide?.getBoundingClientRect() ?? null)
+                setOpenId(piece.id)
               }}
             >
               <img src={piece.image} alt="" className="size-full object-cover" draggable={false} />
-              {phase === 'ready' && index === active ? (
+              {phase === 'ready' && mode === 'slider' && index === active ? (
                 <span className="absolute top-1/2 left-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-white" />
               ) : null}
             </button>
           ))}
+          {pieces.map((piece, index) => (
+            <span
+              key={`${piece.id}-label`}
+              ref={(node) => {
+                labelRefs.current[index] = node
+              }}
+              className="pointer-events-none absolute top-1/2 left-1/2 text-sm text-[#1a1a1a] opacity-0"
+              style={{ fontFamily: serif }}
+            >
+              {piece.index} {piece.title}
+            </span>
+          ))}
         </div>
         <div
+          ref={metaRef}
           className="pointer-events-none absolute inset-x-0 top-28 bottom-8 z-20 grid grid-cols-[1fr_minmax(180px,280px)_1fr] items-center px-6 sm:px-10"
-          style={{ opacity: phase === 'ready' ? 1 : 0, transition: 'opacity 0.8s ease' }}
         >
           <div className="flex items-center gap-4 pr-4">
-            <p className="text-4xl italic sm:text-5xl" style={{ fontFamily: serif }}>
+            <p key={current.index} className="text-4xl italic sm:text-5xl" style={{ fontFamily: serif, animation: 'projects-meta-in 0.45s cubic-bezier(0.22, 1, 0.36, 1)' }}>
               {current.index}
               <span className="text-2xl not-italic text-black/35"> / {pieces[pieces.length - 1].index}</span>
             </p>
             <span className="hidden h-px min-w-8 flex-1 bg-black/25 sm:block" />
           </div>
           <div />
-          <div className={`${phase === 'ready' ? 'pointer-events-auto' : 'pointer-events-none'} flex items-center gap-4 pl-4`}>
+          <div ref={aboutRef} className="pointer-events-none flex items-center gap-4 pl-4">
             <span className="hidden h-px min-w-8 flex-1 bg-black/25 sm:block" />
             <Link to="/about" className="text-xs tracking-[0.22em]">
               关于
             </Link>
           </div>
         </div>
-        <div
-          className={phase === 'ready' ? undefined : 'pointer-events-none'}
-          style={{ opacity: phase === 'ready' ? 1 : 0, transition: 'opacity 0.8s ease 0.15s' }}
-        >
-          <ProjectChrome current={current} mode={mode} onMode={setMode} onPick={scrollToIndex} />
+        <div className={phase === 'ready' ? undefined : 'pointer-events-none'}>
+          <ProjectChrome
+            current={current}
+            mode={mode}
+            categoryRef={chromeRef}
+            onMode={chooseMode}
+            onPick={(index) => {
+              if (mode === 'grid') {
+                focus.current = index
+                drive.current = 'scroll'
+                chooseMode('slider')
+                return
+              }
+              glideTo(index)
+            }}
+          />
         </div>
         <p
+          ref={titleRef}
           className="absolute bottom-6 left-8 text-[11px] tracking-[0.18em] text-black/55"
-          style={{ fontFamily: serif, opacity: phase === 'ready' ? 1 : 0, transition: 'opacity 0.8s ease 0.15s' }}
+          style={{ fontFamily: serif }}
         >
           {current.title}
         </p>
-        {opened ? <PieceDetail piece={opened} onClose={() => setOpenId(null)} /> : null}
+        {opened ? (
+          <PieceDetail
+            piece={opened}
+            origin={origin}
+            onClose={() => {
+              setOpenId(null)
+              setOrigin(null)
+            }}
+          />
+        ) : null}
       </div>
     </div>
   )
@@ -378,17 +560,19 @@ function ProjectStage() {
 function ProjectChrome({
   current,
   mode,
+  categoryRef,
   onMode,
   onPick,
 }: {
   current: Piece
   mode: 'slider' | 'grid'
+  categoryRef: RefObject<HTMLDivElement | null>
   onMode: (mode: 'slider' | 'grid') => void
   onPick: (index: number) => void
 }) {
   return (
     <>
-      <div className="absolute top-28 right-6 z-30 hidden text-right sm:block" style={{ fontFamily: serif }}>
+      <div ref={categoryRef} className="absolute top-28 right-6 z-30 hidden text-right opacity-0 sm:block" style={{ fontFamily: serif }}>
         <p className="text-sm tracking-[0.14em] underline decoration-black/70 underline-offset-4">项目</p>
         <ul className="mt-3 space-y-1 text-xs text-black/55">
           {pieces.map((piece, index) => (
@@ -420,15 +604,63 @@ function ProjectChrome({
   )
 }
 
-function PieceDetail({ piece, onClose }: { piece: Piece; onClose: () => void }) {
+function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect | null; onClose: () => void }) {
+  const imgRef = useRef<HTMLImageElement>(null)
+  const closing = useRef(false)
+  const [veil, setVeil] = useState(0)
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setVeil(1))
+    return () => cancelAnimationFrame(id)
+  }, [])
+
+  useLayoutEffect(() => {
+    const img = imgRef.current
+    if (!img || !origin) return
+    const next = img.getBoundingClientRect()
+    if (next.width < 2) return
+    const scale = origin.width / next.width
+    img.style.transition = 'none'
+    img.style.transformOrigin = 'top left'
+    img.style.transform = `translate(${origin.left - next.left}px, ${origin.top - next.top}px) scale(${scale})`
+    const id = requestAnimationFrame(() => {
+      img.style.transition = 'transform 0.72s cubic-bezier(0.77, 0, 0.175, 1)'
+      img.style.transform = 'translate(0px, 0px) scale(1)'
+    })
+    return () => cancelAnimationFrame(id)
+  }, [origin, piece.id])
+
+  const requestClose = () => {
+    const img = imgRef.current
+    if (!img || !origin || closing.current) {
+      onClose()
+      return
+    }
+    closing.current = true
+    setVeil(0)
+    const next = img.getBoundingClientRect()
+    if (next.width < 2) {
+      onClose()
+      return
+    }
+    const scale = origin.width / next.width
+    img.style.transition = 'transform 0.52s cubic-bezier(0.77, 0, 0.175, 1)'
+    img.style.transformOrigin = 'top left'
+    img.style.transform = `translate(${origin.left - next.left}px, ${origin.top - next.top}px) scale(${scale})`
+    window.setTimeout(onClose, 500)
+  }
+
   return (
-    <div className="absolute inset-0 z-40 overflow-y-auto bg-[#f7f5f2]">
+    <div
+      className="absolute inset-0 z-50 overflow-y-auto bg-[#f7f5f2]"
+      style={{ opacity: veil, transition: 'opacity 0.32s ease' }}
+    >
       <div className="mx-auto grid min-h-dvh max-w-6xl items-center gap-8 px-5 py-24 md:grid-cols-[1.3fr_0.7fr]">
-        <img src={piece.image} alt="" className="w-full object-cover" />
-        <div style={{ fontFamily: serif }}>
+        <img ref={imgRef} src={piece.image} alt="" className="w-full object-cover" />
+        <div style={{ fontFamily: serif, opacity: veil, transform: `translateY(${(1 - veil) * 12}px)`, transition: 'opacity 0.45s ease, transform 0.45s ease' }}>
           <p className="text-xs tracking-[0.22em] text-black/45">{piece.index}</p>
           <h2 className="mt-3 text-5xl">{piece.title}</h2>
-          <button type="button" onClick={onClose} className="mt-8 text-sm tracking-[0.18em] underline underline-offset-4">
+          <button type="button" onClick={requestClose} className="mt-8 text-sm tracking-[0.18em] underline underline-offset-4">
             返回
           </button>
         </div>
