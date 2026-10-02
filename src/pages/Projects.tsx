@@ -205,6 +205,7 @@ function ProjectStage() {
   const focusVel = useRef(0)
   const aboutExit = useRef(0)
   const counterRef = useRef<HTMLDivElement>(null)
+  const counterWindowRef = useRef<HTMLDivElement>(null)
   const counterSlideRef = useRef<HTMLDivElement>(null)
   const aboutSlideRef = useRef<HTMLDivElement>(null)
   const categorySlideRef = useRef<HTMLDivElement>(null)
@@ -481,7 +482,12 @@ function ProjectStage() {
       if (aboutSlideRef.current) aboutSlideRef.current.style.transform = shift
       if (categorySlideRef.current) categorySlideRef.current.style.transform = shift
       if (titleRef.current) titleRef.current.style.transform = shift
-      if (counterRef.current) counterRef.current.style.transform = `translateY(${-focus.current * 1.05}em)`
+      const counterRow = counterRef.current?.querySelector('p')
+      if (counterRef.current && counterWindowRef.current && counterRow) {
+        const rowHeight = counterRow.getBoundingClientRect().height
+        counterWindowRef.current.style.height = `${rowHeight}px`
+        counterRef.current.style.transform = `translateY(${-focus.current * rowHeight}px)`
+      }
       if (chromeRef.current) {
         chromeRef.current.style.opacity = String(reveal)
         chromeRef.current.style.pointerEvents = chromeShift > 0.45 ? 'none' : 'auto'
@@ -653,10 +659,10 @@ function ProjectStage() {
         >
           <div className="overflow-hidden pr-4">
             <div ref={counterSlideRef} className="flex items-center gap-4">
-              <div className="h-[1.05em] overflow-hidden leading-none">
+              <div ref={counterWindowRef} className="overflow-hidden">
                 <div ref={counterRef}>
                   {pieces.map((piece) => (
-                    <p key={piece.id} className="h-[1.05em] text-4xl italic sm:text-5xl" style={{ fontFamily: serif }}>
+                    <p key={piece.id} className="text-4xl italic sm:text-5xl" style={{ fontFamily: serif, lineHeight: 1, padding: '0.14em 0' }}>
                       {piece.index}
                     </p>
                   ))}
