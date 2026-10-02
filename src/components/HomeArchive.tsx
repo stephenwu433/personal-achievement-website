@@ -1,7 +1,11 @@
-const stats = [
+import GalleryVideoBackground from '@/src/components/GalleryVideoBackground'
+
+const sideStats = [
   { value: '7', label: '项目实践' },
   { value: '100K+', label: '内容累计浏览' },
-  { value: '4', label: '实习经历' },
+]
+
+const lowerStats = [
   { value: '5', label: '黑客松 / 竞赛' },
   { value: '4', label: 'AI 产品系统' },
   { value: '6', label: '业务场景' },
@@ -9,50 +13,47 @@ const stats = [
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="flex min-h-28 flex-col items-center justify-center border border-[#1c1c1c] bg-[#f3f1eb] px-4 py-5 text-center">
-      <p className="text-4xl font-light tracking-wide text-[#1c1c1c]">{value}</p>
-      <p className="mt-2 text-sm tracking-wide text-[#1c1c1c]">{label}</p>
+    <div className="rounded-3xl border border-white/30 bg-white/10 px-5 py-6 text-center shadow-[0_18px_50px_rgba(0,0,0,0.22)] backdrop-blur-md">
+      <p className="text-4xl font-semibold tracking-tight text-white">{value}</p>
+      <p className="mt-2 text-xs tracking-[0.16em] text-white/75">{label}</p>
     </div>
   )
 }
 
 export default function HomeArchive() {
   return (
-    <section className="bg-[#f3f1eb] text-[#1c1c1c]">
-      <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-6 py-8 sm:px-10">
-        <div className="flex min-h-0 flex-1 flex-col border-x border-dashed border-[#1c1c1c]/70 px-4 py-6 sm:px-8">
-          <p className="text-center text-sm tracking-[0.28em]">STEPHEN WU • ARCHIVE</p>
-          <div className="mx-auto mt-8 grid w-full max-w-4xl flex-1 content-center gap-6 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.25fr)_minmax(0,0.85fr)] md:items-center md:gap-x-8 md:gap-y-7">
-            <Stat value={stats[0].value} label={stats[0].label} />
-            <div className="border border-[#1c1c1c] bg-[#f3f1eb] md:min-h-56">
-              <div className="relative aspect-[16/10] overflow-hidden md:aspect-auto md:h-56">
-                <img
-                  src="/photos/archive-hero.png"
-                  alt="Stephen舞"
-                  className="size-full object-cover object-[center_18%]"
-                />
-                <div className="absolute inset-y-4 left-[18%] w-px bg-white/75" />
-                <div className="absolute inset-y-4 right-[18%] w-px bg-white/75" />
-                <p className="absolute inset-x-0 bottom-3 text-center text-white">
-                  <span className="block text-sm tracking-wide">人物主视觉</span>
-                  <span className="mt-0.5 block text-[10px] tracking-[0.18em]">PERSONAL HERO</span>
-                </p>
-              </div>
-            </div>
-            <Stat value={stats[1].value} label={stats[1].label} />
-            <div className="md:col-start-2">
-              <Stat value={stats[2].value} label={stats[2].label} />
-            </div>
-            <div className="grid gap-6 md:col-span-3 md:grid-cols-3">
-              <Stat value={stats[3].value} label={stats[3].label} />
-              <Stat value={stats[4].value} label={stats[4].label} />
-              <Stat value={stats[5].value} label={stats[5].label} />
-            </div>
+    <section className="relative h-dvh overflow-hidden text-white">
+      <GalleryVideoBackground />
+      <div className="pointer-events-none absolute inset-0 bg-black/25" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_20%,rgba(0,0,0,0.45)_100%)]" />
+      <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col px-5 py-6 sm:px-8">
+        <p className="text-center text-[11px] tracking-[0.42em] text-white/80">STEPHEN WU · ARCHIVE</p>
+        <div className="mx-auto grid w-full max-w-5xl flex-1 content-center gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(16rem,1.15fr)_minmax(0,0.9fr)] md:items-center md:gap-x-6 md:gap-y-5">
+          <Stat value={sideStats[0].value} label={sideStats[0].label} />
+          <figure className="overflow-hidden rounded-[28px] border border-white/35 bg-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.35)] backdrop-blur-md">
+            <img
+              src="/photos/archive-hero.png"
+              alt="Stephen舞"
+              className="aspect-[4/5] w-full object-cover object-[center_16%] md:aspect-[5/4] md:h-64"
+            />
+            <figcaption className="px-4 py-3 text-center">
+              <span className="block text-sm tracking-wide">人物主视觉</span>
+              <span className="mt-1 block text-[10px] tracking-[0.22em] text-white/70">PERSONAL HERO</span>
+            </figcaption>
+          </figure>
+          <Stat value={sideStats[1].value} label={sideStats[1].label} />
+          <div className="md:col-start-2">
+            <Stat value="4" label="实习经历" />
           </div>
-          <a href="#gallery" className="mt-8 text-center text-sm tracking-[0.18em] text-[#1c1c1c]">
-            向下进入项目画廊 ↓
-          </a>
+          <div className="grid gap-4 md:col-span-3 md:grid-cols-3">
+            {lowerStats.map((item) => (
+              <Stat key={item.label} value={item.value} label={item.label} />
+            ))}
+          </div>
         </div>
+        <a href="#gallery" className="pb-1 text-center text-xs tracking-[0.22em] text-white/80">
+          向下进入项目画廊 ↓
+        </a>
       </div>
     </section>
   )
