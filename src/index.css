@@ -36,6 +36,24 @@
   }
 }
 
+@keyframes projects-line-in {
+  from {
+    transform: translateY(110%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes projects-line-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-120%);
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

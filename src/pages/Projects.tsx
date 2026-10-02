@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import SiteHeader from '@/src/components/SiteHeader'
+import { profile } from '@/src/content'
 
 type Piece = {
   id: string
@@ -26,31 +28,74 @@ function prefersReducedMotion() {
 
 export default function Projects() {
   const [reduced, setReduced] = useState(prefersReducedMotion)
+  const [introDone, setIntroDone] = useState(prefersReducedMotion)
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const onChange = () => setReduced(media.matches)
+    const onChange = () => {
+      setReduced(media.matches)
+      if (media.matches) setIntroDone(true)
+    }
     media.addEventListener('change', onChange)
     return () => media.removeEventListener('change', onChange)
   }, [])
 
   if (reduced) return <ProjectReading />
-  return <ProjectGallery />
+
+  return (
+    <>
+      <ProjectStage />
+      {introDone ? null : <ProjectIntro onDone={() => setIntroDone(true)} />}
+    </>
+  )
 }
 
-function ProjectGallery() {
+function ProjectIntro({ onDone }: { onDone: () => void }) {
+  const [leaving, setLeaving] = useState(false)
+
+  useEffect(() => {
+    const hold = window.setTimeout(() => setLeaving(true), 2300)
+    const done = window.setTimeout(onDone, 3100)
+    return () => {
+      window.clearTimeout(hold)
+      window.clearTimeout(done)
+    }
+  }, [onDone])
+
+  const motion = leaving ? 'projects-line-out 0.7s ease both' : 'projects-line-in 1s cubic-bezier(0.22, 1, 0.36, 1) both'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center bg-[#f7f5f2] px-[8vw] text-[#111]">
+      <div>
+        <div className="overflow-hidden">
+          <h1 className="text-[8vw] leading-none font-light sm:text-6xl" style={{ fontFamily: serif, animation: motion }}>
+            {profile.name}
+          </h1>
+        </div>
+        <div className="mt-3 overflow-hidden">
+          <p
+            className="text-sm tracking-[0.28em] text-black/50"
+            style={{ fontFamily: serif, animation: motion, animationDelay: leaving ? '0s' : '0.12s' }}
+          >
+            项目
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProjectStage() {
   const rootRef = useRef<HTMLDivElement>(null)
   const focus = useRef(0)
-  const pointer = useRef({ x: 0, y: 0 })
-  const look = useRef({ x: 0, y: 0 })
   const frame = useRef(0)
   const slideRefs = useRef<Array<HTMLButtonElement | null>>([])
   const [active, setActive] = useState(0)
-  const [progress, setProgress] = useState(0)
-  const [hovering, setHovering] = useState(false)
+  const [mode, setMode] = useState<'slider' | 'grid'>('slider')
   const [openId, setOpenId] = useState<string | null>(null)
 
   useEffect(() => {
+    if (mode !== 'slider') return
     const read = () => {
       const root = rootRef.current
       if (!root) return 0
@@ -59,51 +104,25 @@ function ProjectGallery() {
       const scrolled = Math.min(total, Math.max(0, -root.getBoundingClientRect().top))
       return scrolled / total
     }
-
     const paint = () => {
-      const nextTarget = read() * (pieces.length - 1)
-      focus.current += (nextTarget - focus.current) * 0.08
-      look.current.x += (pointer.current.x - look.current.x) * 0.06
-      look.current.y += (pointer.current.y - look.current.y) * 0.06
+      const next = read() * (pieces.length - 1)
+      focus.current += (next - focus.current) * 0.1
       const focusNow = focus.current
       slideRefs.current.forEach((slide, index) => {
         if (!slide) return
         const delta = index - focusNow
-        const x = delta * 54 + look.current.x * 1.2
-        const z = -Math.abs(delta) * 240
-        const rot = delta * -16 + look.current.x * -1.4
-        const lift = look.current.y * -8
-        slide.style.transform = `translate3d(${x}vw, ${lift}px, ${z}px) rotateY(${rot}deg)`
-        slide.style.opacity = String(Math.max(0.22, 1 - Math.abs(delta) * 0.38))
-        slide.style.zIndex = String(30 - Math.round(Math.abs(delta) * 4))
+        const distance = Math.abs(delta)
+        slide.style.transform = `translate3d(-50%, calc(-50% + ${delta * 118}%), 0)`
+        slide.style.opacity = distance > 1.65 ? '0' : String(Math.max(0.35, 1 - distance * 0.28))
+        slide.style.zIndex = String(10 - Math.round(distance))
       })
       const nearest = Math.min(pieces.length - 1, Math.max(0, Math.round(focusNow)))
       setActive((current) => (current === nearest ? current : nearest))
-      const nextProgress = nextTarget / (pieces.length - 1)
-      setProgress((current) => (Math.abs(current - nextProgress) < 0.004 ? current : nextProgress))
       frame.current = requestAnimationFrame(paint)
     }
-
     frame.current = requestAnimationFrame(paint)
-    const onPointerMove = (event: PointerEvent) => {
-      pointer.current = {
-        x: (event.clientX / window.innerWidth) * 2 - 1,
-        y: (event.clientY / window.innerHeight) * 2 - 1,
-      }
-    }
-    const onLeave = () => {
-      pointer.current = { x: 0, y: 0 }
-    }
-    window.addEventListener('pointermove', onPointerMove)
-    window.addEventListener('pointerleave', onLeave)
-    window.addEventListener('blur', onLeave)
-    return () => {
-      cancelAnimationFrame(frame.current)
-      window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('pointerleave', onLeave)
-      window.removeEventListener('blur', onLeave)
-    }
-  }, [])
+    return () => cancelAnimationFrame(frame.current)
+  }, [mode])
 
   const scrollToIndex = (index: number) => {
     const root = rootRef.current
@@ -113,21 +132,50 @@ function ProjectGallery() {
     window.scrollTo({ top: root.offsetTop + (total * next) / (pieces.length - 1), behavior: 'smooth' })
   }
 
-  const opened = pieces.find((piece) => piece.id === openId) ?? null
   const current = pieces[active]
+  const opened = pieces.find((piece) => piece.id === openId) ?? null
+
+  if (mode === 'grid') {
+    return (
+      <div className="min-h-dvh bg-[#f7f5f2] text-[#1a1a1a]">
+        <SiteHeader />
+        <ProjectChrome
+          current={current}
+          mode={mode}
+          onMode={setMode}
+          onPick={(index) => {
+            setMode('slider')
+            window.setTimeout(() => scrollToIndex(index), 40)
+          }}
+        />
+        <main className="mx-auto grid max-w-5xl grid-cols-2 gap-6 px-6 pt-36 pb-16 md:grid-cols-3">
+          {pieces.map((piece) => (
+            <button key={piece.id} type="button" className="text-left" onClick={() => setOpenId(piece.id)}>
+              <img src={piece.image} alt="" className="aspect-[4/5] w-full object-cover" />
+              <span className="mt-2 block text-sm" style={{ fontFamily: serif }}>
+                {piece.index} {piece.title}
+              </span>
+            </button>
+          ))}
+        </main>
+        {opened ? <PieceDetail piece={opened} onClose={() => setOpenId(null)} /> : null}
+      </div>
+    )
+  }
 
   return (
-    <div ref={rootRef} className="bg-[#f7f5f2] text-[#1a1a1a]" style={{ height: `${(pieces.length + 1) * 100}vh` }}>
+    <div ref={rootRef} className="bg-[#f7f5f2] text-[#1a1a1a]" style={{ height: `${pieces.length * 70 + 100}vh` }}>
       <div className="sticky top-0 h-dvh overflow-hidden">
         <SiteHeader />
-        <p className="pointer-events-none absolute top-28 right-6 z-30 text-xs tracking-[0.22em] text-black/45" style={{ fontFamily: serif }}>
-          {current.index} / {pieces[pieces.length - 1].index}
-        </p>
-        <div className="absolute inset-0" style={{ perspective: '1400px', perspectiveOrigin: '50% 54%' }}>
-          <div
-            className="absolute top-[16%] left-1/2 h-[62vh] w-[min(72vw,820px)]"
-            style={{ marginLeft: 'calc(min(72vw, 820px) / -2)', transformStyle: 'preserve-3d' }}
-          >
+        <div className="absolute inset-x-0 top-28 bottom-8 grid grid-cols-[1fr_minmax(180px,280px)_1fr] items-center px-6 sm:px-10">
+          <div className="flex items-center gap-4 pr-4">
+            <p className="text-4xl italic sm:text-5xl" style={{ fontFamily: serif }}>
+              {current.index}
+              <span className="text-2xl not-italic text-black/35"> / {pieces[pieces.length - 1].index}</span>
+            </p>
+            <span className="hidden h-px min-w-8 flex-1 bg-black/25 sm:block" />
+          </div>
+          <div className="relative h-full">
             {pieces.map((piece, index) => (
               <button
                 key={piece.id}
@@ -135,53 +183,79 @@ function ProjectGallery() {
                   slideRefs.current[index] = node
                 }}
                 type="button"
-                aria-label={`${piece.title}，探索`}
-                className="absolute top-0 left-0 h-full w-full overflow-hidden bg-[#e7e2dc] shadow-[0_30px_80px_rgba(0,0,0,0.14)]"
-                onMouseEnter={() => {
-                  if (index === active) setHovering(true)
-                }}
-                onMouseLeave={() => setHovering(false)}
+                aria-label={piece.title}
+                className="absolute top-1/2 left-1/2 h-[34vh] w-[min(26vw,250px)] overflow-hidden bg-[#ddd8d0]"
                 onClick={() => {
-                  if (Math.abs(index - focus.current) > 0.45) scrollToIndex(index)
+                  if (Math.abs(index - focus.current) > 0.4) scrollToIndex(index)
                   else setOpenId(piece.id)
                 }}
               >
                 <img src={piece.image} alt="" className="size-full object-cover" draggable={false} />
-                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-5 pt-16 pb-5 text-left text-white" style={{ fontFamily: serif }}>
-                  <span className="block text-[10px] tracking-[0.22em] text-white/75">{piece.index}</span>
-                  <span className="mt-1 block text-3xl">{piece.title}</span>
-                </span>
+                {index === active ? (
+                  <span className="absolute top-1/2 left-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-white" />
+                ) : null}
               </button>
             ))}
           </div>
+          <div className="flex items-center gap-4 pl-4">
+            <span className="hidden h-px min-w-8 flex-1 bg-black/25 sm:block" />
+            <Link to="/about" className="text-xs tracking-[0.22em]">
+              关于
+            </Link>
+          </div>
         </div>
-        <button
-          type="button"
-          aria-label="上一件"
-          className="absolute top-1/2 left-5 z-30 hidden size-8 -translate-y-1/2 text-xl text-black/45 sm:block"
-          onClick={() => scrollToIndex(active - 1)}
-        >
-          +
-        </button>
-        <button
-          type="button"
-          aria-label="下一件"
-          className="absolute top-1/2 right-5 z-30 hidden size-8 -translate-y-1/2 text-xl text-black/45 sm:block"
-          onClick={() => scrollToIndex(active + 1)}
-        >
-          +
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpenId(current.id)}
-          className="absolute bottom-8 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-3 text-[10px] tracking-[0.32em] text-black/70"
-        >
-          <span className="block size-2.5 rotate-45 border border-black/70" />
-          {hovering && progress > 0.02 ? '探索' : '发现'}
-        </button>
+        <ProjectChrome current={current} mode={mode} onMode={setMode} onPick={scrollToIndex} />
+        <p className="absolute bottom-6 left-8 text-[11px] tracking-[0.18em] text-black/55" style={{ fontFamily: serif }}>
+          {current.title}
+        </p>
         {opened ? <PieceDetail piece={opened} onClose={() => setOpenId(null)} /> : null}
       </div>
     </div>
+  )
+}
+
+function ProjectChrome({
+  current,
+  mode,
+  onMode,
+  onPick,
+}: {
+  current: Piece
+  mode: 'slider' | 'grid'
+  onMode: (mode: 'slider' | 'grid') => void
+  onPick: (index: number) => void
+}) {
+  return (
+    <>
+      <div className="absolute top-28 right-6 z-30 hidden text-right sm:block" style={{ fontFamily: serif }}>
+        <p className="text-sm tracking-[0.14em] underline decoration-black/70 underline-offset-4">项目</p>
+        <ul className="mt-3 space-y-1 text-xs text-black/55">
+          {pieces.map((piece, index) => (
+            <li key={piece.id}>
+              <button
+                type="button"
+                className={piece.id === current.id ? 'text-black' : ''}
+                onClick={() => onPick(index)}
+              >
+                {piece.title}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="absolute right-6 bottom-6 z-30 text-right" style={{ fontFamily: serif }}>
+        <p className="text-sm tracking-[0.14em] underline decoration-black/70 underline-offset-4">展示</p>
+        <p className="mt-2 text-xs">
+          <button type="button" className={mode === 'slider' ? 'text-black' : 'text-black/40'} onClick={() => onMode('slider')}>
+            滑动
+          </button>
+          <span className="px-1 text-black/30">/</span>
+          <button type="button" className={mode === 'grid' ? 'text-black' : 'text-black/40'} onClick={() => onMode('grid')}>
+            网格
+          </button>
+        </p>
+      </div>
+    </>
   )
 }
 
@@ -206,7 +280,7 @@ function ProjectReading() {
   return (
     <div className="min-h-dvh bg-[#f7f5f2] text-[#1a1a1a]">
       <SiteHeader />
-      <main className="mx-auto grid max-w-5xl gap-8 px-5 py-16 sm:grid-cols-2">
+      <main className="mx-auto grid max-w-5xl grid-cols-2 gap-6 px-5 py-16 md:grid-cols-3">
         {pieces.map((piece) => (
           <article key={piece.id}>
             <img src={piece.image} alt="" className="aspect-[4/5] w-full object-cover" />
