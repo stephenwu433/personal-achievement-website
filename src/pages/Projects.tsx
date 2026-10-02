@@ -219,7 +219,7 @@ function ProjectStage() {
     const hold = 0.9
     const foldAt = lastArrival + hold
     const foldDuration = 1.25
-    const textExit = 2.35
+    const textExit = 1.45
     let titleLeft = false
     let titleGone = false
     let raf = 0
