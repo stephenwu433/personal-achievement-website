@@ -603,7 +603,7 @@ function ProjectStage() {
           <SiteHeader />
         </div>
         {titlePhase !== 'gone' ? <ProjectIntro leaving={titlePhase === 'out'} /> : null}
-        <div className="pointer-events-none absolute inset-0 z-10">
+        <div className="pointer-events-none absolute inset-0 z-10" style={{ visibility: openId ? 'hidden' : 'visible' }}>
           {pieces.map((piece, index) => (
             <button
               key={piece.id}
@@ -656,6 +656,7 @@ function ProjectStage() {
         <div
           ref={metaRef}
           className="pointer-events-none absolute inset-x-0 top-28 bottom-8 z-20 grid grid-cols-[1fr_minmax(180px,280px)_1fr] items-center px-6 sm:px-10"
+          style={{ visibility: openId ? 'hidden' : 'visible' }}
         >
           <div className="overflow-hidden pr-4">
             <div ref={counterSlideRef} className="flex items-center gap-4">
@@ -694,7 +695,7 @@ function ProjectStage() {
             </div>
           </div>
         </div>
-        <div className={phase === 'ready' ? undefined : 'pointer-events-none'}>
+        <div className={phase === 'ready' && !openId ? undefined : 'pointer-events-none'} style={{ visibility: openId ? 'hidden' : 'visible' }}>
           <ProjectChrome
             current={current}
             mode={mode}
@@ -712,7 +713,7 @@ function ProjectStage() {
             }}
           />
         </div>
-        <div className="absolute bottom-6 left-8 overflow-hidden">
+        <div className="absolute bottom-6 left-8 overflow-hidden" style={{ visibility: openId ? 'hidden' : 'visible' }}>
           <p ref={titleRef} className="text-[11px] tracking-[0.18em] text-black/55" style={{ fontFamily: serif }}>
             {current.title}
           </p>
@@ -830,8 +831,7 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
   }
 
   return (
-    <div className="absolute inset-0 z-50 overflow-y-auto">
-      <div className="absolute inset-0 bg-[#f7f5f2]" style={{ opacity: veil, transition: 'opacity 0.45s ease' }} />
+    <div className="fixed inset-0 z-[80] overflow-y-auto bg-[#f7f5f2]">
       <div className="relative mx-auto grid min-h-dvh max-w-6xl items-center gap-8 px-5 py-24 md:grid-cols-[1.3fr_0.7fr]">
         <img ref={imgRef} src={piece.image} alt="" className="relative w-full object-cover" />
         <div style={{ fontFamily: serif, opacity: veil, transform: `translateY(${(1 - veil) * 12}px)`, transition: 'opacity 0.45s ease, transform 0.45s ease' }}>
