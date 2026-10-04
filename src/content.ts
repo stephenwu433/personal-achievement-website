@@ -28,7 +28,7 @@ export const sections: SiteSection[] = [
     href: '/internships',
     label: '实习目录',
     english: 'Internships',
-    summary: '按时间列出实习：机构、岗位、时间和具体工作。',
+    summary: '按光盘目录翻实习：拖动或滚轮切换，左侧是机构、岗位和时间。',
   },
   {
     id: 'projects',
@@ -91,6 +91,51 @@ export const homeGallery: GalleryItem[] = [
       pos: '64% 34%',
       by: '',
     },
+  },
+]
+
+export type InternshipNote = {
+  source: string
+  quote: string
+}
+
+export type Internship = {
+  slug: string
+  title: string
+  organization: string
+  role: string
+  period: string
+  work: string[]
+  summary: string
+  note: InternshipNote
+  image: string
+  imagePosition: string
+}
+
+export const internships: Internship[] = [
+  {
+    slug: 'dongpeng',
+    title: '东鹏控股股份有限公司',
+    organization: '东鹏控股股份有限公司',
+    role: '待填',
+    period: '待填',
+    work: ['待填'],
+    summary: '待填',
+    note: { source: '待填', quote: '待填' },
+    image: '/photos/home-projects.jpg',
+    imagePosition: '62% 28%',
+  },
+  {
+    slug: 'zhijunzhu',
+    title: '知君竹科技传媒',
+    organization: '知君竹科技传媒',
+    role: '待填',
+    period: '待填',
+    work: ['待填'],
+    summary: '待填',
+    note: { source: '待填', quote: '待填' },
+    image: '/photos/home-internships.jpg',
+    imagePosition: '78% 36%',
   },
 ]
 
