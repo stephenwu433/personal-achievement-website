@@ -28,7 +28,7 @@ export const sections: SiteSection[] = [
     href: '/internships',
     label: '实习目录',
     english: 'Internships',
-    summary: '按时间列出实习：机构、岗位、时间和具体工作。',
+    summary: '按光盘目录翻实习：拖动或滚轮切换，左侧是机构、岗位和时间。',
   },
   {
     id: 'projects',
@@ -91,6 +91,76 @@ export const homeGallery: GalleryItem[] = [
       pos: '64% 34%',
       by: '',
     },
+  },
+]
+
+export type InternshipNote = {
+  source: string
+  quote: string
+}
+
+export type Internship = {
+  slug: string
+  title: string
+  organization: string
+  role: string
+  period: string
+  work: string[]
+  summary: string
+  note: InternshipNote
+  disc: {
+    from: string
+    to: string
+    ink: string
+    motif: 'field' | 'lines' | 'block' | 'warm'
+  }
+}
+
+/** 四段实习还没有具体机构。目录先按这个顺序排，补上文字后直接改这里。 */
+export const internships: Internship[] = [
+  {
+    slug: '01',
+    title: '第一段',
+    organization: '机构待补充',
+    role: '岗位待补充',
+    period: '时间待补充',
+    work: ['具体工作待补充'],
+    summary: '这一段的机构、岗位、起止时间和具体工作还没有放上来。补上之后，光盘和左侧条目会换成那段实习。',
+    note: { source: '这一段', quote: '照片和经历待放入' },
+    disc: { from: '#d2c07a', to: '#3d3416', ink: '#1c1608', motif: 'field' },
+  },
+  {
+    slug: '02',
+    title: '第二段',
+    organization: '机构待补充',
+    role: '岗位待补充',
+    period: '时间待补充',
+    work: ['具体工作待补充'],
+    summary: '这一段的机构、岗位、起止时间和具体工作还没有放上来。补上之后，光盘和左侧条目会换成那段实习。',
+    note: { source: '做过的事', quote: '具体工作待放入' },
+    disc: { from: '#d5e0e8', to: '#243646', ink: '#f7f4ee', motif: 'lines' },
+  },
+  {
+    slug: '03',
+    title: '第三段',
+    organization: '机构待补充',
+    role: '岗位待补充',
+    period: '时间待补充',
+    work: ['具体工作待补充'],
+    summary: '这一段的机构、岗位、起止时间和具体工作还没有放上来。补上之后，光盘和左侧条目会换成那段实习。',
+    note: { source: '起止', quote: '时间还没写上' },
+    disc: { from: '#f6f1e7', to: '#e7d7c4', ink: '#9d1c1c', motif: 'block' },
+  },
+  {
+    slug: '04',
+    title: '第四段',
+    organization: '机构待补充',
+    role: '岗位待补充',
+    period: '时间待补充',
+    work: ['具体工作待补充'],
+    summary: '这一段的机构、岗位、起止时间和具体工作还没有放上来。补上之后，光盘和左侧条目会换成那段实习。',
+    note: { source: '下一段', quote: '内容补上就会出现' },
+    disc: { from: '#ffb067', to: '#c2410c', ink: '#2a1206', motif: 'warm' },
   },
 ]
 
