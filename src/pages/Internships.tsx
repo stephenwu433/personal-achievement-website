@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
 import InternshipDisc from '@/src/components/InternshipDisc'
-import { internships, profile } from '@/src/content'
+import { internships, profile, sections } from '@/src/content'
 
 const pageBg = '#e6e3dc'
 const ink = '#1a1a1a'
@@ -433,7 +433,8 @@ export default function Internships() {
                     zIndex: 12,
                   }}
                 >
-                  <figcaption className="text-[10px] tracking-[0.2em]">{item.note.source}</figcaption>
+                  <p className="tracking-[0.35em]">★★★★</p>
+                  <figcaption className="mt-2 text-[10px] tracking-[0.2em]">{item.note.source}</figcaption>
                   <blockquote className="mt-2 text-lg leading-snug" style={serif}>
                     “{item.note.quote}”
                   </blockquote>
@@ -450,20 +451,13 @@ export default function Internships() {
           className={`absolute z-16 ${narrow ? 'inset-x-5 top-16' : 'top-20 left-8 w-[250px]'}`}
           style={reduced ? undefined : { animation: 'internship-credit-in 460ms ease' }}
         >
-          <h1 className="text-[2.6rem] leading-none font-medium" style={serif}>
+          <h1 className="max-w-[16rem] text-[2.4rem] leading-tight font-medium" style={serif}>
             {current.title}
           </h1>
-          <dl className="mt-4">
-            <CreditRow label="机构">{current.organization}</CreditRow>
+          <dl className="mt-8">
             <CreditRow label="岗位">{current.role}</CreditRow>
             <CreditRow label="时间">{current.period}</CreditRow>
-            <CreditRow label="工作">
-              {current.work.map((line) => (
-                <span key={line} className="block">
-                  {line}
-                </span>
-              ))}
-            </CreditRow>
+            <CreditRow label="内容">{current.work.join('、')}</CreditRow>
           </dl>
         </aside>
       ) : (
@@ -520,18 +514,16 @@ function CatalogNav({
   onPick: (index: number) => void
 }) {
   return (
-    <header className={`absolute inset-x-0 z-30 flex justify-center ${narrow ? 'bottom-4 px-4' : 'top-5'}`}>
-      <nav
-        aria-label="实习目录"
-        className={`flex items-center gap-6 text-sm ${narrow ? 'rounded-md bg-white px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.12)]' : ''}`}
-      >
-        <Link to="/" className="tracking-tight">
-          {profile.name}
-        </Link>
-        <button type="button" className="relative pb-1" onClick={onCatalog}>
-          实习
-          <span className="absolute right-0 -bottom-0.5 left-0 mx-auto size-1 rounded-full bg-[#1a1a1a]" />
-        </button>
+    <header className="absolute inset-x-0 top-0 z-30 flex items-center justify-between px-6 py-5 sm:px-8">
+      <Link to="/" className="text-[15px] tracking-tight" onClick={onCatalog}>
+        {profile.name}
+      </Link>
+      <nav aria-label="页面" className="flex items-center gap-5 text-sm">
+        {sections.map((section) => (
+          <Link key={section.href} to={section.href} className={section.href === '/internships' ? 'text-[#1a1a1a]' : 'text-[#1a1a1a]/70'}>
+            {section.label}
+          </Link>
+        ))}
         {showIndex ? (
           <div className="relative">
             <button
@@ -613,7 +605,7 @@ function DetailView({ index, onStep }: { index: number; onStep: (index: number) 
         </button>
       ) : null}
       <div className="mx-auto max-w-3xl px-8 pt-24 pb-20">
-        <h1 className="text-center text-6xl leading-none font-medium sm:text-7xl" style={serif}>
+        <h1 className="text-center text-5xl leading-tight font-medium" style={serif}>
           {item.title}
         </h1>
         <p className="mt-8 border-t border-[#1a1a1a] pt-3 text-center text-sm leading-6">
@@ -627,8 +619,7 @@ function DetailView({ index, onStep }: { index: number; onStep: (index: number) 
         <dl className="mt-2">
           <DetailRow label="岗位">{item.role}</DetailRow>
           <DetailRow label="时间">{item.period}</DetailRow>
-          <DetailRow label="机构">{item.organization}</DetailRow>
-          <DetailRow label="工作">{item.work.join('、')}</DetailRow>
+          <DetailRow label="内容">{item.work.join('、')}</DetailRow>
         </dl>
         <p className="mt-16 max-w-xl text-[15px] leading-7">{item.summary}</p>
       </div>
