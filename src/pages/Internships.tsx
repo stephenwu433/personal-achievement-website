@@ -155,8 +155,10 @@ export default function Internships() {
       const play = { index: 0 }
       const tilt = { x: 0, y: 0 }
       let target = 0
-      let glide: gsap.core.Tween | null = null
-      let lockedUntil = 0
+      let lastStep = 0
+      let shown = 0
+      let viewW = 0
+      let viewH = 0
       let alive = true
       const pointer = {
         down: false,
@@ -164,7 +166,9 @@ export default function Internships() {
         x: 0,
         y: 0,
         index: 0,
-        mode: 'none' as 'none' | 'spin' | 'scrub',
+        vx: 0,
+        lastIndex: 0,
+        lastTime: 0,
       }
       const raycaster = new THREE.Raycaster()
       const ndc = new THREE.Vector2()
@@ -174,7 +178,9 @@ export default function Internships() {
       const resize = () => {
         const width = canvas.clientWidth
         const height = canvas.clientHeight
-        if (width < 2 || height < 2) return
+        if (width < 2 || height < 2 || (width === viewW && height === viewH)) return
+        viewW = width
+        viewH = height
         camera.aspect = width / height
         camera.updateProjectionMatrix()
         renderer.setSize(width, height, false)
@@ -207,16 +213,15 @@ export default function Internships() {
           disc.group.visible = Math.abs(raw) < 3.4
         })
 
-        const showRing = intro.fan > 0.98 && Math.abs(play.index - focus) < 0.04
-        const activeDisc = discs[focus]
+        const focusPose = discPose(0, true)
+        const showRing = intro.fan > 0.98
         rings.forEach((ring) => {
-          ring.visible = showRing && Boolean(activeDisc)
-          ringMaterial.opacity = ring.visible ? 1 : 0
-          if (!activeDisc) return
-          if (ring.parent !== activeDisc.group) activeDisc.group.add(ring)
-          ring.position.set(0, 0, 0.04)
-          ring.rotation.set(0, 0, 0)
-          ring.scale.set(1, 1, 1)
+          if (ring.parent !== gallery) gallery.add(ring)
+          ring.visible = showRing
+          ringMaterial.opacity = showRing ? 1 : 0
+          ring.position.set(focusPose.x, focusPose.y - (1 - intro.rise) * 3.2, focusPose.z + 0.08)
+          ring.rotation.set(tilt.x, intro.spin * Math.PI * 0.5, tilt.y)
+          ring.scale.setScalar(0.62 + 0.38 * intro.rise)
         })
 
         if (countRef.current) countRef.current.textContent = String(Math.round(intro.count))
@@ -244,32 +249,36 @@ export default function Internships() {
           quote.style.top = `${spot.top}px`
         })
 
+        const rounded = Math.round(play.index)
+        if (rounded !== shown) {
+          shown = rounded
+          setActive(rounded)
+        }
         renderer.render(scene, camera)
       }
 
-      const go = (next: number) => {
-        const clamped = gsap.utils.clamp(0, places.length - 1, Math.round(next))
-        target = clamped
-        glide?.kill()
-        glide = gsap.to(play, {
-          index: clamped,
-          duration: reduced ? 0 : 0.7,
-          ease: 'discGlide',
-          overwrite: true,
-          onUpdate: () => {
-            layout()
-            const rounded = Math.round(play.index)
-            setActive((current) => (current === rounded ? current : rounded))
-          },
-        })
+      const glide = gsap.quickTo(play, 'index', {
+        duration: 0.5,
+        ease: 'power3.out',
+        onUpdate: layout,
+      })
+
+      const glideTo = (next: number) => {
+        target = gsap.utils.clamp(0, places.length - 1, next)
+        if (reduced) {
+          play.index = target
+          layout()
+          return
+        }
+        glide(target)
       }
 
-      const step = (direction: number) => {
-        if (openRef.current || intro.fan < 0.98) return
+      const step = (direction: number, gap = 70) => {
+        if (openRef.current || intro.fan < 0.98 || pointer.down) return
         const now = performance.now()
-        if (now < lockedUntil) return
-        lockedUntil = now + 180
-        go(target + direction)
+        if (now - lastStep < gap) return
+        lastStep = now
+        glideTo(Math.round(target) + direction)
       }
 
       const hit = (event: PointerEvent) => {
@@ -288,9 +297,10 @@ export default function Internships() {
         pointer.x = event.clientX
         pointer.y = event.clientY
         pointer.index = play.index
-        const picked = hit(event)
-        pointer.mode = picked === Math.round(play.index) ? 'spin' : 'scrub'
-        glide?.kill()
+        pointer.lastIndex = play.index
+        pointer.vx = 0
+        pointer.lastTime = performance.now()
+        glide.tween.pause()
         canvas.setPointerCapture?.(event.pointerId)
       }
 
@@ -301,8 +311,8 @@ export default function Internships() {
           const focus = Math.round(play.index)
           if (picked === focus) {
             const rect = canvas.getBoundingClientRect()
-            tilt.y = ((event.clientX - rect.left) / rect.width - 0.5) * 0.18
-            tilt.x = ((event.clientY - rect.top) / rect.height - 0.5) * -0.12
+            tilt.y = ((event.clientX - rect.left) / rect.width - 0.5) * 0.12
+            tilt.x = ((event.clientY - rect.top) / rect.height - 0.5) * -0.08
           } else if (tilt.x !== 0 || tilt.y !== 0) {
             tilt.x = 0
             tilt.y = 0
@@ -314,42 +324,43 @@ export default function Internships() {
         }
         const dx = event.clientX - pointer.x
         const dy = event.clientY - pointer.y
-        if (Math.hypot(dx, dy) > 6) pointer.moved = true
-        if (pointer.mode === 'spin') {
-          const focus = Math.round(play.index)
-          discs[focus].spin += event.movementX * 0.008
-          layout()
-          return
-        }
+        if (Math.hypot(dx, dy) > 5) pointer.moved = true
         const width = canvas.clientWidth || 1
-        play.index = gsap.utils.clamp(0, places.length - 1, pointer.index - dx / width * 3.1)
-        target = play.index
+        const next = gsap.utils.clamp(0, places.length - 1, pointer.index - (dx / width) * 1.8)
+        const now = performance.now()
+        const dt = Math.max(16, now - pointer.lastTime)
+        pointer.vx = (next - pointer.lastIndex) / dt
+        pointer.lastIndex = next
+        pointer.lastTime = now
+        play.index = next
+        target = next
+        const focus = Math.round(play.index)
+        discs.forEach((disc, index) => {
+          disc.spin = index === focus ? gsap.utils.clamp(-0.18, 0.18, -pointer.vx * 28) : disc.spin * 0.85
+        })
         layout()
       }
 
       const onPointerUp = (event: PointerEvent) => {
         if (!pointer.down) return
-        const mode = pointer.mode
         const moved = pointer.moved
         pointer.down = false
-        pointer.mode = 'none'
         const picked = hit(event)
+        discs.forEach((disc) => {
+          gsap.to(disc, { spin: 0, duration: 0.45, ease: 'power3.out', overwrite: 'auto', onUpdate: layout })
+        })
         if (!moved && picked >= 0) {
           if (picked === Math.round(play.index)) setOpen(true)
-          else go(picked)
+          else glideTo(picked)
           return
         }
-        if (mode === 'spin') {
-          const focus = Math.round(play.index)
-          gsap.to(discs[focus], { spin: 0, duration: 1.15, ease: 'power3.out', onUpdate: layout })
-          return
-        }
-        if (moved) go(play.index)
+        const flicked = gsap.utils.clamp(-1, 1, pointer.vx * 420)
+        glideTo(Math.round(play.index + flicked))
       }
 
       const onKey = (event: KeyboardEvent) => {
-        if (event.key === 'ArrowRight') step(1)
-        if (event.key === 'ArrowLeft') step(-1)
+        if (event.key === 'ArrowRight') step(1, 220)
+        if (event.key === 'ArrowLeft') step(-1, 220)
       }
 
       const observer = Observer.create({
@@ -386,7 +397,7 @@ export default function Internships() {
         alive = false
         observer.kill()
         introTween?.kill()
-        glide?.kill()
+        glide.tween.kill()
         resizeObserver.disconnect()
         canvas.removeEventListener('pointerdown', onPointerDown)
         window.removeEventListener('pointermove', onPointerMove)
