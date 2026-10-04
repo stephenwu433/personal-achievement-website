@@ -1,10 +1,14 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
+import { CustomEase } from 'gsap/CustomEase'
+import { Observer } from 'gsap/Observer'
+import * as THREE from 'three'
 import { profile, sections } from '@/src/content'
 
-gsap.registerPlugin(useGSAP)
+gsap.registerPlugin(useGSAP, Observer, CustomEase)
+CustomEase.create('discGlide', '0.32, 0.72, 0, 1')
 
 type Place = {
   id: string
@@ -23,300 +27,384 @@ const places: Place[] = [
 const serif = '"LXGW WenKai", "Iowan Old Style", Palatino, "Songti SC", serif'
 const paper = '#f3f1ec'
 
-type Motion = {
-  index: number
-  open: number
-  settle: number
-  count: number
+type DiscRig = {
+  group: THREE.Group
+  mesh: THREE.Mesh
   spin: number
-  tiltX: number
-  tiltY: number
-  lean: number
 }
 
-type DiscNodes = {
-  slot: HTMLButtonElement | null
-  tilt: HTMLDivElement | null
-  spin: HTMLDivElement | null
+type Intro = {
+  rise: number
+  fan: number
+  spin: number
+  count: number
 }
 
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-function clamp(value: number, min = 0, max = 1) {
-  return Math.min(max, Math.max(min, value))
+function discPose(delta: number, active: boolean) {
+  const angle = delta * 0.35
+  const x = Math.sin(angle) * 2.3 * 2.4
+  const z = -Math.cos(angle) * 2.4 + 2.4
+  const y = active ? 0.06 : 0
+  const scale = active ? 1 : Math.max(0.8, 1 - Math.abs(delta) * 0.2)
+  return { x, y, z, scale, angle }
 }
 
-function lerp(from: number, to: number, amount: number) {
-  return from + (to - from) * amount
-}
-
-function smooth(value: number) {
-  const t = clamp(value)
-  return t * t * (3 - 2 * t)
-}
-
-function discScale(delta: number) {
-  if (delta >= 0) return Math.min(1 + delta * 0.9, 2.35)
-  return Math.max(1 + delta * 0.23, 0.5)
-}
-
-function rowPose(delta: number, width: number, height: number, narrow: boolean) {
-  const unit = narrow ? Math.min(height * 0.4, width * 0.6) : Math.min(height * 0.46, width * 0.3)
-  const size = unit * discScale(delta)
-  const anchor = width * (narrow ? 0.5 : 0.56)
-  const step = unit * (delta >= 0 ? 1.02 : 0.55)
-  const x = anchor + delta * step
-  const y = height * (narrow ? 0.76 : 0.74) - size * 0.5
-  let opacity = 1
-  if (delta < -2.35) opacity = clamp((delta + 3.2) / 0.85)
-  if (delta > 2.15) opacity = clamp((3.05 - delta) / 0.9)
-  return { size, x, y, z: 0, rx: 0, ry: 0, rz: 0, opacity }
+function scribblePoints(loop: number) {
+  const points: THREE.Vector3[] = []
+  const count = 72
+  const stop = loop === 0 ? count : Math.round(count * 0.7)
+  for (let point = 0; point <= stop; point += 1) {
+    const angle = (point / count) * Math.PI * 2 - 0.45 + loop * 0.55
+    const wobble = Math.sin(angle * 2 + loop * 1.3) * 0.028 + Math.sin(angle * 5.2) * 0.012
+    const radius = 1.07 + loop * 0.04 + wobble
+    points.push(new THREE.Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.05))
+  }
+  return points
 }
 
 export default function Internships() {
   const rootRef = useRef<HTMLDivElement>(null)
-  const discRefs = useRef<DiscNodes[]>(places.map(() => ({ slot: null, tilt: null, spin: null })))
-  const shadowRefs = useRef<Array<HTMLDivElement | null>>([])
-  const ringRef = useRef<SVGSVGElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const quoteRefs = useRef<Array<HTMLDivElement | null>>([])
   const introRef = useRef<HTMLDivElement>(null)
   const countRef = useRef<HTMLSpanElement>(null)
-  const motion = useRef<Motion>({ index: 0, open: 0, settle: 0, count: 0, spin: 0, tiltX: 0, tiltY: 0, lean: 0 })
-  const glideTarget = useRef(0)
-  const snapTimer = useRef<number | null>(null)
-  const drag = useRef<{ x: number; y: number; spin: number; tiltX: number; moved: boolean; lastX: number; vx: number } | null>(null)
-  const settle = useRef<gsap.core.Tween | null>(null)
-  const [prints, setPrints] = useState<string[]>(() => places.map(() => ''))
-  const [ready, setReady] = useState(false)
+  const [prints, setPrints] = useState<HTMLCanvasElement[]>([])
   const [active, setActive] = useState(0)
   const [chrome, setChrome] = useState(false)
   const [open, setOpen] = useState(false)
-  const [ring, setRing] = useState(0)
   const [reduced] = useState(prefersReducedMotion)
   const openRef = useRef(false)
-  const chromeRef = useRef(false)
-  openRef.current = open
-
-  const paint = () => {
-    const width = window.innerWidth
-    const height = window.innerHeight
-    const state = motion.current
-    const narrow = width < 800
-    const openT = smooth(state.open)
-    const landT = smooth(state.settle)
-    const ringBoxes: { x: number; y: number; size: number; z: number }[] = []
-    const laid: { x: number; y: number; size: number; opacity: number }[] = []
-    const quoteSpots: ({ x: number; top: number } | undefined)[] = []
-    const focusIndex = Math.round(state.index)
-
-    discRefs.current.forEach((node, index) => {
-      if (!node.slot || !node.tilt || !node.spin) return
-      const delta = index - state.index
-      const distance = Math.abs(delta)
-      const focus = distance < 0.35
-      const pose = rowPose(delta, width, height, narrow)
-      const swingY = openT < 0.68 ? lerp(88, 8, smooth(openT / 0.68)) : lerp(8, pose.ry, smooth((openT - 0.68) / 0.32))
-      let x = pose.x + (delta > 0.15 ? (1 - landT) * width * 0.28 : 0)
-      let y = pose.y
-      let size = pose.size
-      let rx = pose.rx
-      let ry = pose.ry
-      let rz = pose.rz + (focus ? state.lean : state.lean * 0.25)
-      if (focus && landT < 0.999) {
-        const projX = width * (narrow ? 0.58 : 0.6)
-        const projY = height * 0.52
-        x = lerp(projX, pose.x, landT)
-        y = lerp(projY, pose.y, landT)
-        size = lerp(pose.size * 1.05, pose.size, landT)
-        rx = lerp(lerp(4, 12, openT), pose.rx, landT)
-        ry = lerp(swingY, pose.ry, landT)
-        rz = lerp(lerp(0, -6, openT), pose.rz, landT)
-      }
-      rx += focus ? state.tiltX : 0
-      ry += focus ? state.tiltY * 0.35 : 0
-      let opacity = pose.opacity
-      if (Math.abs(delta) > 0.2) opacity *= landT
-
-      node.slot.style.left = `${x}px`
-      node.slot.style.top = `${y}px`
-      node.slot.style.width = `${size}px`
-      node.slot.style.height = `${size}px`
-      node.slot.style.zIndex = String(40 + Math.round(delta * 10))
-      node.slot.style.transform = `translate(-50%, -50%) translateZ(${pose.z}px)`
-      node.slot.style.visibility = opacity < 0.03 ? 'hidden' : 'visible'
-      node.slot.style.pointerEvents = opacity < 0.45 ? 'none' : 'auto'
-      node.slot.style.setProperty('--disc-opacity', String(opacity))
-      node.tilt.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)`
-      node.spin.style.transform = `rotateZ(${distance < 0.45 ? state.spin * (1 - distance) : 0}deg)`
-
-      const shadow = shadowRefs.current[index]
-      if (shadow) {
-        shadow.style.left = `${x}px`
-        shadow.style.top = `${y + size * 0.47}px`
-        shadow.style.width = `${size * 0.72}px`
-        shadow.style.height = `${size * 0.12}px`
-        shadow.style.opacity = String(0.22 * opacity * Math.max(openT, landT))
-      }
-
-      laid[index] = { x, y, size, opacity }
-      if (focusIndex === index) ringBoxes.push({ x, y, size, z: pose.z })
-    })
-
-    const quoteFor: number[] = []
-    if (focusIndex > 0) quoteFor.push(focusIndex - 1)
-    quoteFor.push(focusIndex)
-    if (quoteFor.length < 2 && focusIndex + 1 < places.length) quoteFor.push(focusIndex + 1)
-    quoteFor.forEach((index, slot) => {
-      const pose = laid[index]
-      if (!pose || pose.opacity < 0.4) return
-      if (pose.x < width * 0.16 || pose.x > width * 0.8) return
-      const top = pose.y + pose.size * 0.74 + 8
-      if (top > height - 72) return
-      quoteSpots[slot] = { x: pose.x, top }
-    })
-
-    if (countRef.current) countRef.current.textContent = String(Math.round(state.count))
-    if (introRef.current) {
-      const appear = smooth(state.open / 0.18)
-      const leave = 1 - smooth(clamp((state.settle - 0.05) / 0.62))
-      introRef.current.style.opacity = String(appear * leave)
-    }
-
-    const ringNode = ringRef.current
-    const ringBox = ringBoxes[0]
-    if (ringNode && ringBox) {
-      ringNode.style.left = `${ringBox.x}px`
-      ringNode.style.top = `${ringBox.y}px`
-      ringNode.style.width = `${ringBox.size * 1.26}px`
-      ringNode.style.height = `${ringBox.size * 1.26}px`
-      ringNode.style.transform = `translate(-50%, -50%) translateZ(${ringBox.z + 36}px)`
-      ringNode.style.opacity = String(clamp(state.settle))
-      ringNode.style.zIndex = '80'
-    }
-    quoteRefs.current.forEach((quote, index) => {
-      if (!quote) return
-      const spot = quoteSpots[index]
-      quote.style.opacity = spot ? String(clamp(state.settle)) : '0'
-      if (!spot) return
-      quote.style.left = `${spot.x}px`
-      quote.style.top = `${spot.top}px`
-    })
-  }
+  useEffect(() => {
+    openRef.current = open
+  }, [open])
 
   useEffect(() => {
     let cancel = false
-    Promise.all(places.map((place) => makePrint(place.image))).then((urls) => {
-      if (cancel) return
-      setPrints(urls)
-      setReady(true)
+    Promise.all(places.map((place) => makePrint(place.image, place.lines))).then((canvases) => {
+      if (!cancel) setPrints(canvases)
     })
     return () => {
       cancel = true
     }
   }, [])
 
-  useLayoutEffect(() => {
-    if (reduced) {
-      motion.current.open = 1
-      motion.current.settle = 1
-      motion.current.count = 100
-      chromeRef.current = true
-      setChrome(true)
-    }
-    paint()
-  }, [ready, reduced])
-
   useGSAP(
     () => {
-      paint()
-      if (reduced || !ready) return
-      const state = motion.current
-      const intro = gsap.timeline({
-        onUpdate: () => {
-          paint()
-          if (!chromeRef.current && state.settle > 0.42) {
-            chromeRef.current = true
-            setChrome(true)
-          }
-        },
+      const canvas = canvasRef.current
+      if (!canvas || prints.length !== places.length) return
+
+      let renderer: THREE.WebGLRenderer
+      try {
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
+      } catch {
+        return
+      }
+      renderer.setClearColor(0x000000, 0)
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      renderer.outputColorSpace = THREE.SRGBColorSpace
+      const scene = new THREE.Scene()
+      const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100)
+      camera.position.set(0, 0, 4.4)
+      camera.lookAt(0, 0, 0)
+      const gallery = new THREE.Group()
+      gallery.rotation.x = THREE.MathUtils.degToRad(-30)
+      gallery.rotation.y = THREE.MathUtils.degToRad(-30)
+      gallery.scale.setScalar(1.02)
+      scene.add(gallery)
+
+      const hole = holeTexture()
+      const discs: DiscRig[] = prints.map((print) => {
+        const group = new THREE.Group()
+        const texture = new THREE.CanvasTexture(print)
+        texture.colorSpace = THREE.SRGBColorSpace
+        texture.anisotropy = 8
+        const rim = new THREE.Mesh(
+          new THREE.RingGeometry(0.985, 1.035, 80),
+          new THREE.MeshBasicMaterial({ color: 0x2c2c2c, side: THREE.DoubleSide }),
+        )
+        rim.position.z = -0.012
+        const mesh = new THREE.Mesh(
+          new THREE.CircleGeometry(1, 80),
+          new THREE.MeshBasicMaterial({ map: texture, alphaMap: hole, alphaTest: 0.5, side: THREE.DoubleSide }),
+        )
+        const hub = new THREE.Mesh(
+          new THREE.RingGeometry(0.16, 0.27, 64),
+          new THREE.MeshBasicMaterial({ color: 0xf4f4f4, side: THREE.DoubleSide }),
+        )
+        hub.position.z = 0.02
+        group.add(rim, mesh, hub)
+        gallery.add(group)
+        return { group, mesh, spin: 0 }
       })
-      intro.to(state, { open: 1, duration: 1.7, delay: 0.45, ease: 'power2.inOut' })
-      intro.to(state, { count: 100, duration: 1.7, ease: 'power1.in' }, '<')
-      intro.to(state, { settle: 1, duration: 1.2, ease: 'power3.inOut' }, '+=0.35')
 
-      const follow = () => {
-        if (drag.current || state.settle < 0.98) return
-        const gap = glideTarget.current - state.index
-        if (Math.abs(gap) < 0.001) return
-        state.index += gap * 0.065
-        state.lean = gap * 10
-        paint()
-        syncActive(state.index)
-      }
-      gsap.ticker.add(follow)
+      const ringMaterial = new THREE.LineBasicMaterial({ color: 0x161616, transparent: true, opacity: 0 })
+      const rings = [0, 1].map((loop) => {
+        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(scribblePoints(loop)), ringMaterial)
+        line.frustumCulled = false
+        gallery.add(line)
+        return line
+      })
 
-      const onWheel = (event: WheelEvent) => {
-        if (openRef.current || state.settle < 0.98) return
-        event.preventDefault()
-        const pixels = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY
-        glideTarget.current = Math.min(places.length - 1, Math.max(0, glideTarget.current + pixels * 0.0015))
-        if (snapTimer.current) window.clearTimeout(snapTimer.current)
-        snapTimer.current = window.setTimeout(() => {
-          glideTarget.current = Math.round(glideTarget.current)
-        }, 170)
+      const intro: Intro = reduced
+        ? { rise: 1, fan: 1, spin: 0, count: 100 }
+        : { rise: 0, fan: 0, spin: 1, count: 0 }
+      const play = { index: 0 }
+      const tilt = { x: 0, y: 0 }
+      let target = 0
+      let glide: gsap.core.Tween | null = null
+      let lockedUntil = 0
+      let alive = true
+      const pointer = {
+        down: false,
+        moved: false,
+        x: 0,
+        y: 0,
+        index: 0,
+        mode: 'none' as 'none' | 'spin' | 'scrub',
       }
-      const onResize = () => paint()
-      window.addEventListener('wheel', onWheel, { passive: false })
-      window.addEventListener('resize', onResize)
+      const raycaster = new THREE.Raycaster()
+      const ndc = new THREE.Vector2()
+      const center = new THREE.Vector3()
+      const edge = new THREE.Vector3()
+
+      const resize = () => {
+        const width = canvas.clientWidth
+        const height = canvas.clientHeight
+        if (width < 2 || height < 2) return
+        camera.aspect = width / height
+        camera.updateProjectionMatrix()
+        renderer.setSize(width, height, false)
+      }
+
+      const project = (vector: THREE.Vector3) => {
+        const width = canvas.clientWidth
+        const height = canvas.clientHeight
+        const point = vector.clone().project(camera)
+        return {
+          x: (point.x * 0.5 + 0.5) * width,
+          y: (-point.y * 0.5 + 0.5) * height,
+        }
+      }
+
+      const layout = () => {
+        resize()
+        const width = canvas.clientWidth
+        const height = canvas.clientHeight
+        const focus = Math.round(play.index)
+        discs.forEach((disc, index) => {
+          const raw = index - play.index
+          const delta = raw * intro.fan
+          const settled = Math.abs(raw) < 0.45 && intro.fan > 0.92
+          const pose = discPose(delta, settled && index === focus)
+          disc.group.position.set(pose.x, pose.y - (1 - intro.rise) * 3.2, pose.z + (1 - intro.fan) * index * 0.05)
+          disc.group.rotation.set(index === focus ? tilt.x : 0, -pose.angle + intro.spin * Math.PI * 0.5, disc.spin + (index === focus ? tilt.y : 0))
+          const grown = 0.62 + 0.38 * intro.rise
+          disc.group.scale.setScalar(pose.scale * grown)
+          disc.group.visible = Math.abs(raw) < 3.4
+        })
+
+        const showRing = intro.fan > 0.98 && Math.abs(play.index - focus) < 0.04
+        const activeDisc = discs[focus]
+        rings.forEach((ring) => {
+          ring.visible = showRing && Boolean(activeDisc)
+          ringMaterial.opacity = ring.visible ? 1 : 0
+          if (!activeDisc) return
+          if (ring.parent !== activeDisc.group) activeDisc.group.add(ring)
+          ring.position.set(0, 0, 0.04)
+          ring.rotation.set(0, 0, 0)
+          ring.scale.set(1, 1, 1)
+        })
+
+        if (countRef.current) countRef.current.textContent = String(Math.round(intro.count))
+        if (introRef.current) introRef.current.style.opacity = String(Math.max(0, 1 - intro.fan) * Math.min(1, intro.rise * 2))
+
+        const spots: { x: number; top: number }[] = []
+        const quoteFor = focus > 0 ? [focus - 1, focus] : [focus, focus + 1]
+        quoteFor.forEach((index) => {
+          const disc = discs[index]
+          if (!disc || intro.fan < 0.98) return
+          disc.group.getWorldPosition(center)
+          const origin = project(center)
+          const lower = Math.max(project(disc.group.localToWorld(edge.set(0, 1, 0))).y, project(disc.group.localToWorld(edge.set(0, -1, 0))).y)
+          if (origin.x < width * 0.18 || origin.x > width * 0.78) return
+          const top = lower + 18
+          if (top > height - 64) return
+          spots.push({ x: origin.x, top })
+        })
+        quoteRefs.current.forEach((quote, index) => {
+          if (!quote) return
+          const spot = spots[index]
+          quote.style.opacity = spot ? '1' : '0'
+          if (!spot) return
+          quote.style.left = `${spot.x}px`
+          quote.style.top = `${spot.top}px`
+        })
+
+        renderer.render(scene, camera)
+      }
+
+      const go = (next: number) => {
+        const clamped = gsap.utils.clamp(0, places.length - 1, Math.round(next))
+        target = clamped
+        glide?.kill()
+        glide = gsap.to(play, {
+          index: clamped,
+          duration: reduced ? 0 : 0.7,
+          ease: 'discGlide',
+          overwrite: true,
+          onUpdate: () => {
+            layout()
+            const rounded = Math.round(play.index)
+            setActive((current) => (current === rounded ? current : rounded))
+          },
+        })
+      }
+
+      const step = (direction: number) => {
+        if (openRef.current || intro.fan < 0.98) return
+        const now = performance.now()
+        if (now < lockedUntil) return
+        lockedUntil = now + 180
+        go(target + direction)
+      }
+
+      const hit = (event: PointerEvent) => {
+        const rect = canvas.getBoundingClientRect()
+        ndc.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1)
+        raycaster.setFromCamera(ndc, camera)
+        const hits = raycaster.intersectObjects(discs.map((disc) => disc.mesh))
+        if (!hits.length) return -1
+        return discs.findIndex((disc) => disc.mesh === hits[0].object)
+      }
+
+      const onPointerDown = (event: PointerEvent) => {
+        if (openRef.current || intro.fan < 0.98 || event.button !== 0) return
+        pointer.down = true
+        pointer.moved = false
+        pointer.x = event.clientX
+        pointer.y = event.clientY
+        pointer.index = play.index
+        const picked = hit(event)
+        pointer.mode = picked === Math.round(play.index) ? 'spin' : 'scrub'
+        glide?.kill()
+        canvas.setPointerCapture?.(event.pointerId)
+      }
+
+      const onPointerMove = (event: PointerEvent) => {
+        if (!pointer.down) {
+          if (intro.fan < 0.98) return
+          const picked = hit(event)
+          const focus = Math.round(play.index)
+          if (picked === focus) {
+            const rect = canvas.getBoundingClientRect()
+            tilt.y = ((event.clientX - rect.left) / rect.width - 0.5) * 0.18
+            tilt.x = ((event.clientY - rect.top) / rect.height - 0.5) * -0.12
+          } else if (tilt.x !== 0 || tilt.y !== 0) {
+            tilt.x = 0
+            tilt.y = 0
+          } else {
+            return
+          }
+          layout()
+          return
+        }
+        const dx = event.clientX - pointer.x
+        const dy = event.clientY - pointer.y
+        if (Math.hypot(dx, dy) > 6) pointer.moved = true
+        if (pointer.mode === 'spin') {
+          const focus = Math.round(play.index)
+          discs[focus].spin += event.movementX * 0.008
+          layout()
+          return
+        }
+        const width = canvas.clientWidth || 1
+        play.index = gsap.utils.clamp(0, places.length - 1, pointer.index - dx / width * 3.1)
+        target = play.index
+        layout()
+      }
+
+      const onPointerUp = (event: PointerEvent) => {
+        if (!pointer.down) return
+        const mode = pointer.mode
+        const moved = pointer.moved
+        pointer.down = false
+        pointer.mode = 'none'
+        const picked = hit(event)
+        if (!moved && picked >= 0) {
+          if (picked === Math.round(play.index)) setOpen(true)
+          else go(picked)
+          return
+        }
+        if (mode === 'spin') {
+          const focus = Math.round(play.index)
+          gsap.to(discs[focus], { spin: 0, duration: 1.15, ease: 'power3.out', onUpdate: layout })
+          return
+        }
+        if (moved) go(play.index)
+      }
+
+      const onKey = (event: KeyboardEvent) => {
+        if (event.key === 'ArrowRight') step(1)
+        if (event.key === 'ArrowLeft') step(-1)
+      }
+
+      const observer = Observer.create({
+        target: window,
+        type: 'wheel',
+        tolerance: 8,
+        preventDefault: true,
+        onDown: () => step(1),
+        onUp: () => step(-1),
+      })
+
+      canvas.addEventListener('pointerdown', onPointerDown)
+      window.addEventListener('pointermove', onPointerMove)
+      window.addEventListener('pointerup', onPointerUp)
+      window.addEventListener('keydown', onKey)
+      const resizeObserver = new ResizeObserver(() => layout())
+      resizeObserver.observe(canvas)
+
+      let introTween: gsap.core.Timeline | null = null
+      if (reduced) {
+        setChrome(true)
+        setActive(0)
+      } else {
+        introTween = gsap.timeline({ onUpdate: layout })
+        introTween.to(intro, { rise: 1, spin: 0, count: 100, duration: 1.45, ease: 'power2.inOut' }, 0.35)
+        introTween.to(intro, { fan: 1, duration: 1.15, ease: 'power3.inOut' }, 1.45)
+        introTween.call(() => {
+          if (alive) setChrome(true)
+        })
+      }
+      layout()
+
       return () => {
-        intro.kill()
-        gsap.ticker.remove(follow)
-        if (snapTimer.current) window.clearTimeout(snapTimer.current)
-        window.removeEventListener('wheel', onWheel)
-        window.removeEventListener('resize', onResize)
+        alive = false
+        observer.kill()
+        introTween?.kill()
+        glide?.kill()
+        resizeObserver.disconnect()
+        canvas.removeEventListener('pointerdown', onPointerDown)
+        window.removeEventListener('pointermove', onPointerMove)
+        window.removeEventListener('pointerup', onPointerUp)
+        window.removeEventListener('keydown', onKey)
+        scene.traverse((node) => {
+          const mesh = node as THREE.Mesh
+          mesh.geometry?.dispose?.()
+          const material = mesh.material as THREE.Material | THREE.Material[] | undefined
+          if (Array.isArray(material)) material.forEach((item) => item.dispose())
+          else material?.dispose?.()
+        })
+        hole.dispose()
+        renderer.dispose()
       }
     },
-    { scope: rootRef, dependencies: [ready, reduced] },
+    { scope: rootRef, dependencies: [prints, reduced] },
   )
-
-  const syncActive = (index: number) => {
-    const next = Math.min(places.length - 1, Math.max(0, Math.round(index)))
-    setActive((current) => (current === next ? current : next))
-  }
-
-  const glideTo = (index: number) => {
-    glideTarget.current = Math.min(places.length - 1, Math.max(0, index))
-    if (snapTimer.current) window.clearTimeout(snapTimer.current)
-    setRing(0)
-  }
-
-  const releaseDrag = () => {
-    const current = drag.current
-    drag.current = null
-    if (!current?.moved) return
-    const state = motion.current
-    state.spin += current.vx * 0.55
-    settle.current?.kill()
-    settle.current = gsap.to(state, {
-      spin: 0,
-      tiltX: 0,
-      tiltY: 0,
-      duration: 1.15,
-      ease: 'power3.out',
-      onUpdate: paint,
-    })
-  }
-
-  useEffect(() => {
-    if (!open) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previous
-    }
-  }, [open])
 
   const current = places[active]
 
@@ -338,6 +426,8 @@ export default function Internships() {
           ))}
         </nav>
       </header>
+
+      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" style={{ touchAction: 'none' }} />
 
       <div ref={introRef} className="pointer-events-none absolute inset-0 z-20" style={{ opacity: 0 }}>
         <p className="absolute top-1/2 left-[4vw] -translate-y-1/2 text-[12px] tracking-[0.28em] text-black/55">实习目录</p>
@@ -376,138 +466,6 @@ export default function Internships() {
             </div>
           </>
         ) : null}
-      </div>
-
-      <div className="absolute inset-0">
-        <div className="absolute inset-0">
-        {places.map((place, index) => (
-          <button
-            key={place.id}
-            type="button"
-            aria-label={place.name}
-            ref={(node) => {
-              discRefs.current[index].slot = node
-            }}
-            className="absolute top-0 left-0 cursor-grab border-0 bg-transparent p-0 [transform-style:preserve-3d] active:cursor-grabbing"
-            style={{ touchAction: 'none' }}
-            onPointerEnter={() => {
-              if (Math.round(motion.current.index) !== index || motion.current.settle < 0.98) return
-              setRing((value) => value + 1)
-            }}
-            onPointerLeave={() => {
-              if (drag.current) return
-              setRing(0)
-              settle.current?.kill()
-              settle.current = gsap.to(motion.current, { tiltX: 0, tiltY: 0, duration: 0.6, ease: 'power3.out', onUpdate: paint })
-            }}
-            onPointerDown={(event) => {
-              if (reduced || open || motion.current.settle < 0.98) return
-              if (Math.abs(index - motion.current.index) > 0.45) return
-              settle.current?.kill()
-              drag.current = {
-                x: event.clientX,
-                y: event.clientY,
-                spin: motion.current.spin,
-                tiltX: motion.current.tiltX,
-                moved: false,
-                lastX: event.clientX,
-                vx: 0,
-              }
-              try {
-                event.currentTarget.setPointerCapture(event.pointerId)
-              } catch {
-                /* The pointer is only capturable for a real press. */
-              }
-            }}
-            onPointerMove={(event) => {
-              const bounds = event.currentTarget.getBoundingClientRect()
-              const localX = (event.clientX - bounds.left) / bounds.width - 0.5
-              const localY = (event.clientY - bounds.top) / bounds.height - 0.5
-              if (drag.current && Math.round(motion.current.index) === index) {
-                const dx = event.clientX - drag.current.x
-                const dy = event.clientY - drag.current.y
-                if (Math.abs(dx) > 5 || Math.abs(dy) > 5) drag.current.moved = true
-                drag.current.vx = event.clientX - drag.current.lastX
-                drag.current.lastX = event.clientX
-                motion.current.spin = drag.current.spin + dx * 0.45
-                motion.current.tiltX = drag.current.tiltX + dy * -0.06
-                motion.current.tiltY = localX * 10
-                setRing((value) => (value === 0 ? 1 : value))
-              } else if (Math.round(motion.current.index) === index && motion.current.settle > 0.98 && !drag.current) {
-                motion.current.tiltX = localY * -8
-                motion.current.tiltY = localX * 12
-              } else {
-                return
-              }
-              paint()
-            }}
-            onPointerUp={(event) => {
-              const moved = drag.current?.moved
-              const delta = index - motion.current.index
-              releaseDrag()
-              if (moved || motion.current.settle < 0.98) return
-              if (Math.abs(delta) > 0.45) {
-                glideTo(index)
-                return
-              }
-              if (event.button !== 0) return
-              setOpen(true)
-            }}
-            onPointerCancel={releaseDrag}
-          >
-            <span
-              ref={(node) => {
-                discRefs.current[index].tilt = node
-              }}
-              className="absolute inset-0 [transform-style:preserve-3d]"
-            >
-              <span
-                ref={(node) => {
-                  discRefs.current[index].spin = node
-                }}
-                className="absolute inset-0 [transform-style:preserve-3d]"
-              >
-                <DiscBody print={prints[index]} />
-                <span
-                  className="pointer-events-none absolute inset-x-[14%] top-[13%] text-center text-[clamp(16px,1.5vw,22px)] leading-[1.35] font-normal text-[#f7f3ea]"
-                  style={{ transform: 'translateZ(8px)', textShadow: '0 1px 6px rgba(0,0,0,0.45)', fontFamily: serif }}
-                >
-                  {place.name}
-                </span>
-              </span>
-              <span
-                className="pointer-events-none absolute inset-0 rounded-full"
-                style={{
-                  background:
-                    'linear-gradient(118deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.08) 18%, transparent 36%, transparent 62%, rgba(255,255,255,0.16) 100%)',
-                  mixBlendMode: 'soft-light',
-                  transform: 'translateZ(10px)',
-                  WebkitMask: 'radial-gradient(circle closest-side at 50% 50%, transparent 0 17.5%, #000 18.3% 100%)',
-                  mask: 'radial-gradient(circle closest-side at 50% 50%, transparent 0 17.5%, #000 18.3% 100%)',
-                  opacity: 'var(--disc-opacity, 1)',
-                }}
-              />
-            </span>
-          </button>
-        ))}
-        {places.map((place, index) => (
-          <div
-            key={`${place.id}-shadow`}
-            ref={(node) => {
-              shadowRefs.current[index] = node
-            }}
-            className="pointer-events-none absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 rounded-[50%] bg-black/70 blur-2xl"
-          />
-        ))}
-        <svg
-          ref={ringRef}
-          className="pointer-events-none absolute top-0 left-0 z-[80] overflow-visible"
-          viewBox="0 0 100 100"
-          style={{ opacity: 0 }}
-        >
-          {chrome ? <InkRing play={active + ring} /> : null}
-        </svg>
-        </div>
       </div>
 
       {[0, 1].map((slot) => (
@@ -586,101 +544,45 @@ function InternshipDetail({ place, onClose }: { place: Place; onClose: () => voi
   )
 }
 
-function DiscBody({ print }: { print: string }) {
-  const mask = 'radial-gradient(circle closest-side at 50% 50%, transparent 0 17.5%, #000 18.3%)'
-  return (
-    <span className="absolute inset-0 [transform-style:preserve-3d]">
-      {[0, 1, 2, 3, 4, 5, 6, 7].map((layer) => (
-        <span
-          key={layer}
-          className="absolute inset-0 rounded-full"
-          style={{
-            transform: `translateZ(${-1.2 - layer * 2}px)`,
-            background:
-              'linear-gradient(90deg, #6f6f6f 0%, #f7f7f7 14%, #c5c5c5 32%, #ffffff 48%, #b0b0b0 63%, #f3f3f3 78%, #7a7a7a 100%)',
-            WebkitMask: mask,
-            mask,
-            opacity: 'var(--disc-opacity, 1)',
-          }}
-        />
-      ))}
-      <span
-        className="absolute inset-0 rounded-full bg-cover bg-center"
-        style={{
-          backgroundImage: print ? `url(${print})` : undefined,
-          backgroundColor: '#cfc6b8',
-          transform: 'translateZ(0px)',
-          WebkitMask: mask,
-          mask,
-          boxShadow: 'inset 0 0 0 1.5px rgba(255,255,255,0.5)',
-          opacity: 'var(--disc-opacity, 1)',
-        }}
-      />
-      <span
-        className="absolute top-1/2 left-1/2 size-[26%] rounded-full"
-        style={{
-          transform: 'translate(-50%, -50%) translateZ(7px)',
-          background: 'linear-gradient(145deg, #ffffff 0%, #cfcfcf 32%, #f8f8f8 50%, #8a8a8a 78%, #dedede 100%)',
-          WebkitMask: 'radial-gradient(circle closest-side at 50% 50%, transparent 0 64%, #000 70%)',
-          mask: 'radial-gradient(circle closest-side at 50% 50%, transparent 0 64%, #000 70%)',
-          opacity: 'var(--disc-opacity, 1)',
-        }}
-      />
-    </span>
-  )
+function holeTexture() {
+  const canvas = document.createElement('canvas')
+  canvas.width = 512
+  canvas.height = 512
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return new THREE.CanvasTexture(canvas)
+  ctx.fillStyle = '#fff'
+  ctx.fillRect(0, 0, 512, 512)
+  ctx.fillStyle = '#000'
+  ctx.beginPath()
+  ctx.arc(256, 256, 40, 0, Math.PI * 2)
+  ctx.fill()
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.needsUpdate = true
+  return texture
 }
 
-function InkRing({ play }: { play: number }) {
-  const pathRef = useRef<SVGPathElement>(null)
-  const path = inkPath()
-
-  useGSAP(() => {
-    const line = pathRef.current
-    if (!line) return
-    const length = line.getTotalLength()
-    line.style.strokeDasharray = `${length}`
-    gsap.fromTo(line, { strokeDashoffset: length }, { strokeDashoffset: 0, duration: 0.85, ease: 'none' })
-  }, { dependencies: [play] })
-
-  return (
-    <path ref={pathRef} d={path} fill="none" stroke="#161616" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round" />
-  )
-}
-
-function inkPath() {
-  let description = ''
-  for (let loop = 0; loop < 2; loop += 1) {
-    const points = 96
-    const stop = loop === 0 ? points : Math.round(points * 0.9)
-    for (let point = 0; point <= stop; point += 1) {
-      const angle = (point / points) * Math.PI * 2 - 0.5 + loop * 0.35
-      const wobble = Math.sin(angle * 2 + loop * 1.4) * 1.15 + Math.sin(angle * 5 + 0.6) * 0.45
-      const radiusX = 44 + loop * 2.4 + wobble
-      const radiusY = 45.2 + loop * 1.2 + wobble * 0.55
-      const x = 50 + Math.cos(angle) * radiusX
-      const y = 51 + Math.sin(angle) * radiusY + loop * 1.8
-      description += `${point === 0 ? (description ? ' M ' : 'M ') : ' L '}${x.toFixed(2)} ${y.toFixed(2)}`
-    }
-  }
-  return description
-}
-
-function makePrint(src: string) {
-  return new Promise<string>((resolve) => {
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image()
-    image.onload = () => resolve(drawPrint(image))
-    image.onerror = () => resolve('')
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error(src))
     image.src = src
   })
 }
 
-function drawPrint(image: HTMLImageElement) {
+async function makePrint(src: string, lines: string[]) {
+  const image = await loadImage(src)
+  await document.fonts.load('64px "LXGW WenKai"').catch(() => undefined)
+  return drawPrint(image, lines)
+}
+
+function drawPrint(image: HTMLImageElement, lines: string[]) {
   const size = 1024
   const canvas = document.createElement('canvas')
   canvas.width = size
   canvas.height = size
   const ctx = canvas.getContext('2d')
-  if (!ctx) return ''
+  if (!ctx) return canvas
 
   const [red, green, blue] = fieldColor(image)
   ctx.beginPath()
@@ -707,18 +609,14 @@ function drawPrint(image: HTMLImageElement) {
   ctx.fillStyle = vignette
   ctx.fillRect(0, 0, size, size)
 
-  ctx.save()
-  ctx.globalCompositeOperation = 'soft-light'
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)'
-  ctx.lineWidth = 1
-  for (let radius = size * 0.2; radius < size * 0.49; radius += 7) {
-    ctx.beginPath()
-    ctx.arc(size / 2, size / 2, radius, 0, Math.PI * 2)
-    ctx.stroke()
-  }
-  ctx.restore()
+  ctx.fillStyle = '#f7f3ea'
+  ctx.textAlign = 'center'
+  ctx.font = '64px "LXGW WenKai", serif'
+  lines.forEach((line, index) => {
+    ctx.fillText(line, size / 2, size * 0.24 + index * 72)
+  })
 
-  return canvas.toDataURL('image/jpeg', 0.86)
+  return canvas
 }
 
 function fieldColor(image: HTMLImageElement) {
