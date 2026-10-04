@@ -37,11 +37,11 @@ function useStageSize(ref: RefObject<HTMLElement | null>) {
 }
 
 function stageLayout(w: number, h: number, narrow: boolean) {
-  const disc = clamp(Math.min(w * (narrow ? 0.72 : 0.36), h * (narrow ? 0.42 : 0.54)), 200, 520)
-  const gap = disc * (narrow ? 0.78 : 0.98)
-  const anchorX = w * (narrow ? 0.5 : 0.5)
+  const disc = clamp(Math.min(w * (narrow ? 0.78 : 0.4), h * (narrow ? 0.46 : 0.6)), 220, 580)
+  const gap = disc * (narrow ? 0.72 : 0.8)
+  const anchorX = w * (narrow ? 0.5 : 0.46)
   const anchorY = narrow ? h * 0.58 : h * 0.5
-  const scaleStep = narrow ? 0.16 : 0.48
+  const scaleStep = narrow ? 0.2 : 0.34
   return { disc, gap, anchorX, anchorY, scaleStep }
 }
 
@@ -55,13 +55,13 @@ function wobble(radius: number, seed: number) {
       Math.sin(turn * 5 + seed * 1.6) * 0.9 +
       Math.sin(turn * 9 + seed * 0.4) * 0.45
     const x = 50 + Math.cos(turn) * (radius + wave)
-    const y = 46 + Math.sin(turn) * (radius * 0.9 + wave * 0.85)
+    const y = 50 + Math.sin(turn) * (radius * 0.96 + wave)
     path += `${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)} `
   }
-  return `${path}Z`
+  return path
 }
 
-const ringPaths = [wobble(40, 0.4), wobble(36.2, 1.3)]
+const ringPaths = [wobble(46, 0.6), wobble(41.5, 2.1)]
 
 export default function Internships() {
   const narrow = useNarrowScreen()
@@ -79,6 +79,7 @@ export default function Internships() {
   const showDetailRef = useRef<(index: number) => void>(() => {})
   const dragOrigin = useRef({ x: 0, y: 0, progress: 0, pointer: 0, moved: 0, last: 0, time: 0, hit: null as number | null })
   const loopRef = useRef(0)
+  const glideRef = useRef<{ from: number; to: number; start: number } | null>(null)
   const [progress, setProgress] = useState(0)
   const [detail, setDetail] = useState<number | null>(null)
   const [indexOpen, setIndexOpen] = useState(false)
@@ -104,19 +105,22 @@ export default function Internships() {
       const max = count - 1
       let next = progressRef.current
       let velocity = velocityRef.current
-      if (!draggingRef.current && !reducedRef.current) {
-        const target = targetRef.current
-        if (target !== null) {
-          const delta = target - next
-          if (Math.abs(delta) < 0.0015) {
-            next = target
-            velocity = 0
-            targetRef.current = null
-          } else {
-            next += delta * (1 - Math.pow(0.8, dt))
-            velocity = 0
-          }
-        } else if (
+      const glide = glideRef.current
+      if (!draggingRef.current && !reducedRef.current && glide) {
+        const t = clamp((now - glide.start) / 680, 0, 1)
+        const eased = t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2
+        next = glide.from + (glide.to - glide.from) * eased
+        velocity = 0
+        if (t >= 1) {
+          next = glide.to
+          glideRef.current = null
+          targetRef.current = null
+        }
+        velocityRef.current = 0
+        progressRef.current = next
+        setProgress(next)
+      } else if (!draggingRef.current && !reducedRef.current) {
+        if (
           Math.abs(velocity) > 0.0008 ||
           next < -0.001 ||
           next > max + 0.001 ||
@@ -150,6 +154,7 @@ export default function Internships() {
       }
       const busy =
         draggingRef.current ||
+        glideRef.current !== null ||
         targetRef.current !== null ||
         Math.abs(velocityRef.current) > 0.0008 ||
         next < -0.001 ||
@@ -171,11 +176,13 @@ export default function Internships() {
     const next = clamp(index, 0, count - 1)
     velocityRef.current = 0
     if (reduced) {
+      glideRef.current = null
       targetRef.current = null
       progressRef.current = next
       setProgress(next)
       return
     }
+    glideRef.current = { from: progressRef.current, to: next, start: performance.now() }
     targetRef.current = next
     kick()
   }
@@ -209,10 +216,10 @@ export default function Internships() {
       if (now < lockedUntil) return
       const dominant = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
       pending += dominant
-      if (Math.abs(pending) < 48) return
+      if (Math.abs(pending) < 36) return
       const direction = pending > 0 ? 1 : -1
       pending = 0
-      lockedUntil = now + 340
+      lockedUntil = now + 90
       const current = targetRef.current ?? Math.round(progressRef.current)
       goToRef.current(current + direction)
     }
@@ -260,6 +267,7 @@ export default function Internships() {
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || detail !== null) return
     draggingRef.current = true
+    glideRef.current = null
     targetRef.current = null
     velocityRef.current = 0
     dragOrigin.current = {
@@ -313,8 +321,8 @@ export default function Internships() {
       goToRef.current(Math.round(progressRef.current))
       return
     }
-    if (reducedRef.current) goToRef.current(Math.round(progressRef.current))
-    else kick()
+    const flicked = progressRef.current + velocityRef.current * 2.4
+    goToRef.current(Math.round(flicked))
   }
 
   const quoteWidth = narrow ? Math.min(280, w - 48) : Math.min(220, gap * 0.68)
@@ -390,7 +398,7 @@ export default function Internships() {
                       width: disc,
                       height: disc,
                       zIndex: 2 + index,
-                      transform: `translate(-50%, -50%) rotateX(12deg) rotateY(-26deg) scale(${pose.scale})`,
+                      transform: `translate(-50%, -50%) rotateX(8deg) rotateY(-18deg) scale(${pose.scale})`,
                       transformStyle: 'preserve-3d',
                       containerType: 'inline-size',
                     }}
@@ -400,23 +408,7 @@ export default function Internships() {
                 </div>
               )
             })}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute"
-              style={{
-                left: anchorX,
-                top: anchorY,
-                width: disc * 1.22,
-                height: disc * 1.08,
-                transform: 'translate(-50%, -52%)',
-                zIndex: 30,
-              }}
-            >
-              <svg viewBox="0 0 100 92" className="pointer-events-none size-full overflow-visible">
-                <path d={ringPaths[0]} fill="none" stroke={ink} strokeWidth="0.9" />
-                <path d={ringPaths[1]} fill="none" stroke={ink} strokeWidth="0.75" />
-              </svg>
-            </div>
+            <SelectionRing progress={progress} count={count} poseFor={poseFor} disc={disc} />
             {quoteIndexes.map((index) => {
               const pose = poseFor(index)
               if (pose.x < quoteWidth * 0.4 || pose.x > w - quoteWidth * 0.4) return null
@@ -485,6 +477,47 @@ function discIndexAt(x: number, y: number) {
     if (index !== null && index !== undefined) return Number(index)
   }
   return null
+}
+
+function SelectionRing({
+  progress,
+  count,
+  poseFor,
+  disc,
+}: {
+  progress: number
+  count: number
+  poseFor: (index: number) => { x: number; y: number; scale: number }
+  disc: number
+}) {
+  const base = clamp(Math.floor(progress), 0, Math.max(0, count - 1))
+  const next = clamp(base + 1, 0, Math.max(0, count - 1))
+  const frac = progress - Math.floor(progress)
+  const handoff = frac < 0.32 ? 0 : frac > 0.68 ? 1 : (frac - 0.32) / 0.36
+  const blend = handoff * handoff * (3 - 2 * handoff)
+  const from = poseFor(base)
+  const to = poseFor(next)
+  const scale = from.scale + (to.scale - from.scale) * blend
+  const size = disc * scale * 1.46
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute"
+      style={{
+        left: from.x + (to.x - from.x) * blend,
+        top: from.y + (to.y - from.y) * blend,
+        width: size,
+        height: size * 0.96,
+        transform: 'translate(-50%, -50%)',
+        zIndex: 40,
+      }}
+    >
+      <svg viewBox="0 0 100 100" className="pointer-events-none size-full overflow-visible">
+        <path d={ringPaths[0]} fill="none" stroke={ink} strokeWidth="1.15" strokeLinecap="round" />
+        <path d={ringPaths[1]} fill="none" stroke={ink} strokeWidth="0.9" strokeLinecap="round" />
+      </svg>
+    </div>
+  )
 }
 
 function CreditRow({ label, children }: { label: string; children: ReactNode }) {
