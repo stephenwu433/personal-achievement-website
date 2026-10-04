@@ -37,31 +37,16 @@ function useStageSize(ref: RefObject<HTMLElement | null>) {
 }
 
 function stageLayout(w: number, h: number, narrow: boolean) {
-  const disc = clamp(Math.min(w * (narrow ? 0.78 : 0.4), h * (narrow ? 0.46 : 0.6)), 220, 580)
-  const gap = disc * (narrow ? 0.72 : 0.8)
-  const anchorX = w * (narrow ? 0.5 : 0.46)
-  const anchorY = narrow ? h * 0.58 : h * 0.5
-  const scaleStep = narrow ? 0.2 : 0.34
+  const disc = clamp(Math.min(w * (narrow ? 0.7 : 0.34), h * (narrow ? 0.42 : 0.5)), 200, 520)
+  const gap = disc * (narrow ? 0.62 : 0.58)
+  const anchorX = w * (narrow ? 0.48 : 0.5)
+  const anchorY = narrow ? h * 0.56 : h * 0.44
+  const scaleStep = narrow ? 0.22 : 0.46
   return { disc, gap, anchorX, anchorY, scaleStep }
 }
 
-function wobble(radius: number, seed: number) {
-  const points = 56
-  let path = ''
-  for (let i = 0; i <= points; i += 1) {
-    const turn = (i / points) * Math.PI * 2
-    const wave =
-      Math.sin(turn * 2 + seed) * 1.7 +
-      Math.sin(turn * 5 + seed * 1.6) * 0.9 +
-      Math.sin(turn * 9 + seed * 0.4) * 0.45
-    const x = 50 + Math.cos(turn) * (radius + wave)
-    const y = 50 + Math.sin(turn) * (radius * 0.96 + wave)
-    path += `${i === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)} `
-  }
-  return path
-}
-
-const ringPaths = [wobble(46, 0.6), wobble(41.5, 2.1)]
+const ringPath =
+  'M14 46 C 6 24, 22 8, 48 11 C 74 6, 98 24, 94 50 C 102 78, 76 104, 48 96 C 18 108, 2 78, 14 46'
 
 export default function Internships() {
   const narrow = useNarrowScreen()
@@ -358,7 +343,7 @@ export default function Internships() {
       <div
         ref={stageRef}
         className={`absolute inset-0 ${detail === null ? 'cursor-grab active:cursor-grabbing' : ''}`}
-        style={{ touchAction: 'none', perspective: '1500px' }}
+        style={{ touchAction: 'none', perspective: '980px', zIndex: 1 }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -398,7 +383,7 @@ export default function Internships() {
                       width: disc,
                       height: disc,
                       zIndex: 2 + index,
-                      transform: `translate(-50%, -50%) rotateX(8deg) rotateY(-18deg) scale(${pose.scale})`,
+                      transform: `translate(-50%, -50%) rotateX(18deg) rotateY(-34deg) scale(${pose.scale})`,
                       transformStyle: 'preserve-3d',
                       containerType: 'inline-size',
                     }}
@@ -419,10 +404,10 @@ export default function Internships() {
                   className="pointer-events-none absolute text-center"
                   style={{
                     left: pose.x,
-                    top: pose.y + (disc * pose.scale) / 2 + (narrow ? 18 : 28),
+                    top: pose.y + (disc * pose.scale) / 2 + (narrow ? 36 : 72),
                     width: quoteWidth,
                     transform: 'translateX(-50%)',
-                    zIndex: 12,
+                    zIndex: 20,
                   }}
                 >
                   <p className="tracking-[0.35em]">★★★★</p>
@@ -440,7 +425,7 @@ export default function Internships() {
       {detail === null ? (
         <aside
           key={current.slug}
-          className={`absolute z-16 ${narrow ? 'inset-x-5 top-16' : 'top-20 left-8 w-[250px]'}`}
+          className={`absolute z-20 ${narrow ? 'inset-x-5 top-16' : 'top-20 left-8 w-[250px]'}`}
           style={reduced ? undefined : { animation: 'internship-credit-in 420ms ease' }}
         >
           <h1 className="max-w-[16rem] text-[2.65rem] leading-tight font-normal" style={serif}>
@@ -498,23 +483,22 @@ function SelectionRing({
   const from = poseFor(base)
   const to = poseFor(next)
   const scale = from.scale + (to.scale - from.scale) * blend
-  const size = disc * scale * 1.46
+  const size = disc * scale * 1.22
   return (
     <div
       aria-hidden="true"
       className="pointer-events-none absolute"
       style={{
         left: from.x + (to.x - from.x) * blend,
-        top: from.y + (to.y - from.y) * blend,
+        top: from.y + (to.y - from.y) * blend + size * 0.04,
         width: size,
-        height: size * 0.96,
+        height: size * 1.05,
         transform: 'translate(-50%, -50%)',
-        zIndex: 40,
+        zIndex: 8,
       }}
     >
-      <svg viewBox="0 0 100 100" className="pointer-events-none size-full overflow-visible">
-        <path d={ringPaths[0]} fill="none" stroke={ink} strokeWidth="1.15" strokeLinecap="round" />
-        <path d={ringPaths[1]} fill="none" stroke={ink} strokeWidth="0.9" strokeLinecap="round" />
+      <svg viewBox="0 0 100 110" className="pointer-events-none size-full overflow-visible">
+        <path d={ringPath} fill="none" stroke={ink} strokeWidth="1.6" strokeLinecap="round" />
       </svg>
     </div>
   )
