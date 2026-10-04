@@ -22,7 +22,7 @@ export default function InternshipDisc({ item }: { item: Internship }) {
         />
         <p
           className="absolute inset-x-[8%] top-[14%] text-center text-white"
-          style={{ fontSize: '7.5cqi', textShadow: '0 1px 6px rgba(0,0,0,0.45)' }}
+          style={{ fontFamily: '"Noto Serif SC", "Noto Sans SC", serif', fontSize: '7.5cqi', textShadow: '0 1px 6px rgba(0,0,0,0.45)' }}
         >
           {item.title}
         </p>

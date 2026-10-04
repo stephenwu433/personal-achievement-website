@@ -441,9 +441,9 @@ export default function Internships() {
         <aside
           key={current.slug}
           className={`absolute z-16 ${narrow ? 'inset-x-5 top-16' : 'top-20 left-8 w-[250px]'}`}
-          style={reduced ? undefined : { animation: 'internship-credit-in 460ms ease' }}
+          style={reduced ? undefined : { animation: 'internship-credit-in 420ms ease' }}
         >
-          <h1 className="max-w-[16rem] text-[2.4rem] leading-tight font-medium" style={serif}>
+          <h1 className="max-w-[16rem] text-[2.65rem] leading-tight font-normal" style={serif}>
             {current.title}
           </h1>
           <dl className="mt-8">
@@ -592,6 +592,7 @@ function IndexMenu({
       className={`absolute z-40 max-h-80 w-72 overflow-auto bg-white py-2 shadow-[0_18px_40px_rgba(0,0,0,0.16)] ${
         narrow ? 'right-0 bottom-full mb-3' : 'top-full left-1/2 mt-3 -translate-x-1/2'
       }`}
+      style={{ animation: 'internship-credit-in 220ms ease' }}
     >
       {internships.map((item, index) => {
         const selected = index === active
@@ -616,7 +617,11 @@ function IndexMenu({
 function DetailView({ index, onStep }: { index: number; onStep: (index: number) => void }) {
   const item = internships[index]
   return (
-    <article className="absolute inset-0 z-20 overflow-y-auto" style={{ background: pageBg }}>
+    <article
+      key={item.slug}
+      className="absolute inset-0 z-20 overflow-y-auto"
+      style={{ background: pageBg, animation: 'internship-credit-in 480ms ease' }}
+    >
       {index > 0 ? (
         <button
           type="button"
@@ -638,7 +643,7 @@ function DetailView({ index, onStep }: { index: number; onStep: (index: number) 
         </button>
       ) : null}
       <div className="mx-auto max-w-3xl px-8 pt-24 pb-20">
-        <h1 className="text-center text-5xl leading-tight font-medium" style={serif}>
+        <h1 className="text-center text-5xl leading-tight font-normal" style={serif}>
           {item.title}
         </h1>
         <p className="mt-8 border-t border-[#1a1a1a] pt-3 text-center text-sm leading-6">
