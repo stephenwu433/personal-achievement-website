@@ -2,13 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
-import { CustomEase } from 'gsap/CustomEase'
 import { Observer } from 'gsap/Observer'
 import * as THREE from 'three'
 import { profile, sections } from '@/src/content'
 
-gsap.registerPlugin(useGSAP, Observer, CustomEase)
-CustomEase.create('discGlide', '0.32, 0.72, 0, 1')
+gsap.registerPlugin(useGSAP, Observer)
 
 type Place = {
   id: string
@@ -37,7 +35,6 @@ type Intro = {
   rise: number
   fan: number
   spin: number
-  count: number
 }
 
 function prefersReducedMotion() {
@@ -45,12 +42,11 @@ function prefersReducedMotion() {
 }
 
 function discPose(delta: number, active: boolean) {
-  const angle = delta * 0.35
-  const x = Math.sin(angle) * 2.3 * 2.4
-  const z = -Math.cos(angle) * 2.4 + 2.4
-  const y = active ? 0.06 : 0
-  const scale = active ? 1 : Math.max(0.8, 1 - Math.abs(delta) * 0.2)
-  return { x, y, z, scale, angle }
+  const x = delta * 1.22 + 0.42
+  const z = delta * 1.15
+  const y = -delta * 0.05 + 0.18
+  const scale = active ? 1 : delta > 0 ? 1 : Math.max(0.7, 1 + delta * 0.14)
+  return { x, y, z, scale }
 }
 
 function scribblePoints(loop: number) {
@@ -60,7 +56,7 @@ function scribblePoints(loop: number) {
   for (let point = 0; point <= stop; point += 1) {
     const angle = (point / count) * Math.PI * 2 - 0.45 + loop * 0.55
     const wobble = Math.sin(angle * 2 + loop * 1.3) * 0.028 + Math.sin(angle * 5.2) * 0.012
-    const radius = 1.07 + loop * 0.04 + wobble
+    const radius = 1.045 + loop * 0.035 + wobble
     points.push(new THREE.Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.05))
   }
   return points
@@ -70,8 +66,6 @@ export default function Internships() {
   const rootRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const quoteRefs = useRef<Array<HTMLDivElement | null>>([])
-  const introRef = useRef<HTMLDivElement>(null)
-  const countRef = useRef<HTMLSpanElement>(null)
   const [prints, setPrints] = useState<HTMLCanvasElement[]>([])
   const [active, setActive] = useState(0)
   const [chrome, setChrome] = useState(false)
@@ -107,13 +101,12 @@ export default function Internships() {
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       renderer.outputColorSpace = THREE.SRGBColorSpace
       const scene = new THREE.Scene()
-      const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100)
-      camera.position.set(0, 0, 4.4)
-      camera.lookAt(0, 0, 0)
+      const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100)
+      camera.position.set(0, 0.05, 5.6)
+      camera.lookAt(0, 0.15, 0)
       const gallery = new THREE.Group()
-      gallery.rotation.x = THREE.MathUtils.degToRad(-30)
-      gallery.rotation.y = THREE.MathUtils.degToRad(-30)
-      gallery.scale.setScalar(1.02)
+      gallery.rotation.x = THREE.MathUtils.degToRad(-6)
+      gallery.scale.setScalar(0.9)
       scene.add(gallery)
 
       const hole = holeTexture()
@@ -123,20 +116,25 @@ export default function Internships() {
         texture.colorSpace = THREE.SRGBColorSpace
         texture.anisotropy = 8
         const rim = new THREE.Mesh(
-          new THREE.RingGeometry(0.985, 1.035, 80),
-          new THREE.MeshBasicMaterial({ color: 0x2c2c2c, side: THREE.DoubleSide }),
+          new THREE.RingGeometry(0.993, 1.012, 80),
+          new THREE.MeshBasicMaterial({ color: 0x6e6e6e, side: THREE.DoubleSide }),
         )
-        rim.position.z = -0.012
+        rim.position.z = -0.008
         const mesh = new THREE.Mesh(
           new THREE.CircleGeometry(1, 80),
-          new THREE.MeshBasicMaterial({ map: texture, alphaMap: hole, alphaTest: 0.5, side: THREE.DoubleSide }),
+          new THREE.MeshBasicMaterial({ map: texture, alphaMap: hole, alphaTest: 0.4, side: THREE.DoubleSide }),
         )
+        const lip = new THREE.Mesh(
+          new THREE.RingGeometry(0.128, 0.15, 64),
+          new THREE.MeshBasicMaterial({ color: 0x8d8d8d, side: THREE.DoubleSide }),
+        )
+        lip.position.z = 0.018
         const hub = new THREE.Mesh(
-          new THREE.RingGeometry(0.16, 0.27, 64),
-          new THREE.MeshBasicMaterial({ color: 0xf4f4f4, side: THREE.DoubleSide }),
+          new THREE.RingGeometry(0.15, 0.205, 64),
+          new THREE.MeshBasicMaterial({ color: 0xf2f2f2, side: THREE.DoubleSide }),
         )
-        hub.position.z = 0.02
-        group.add(rim, mesh, hub)
+        hub.position.z = 0.024
+        group.add(rim, mesh, lip, hub)
         gallery.add(group)
         return { group, mesh, spin: 0 }
       })
@@ -150,8 +148,8 @@ export default function Internships() {
       })
 
       const intro: Intro = reduced
-        ? { rise: 1, fan: 1, spin: 0, count: 100 }
-        : { rise: 0, fan: 0, spin: 1, count: 0 }
+        ? { rise: 1, fan: 1, spin: 0 }
+        : { rise: 0, fan: 0, spin: 1 }
       const play = { index: 0 }
       const tilt = { x: 0, y: 0 }
       let target = 0
@@ -206,26 +204,24 @@ export default function Internships() {
           const delta = raw * intro.fan
           const settled = Math.abs(raw) < 0.45 && intro.fan > 0.92
           const pose = discPose(delta, settled && index === focus)
-          disc.group.position.set(pose.x, pose.y - (1 - intro.rise) * 3.2, pose.z + (1 - intro.fan) * index * 0.05)
-          disc.group.rotation.set(index === focus ? tilt.x : 0, -pose.angle + intro.spin * Math.PI * 0.5, disc.spin + (index === focus ? tilt.y : 0))
+          disc.group.position.set(pose.x, pose.y - (1 - intro.rise) * 2.6, pose.z + (1 - intro.fan) * index * 0.04)
+          disc.group.rotation.set(index === focus ? tilt.x : 0, intro.spin * Math.PI * 0.5, disc.spin + (index === focus ? tilt.y : 0))
           const grown = 0.62 + 0.38 * intro.rise
           disc.group.scale.setScalar(pose.scale * grown)
           disc.group.visible = Math.abs(raw) < 3.4
         })
 
-        const focusPose = discPose(0, true)
-        const showRing = intro.fan > 0.98
+        const host = discs[focus]
+        const showRing = intro.fan > 0.98 && Boolean(host)
         rings.forEach((ring) => {
-          if (ring.parent !== gallery) gallery.add(ring)
           ring.visible = showRing
           ringMaterial.opacity = showRing ? 1 : 0
-          ring.position.set(focusPose.x, focusPose.y - (1 - intro.rise) * 3.2, focusPose.z + 0.08)
-          ring.rotation.set(tilt.x, intro.spin * Math.PI * 0.5, tilt.y)
-          ring.scale.setScalar(0.62 + 0.38 * intro.rise)
+          if (!host) return
+          if (ring.parent !== host.group) host.group.add(ring)
+          ring.position.set(0, 0, 0.045)
+          ring.rotation.set(0, 0, 0)
+          ring.scale.set(1, 1, 1)
         })
-
-        if (countRef.current) countRef.current.textContent = String(Math.round(intro.count))
-        if (introRef.current) introRef.current.style.opacity = String(Math.max(0, 1 - intro.fan) * Math.min(1, intro.rise * 2))
 
         const spots: { x: number; top: number }[] = []
         const quoteFor = focus > 0 ? [focus - 1, focus] : [focus, focus + 1]
@@ -234,9 +230,13 @@ export default function Internships() {
           if (!disc || intro.fan < 0.98) return
           disc.group.getWorldPosition(center)
           const origin = project(center)
-          const lower = Math.max(project(disc.group.localToWorld(edge.set(0, 1, 0))).y, project(disc.group.localToWorld(edge.set(0, -1, 0))).y)
-          if (origin.x < width * 0.18 || origin.x > width * 0.78) return
-          const top = lower + 18
+          let lower = origin.y
+          for (let step = 0; step < 8; step += 1) {
+            const angle = (step / 8) * Math.PI * 2
+            lower = Math.max(lower, project(disc.group.localToWorld(edge.set(Math.cos(angle), Math.sin(angle), 0))).y)
+          }
+          if (origin.x < width * 0.2 || origin.x > width * 0.72) return
+          const top = lower + 34
           if (top > height - 64) return
           spots.push({ x: origin.x, top })
         })
@@ -385,8 +385,8 @@ export default function Internships() {
         setActive(0)
       } else {
         introTween = gsap.timeline({ onUpdate: layout })
-        introTween.to(intro, { rise: 1, spin: 0, count: 100, duration: 1.45, ease: 'power2.inOut' }, 0.35)
-        introTween.to(intro, { fan: 1, duration: 1.15, ease: 'power3.inOut' }, 1.45)
+        introTween.to(intro, { rise: 1, spin: 0, duration: 1.2, ease: 'power2.inOut' }, 0.15)
+        introTween.to(intro, { fan: 1, duration: 1.05, ease: 'power3.inOut' }, 1.05)
         introTween.call(() => {
           if (alive) setChrome(true)
         })
@@ -439,17 +439,6 @@ export default function Internships() {
       </header>
 
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" style={{ touchAction: 'none' }} />
-
-      <div ref={introRef} className="pointer-events-none absolute inset-0 z-20" style={{ opacity: 0 }}>
-        <p className="absolute top-1/2 left-[4vw] -translate-y-1/2 text-[12px] tracking-[0.28em] text-black/55">实习目录</p>
-        <p
-          className="absolute top-1/2 left-[18vw] -translate-y-1/2 text-[clamp(84px,10vw,148px)] leading-none font-normal"
-          style={{ fontFamily: '"Iowan Old Style", Palatino, "Noto Serif SC", serif' }}
-        >
-          <span ref={countRef}>0</span>
-        </p>
-        <p className="absolute top-1/2 right-[4vw] -translate-y-1/2 text-[13px] tracking-[0.22em] text-black/55">01</p>
-      </div>
 
       <div
         className="pointer-events-none absolute top-[6.5vh] left-[4.2vw] z-30 w-[min(22vw,270px)]"
@@ -565,7 +554,7 @@ function holeTexture() {
   ctx.fillRect(0, 0, 512, 512)
   ctx.fillStyle = '#000'
   ctx.beginPath()
-  ctx.arc(256, 256, 40, 0, Math.PI * 2)
+  ctx.arc(256, 256, 33, 0, Math.PI * 2)
   ctx.fill()
   const texture = new THREE.CanvasTexture(canvas)
   texture.needsUpdate = true
