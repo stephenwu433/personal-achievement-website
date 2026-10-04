@@ -57,17 +57,22 @@ function smooth(value: number) {
   return t * t * (3 - 2 * t)
 }
 
+function discScale(delta: number) {
+  if (delta >= 0) return Math.min(1 + delta * 0.9, 2.35)
+  return Math.max(1 + delta * 0.23, 0.5)
+}
+
 function rowPose(delta: number, width: number, height: number, narrow: boolean) {
-  const unit = narrow ? Math.min(height * 0.34, width * 0.48) : Math.min(height * 0.36, width * 0.26)
-  const scale = delta >= 0 ? clamp(1 + delta * 0.46, 1, 1.72) : clamp(1 + delta * 0.28, 0.46, 1)
-  const size = unit * scale
-  const x = width * (narrow ? 0.46 : 0.52) + delta * unit * (narrow ? 0.58 : 0.78)
-  const y = height * (narrow ? 0.54 : 0.42)
-  const z = delta * 28
+  const unit = narrow ? Math.min(height * 0.4, width * 0.6) : Math.min(height * 0.46, width * 0.3)
+  const size = unit * discScale(delta)
+  const anchor = width * (narrow ? 0.5 : 0.56)
+  const step = unit * (delta >= 0 ? 1.02 : 0.55)
+  const x = anchor + delta * step
+  const y = height * (narrow ? 0.76 : 0.74) - size * 0.5
   let opacity = 1
-  if (delta < -2.6) opacity = clamp((delta + 3.4) / 0.8)
-  if (delta > 2.35) opacity = clamp((3.05 - delta) / 0.7)
-  return { size, x, y, z, rx: 0, ry: 0, rz: 0, opacity }
+  if (delta < -2.35) opacity = clamp((delta + 3.2) / 0.85)
+  if (delta > 2.15) opacity = clamp((3.05 - delta) / 0.9)
+  return { size, x, y, z: 0, rx: 0, ry: 0, rz: 0, opacity }
 }
 
 export default function Internships() {
@@ -102,7 +107,8 @@ export default function Internships() {
     const openT = smooth(state.open)
     const landT = smooth(state.settle)
     const ringBoxes: { x: number; y: number; size: number; z: number }[] = []
-    const quoteSpots: { x: number; top: number }[] = []
+    const laid: { x: number; y: number; size: number; opacity: number }[] = []
+    const quoteSpots: ({ x: number; top: number } | undefined)[] = []
     const focusIndex = Math.round(state.index)
 
     discRefs.current.forEach((node, index) => {
@@ -148,17 +154,27 @@ export default function Internships() {
       const shadow = shadowRefs.current[index]
       if (shadow) {
         shadow.style.left = `${x}px`
-        shadow.style.top = `${y + size * 0.36}px`
-        shadow.style.width = `${size * 0.76}px`
-        shadow.style.height = `${size * 0.16}px`
-        shadow.style.opacity = String(0.28 * opacity * Math.max(openT, landT))
+        shadow.style.top = `${y + size * 0.47}px`
+        shadow.style.width = `${size * 0.72}px`
+        shadow.style.height = `${size * 0.12}px`
+        shadow.style.opacity = String(0.22 * opacity * Math.max(openT, landT))
       }
 
+      laid[index] = { x, y, size, opacity }
       if (focusIndex === index) ringBoxes.push({ x, y, size, z: pose.z })
-      const quoteTop = y + size * 0.64
-      if ((index === focusIndex || index === focusIndex + 1) && x > width * 0.18 && x < width * 0.78 && quoteTop < height - 36) {
-        quoteSpots.push({ x, top: quoteTop })
-      }
+    })
+
+    const quoteFor: number[] = []
+    if (focusIndex > 0) quoteFor.push(focusIndex - 1)
+    quoteFor.push(focusIndex)
+    if (quoteFor.length < 2 && focusIndex + 1 < places.length) quoteFor.push(focusIndex + 1)
+    quoteFor.forEach((index, slot) => {
+      const pose = laid[index]
+      if (!pose || pose.opacity < 0.4) return
+      if (pose.x < width * 0.16 || pose.x > width * 0.8) return
+      const top = pose.y + pose.size * 0.74 + 8
+      if (top > height - 72) return
+      quoteSpots[slot] = { x: pose.x, top }
     })
 
     if (countRef.current) countRef.current.textContent = String(Math.round(state.count))
@@ -173,8 +189,8 @@ export default function Internships() {
     if (ringNode && ringBox) {
       ringNode.style.left = `${ringBox.x}px`
       ringNode.style.top = `${ringBox.y}px`
-      ringNode.style.width = `${ringBox.size * 1.16}px`
-      ringNode.style.height = `${ringBox.size * 1.16}px`
+      ringNode.style.width = `${ringBox.size * 1.26}px`
+      ringNode.style.height = `${ringBox.size * 1.26}px`
       ringNode.style.transform = `translate(-50%, -50%) translateZ(${ringBox.z + 36}px)`
       ringNode.style.opacity = String(clamp(state.settle))
       ringNode.style.zIndex = '80'
@@ -362,11 +378,8 @@ export default function Internships() {
         ) : null}
       </div>
 
-      <div className="absolute inset-0" style={{ perspective: '1400px', perspectiveOrigin: '56% 46%' }}>
-        <div
-          className="absolute inset-0"
-          style={{ transformStyle: 'preserve-3d', transform: 'rotateX(-18deg) rotateY(-26deg)', transformOrigin: '52% 48%' }}
-        >
+      <div className="absolute inset-0">
+        <div className="absolute inset-0">
         {places.map((place, index) => (
           <button
             key={place.id}
