@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
-import SiteHeader from '@/src/components/SiteHeader'
+import { profile, sections } from '@/src/content'
 
 gsap.registerPlugin(useGSAP)
 
@@ -18,81 +19,206 @@ const places: Place[] = [
   { id: 'gaodun', name: '高顿', image: '/internships/gaodun.png' },
 ]
 
-const serif = '"Iowan Old Style", Palatino, "Songti SC", "Noto Serif SC", serif'
+const serif = '"Iowan Old Style", Palatino, "Palatino Linotype", "Songti SC", "Noto Serif SC", "Droid Sans Fallback", serif'
+const paper = '#f3f1ec'
+
+const REST_X = 24
+const REST_Y = -32
+const REST_Z = -16
 
 type Motion = {
   index: number
-  lean: number
-  intro: number
+  flip: number
+  arrive: number
   spin: number
   tiltX: number
   tiltY: number
+  lean: number
+}
+
+type DiscNodes = {
+  slot: HTMLButtonElement | null
+  tilt: HTMLDivElement | null
+  spin: HTMLDivElement | null
 }
 
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
+function clamp(value: number, min = 0, max = 1) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function lerp(from: number, to: number, amount: number) {
+  return from + (to - from) * amount
+}
+
+function smooth(value: number) {
+  const t = clamp(value)
+  return t * t * (3 - 2 * t)
+}
+
 export default function Internships() {
   const rootRef = useRef<HTMLDivElement>(null)
-  const discRefs = useRef<Array<HTMLButtonElement | null>>([])
-  const motion = useRef<Motion>({ index: 0, lean: 0, intro: 0, spin: 0, tiltX: 0, tiltY: 0 })
+  const discRefs = useRef<DiscNodes[]>(places.map(() => ({ slot: null, tilt: null, spin: null })))
+  const shadowRefs = useRef<Array<HTMLDivElement | null>>([])
+  const ringRef = useRef<SVGSVGElement>(null)
+  const motion = useRef<Motion>({ index: 0, flip: 0, arrive: 0, spin: 0, tiltX: 0, tiltY: 0, lean: 0 })
   const lock = useRef(false)
-  const drag = useRef<{ x: number; spin: number; moved: boolean; pointerId: number; target: HTMLDivElement } | null>(null)
+  const drag = useRef<{ x: number; y: number; spin: number; tiltX: number; moved: boolean; lastX: number; vx: number } | null>(null)
+  const settle = useRef<gsap.core.Tween | null>(null)
+  const wheelBank = useRef(0)
+  const [prints, setPrints] = useState<string[]>(() => places.map(() => ''))
+  const [ready, setReady] = useState(false)
   const [active, setActive] = useState(0)
   const [chrome, setChrome] = useState(false)
   const [open, setOpen] = useState(false)
+  const [ring, setRing] = useState(0)
   const [reduced] = useState(prefersReducedMotion)
   const openRef = useRef(false)
+  const chromeRef = useRef(false)
   openRef.current = open
+
+  const paint = () => {
+    const width = window.innerWidth
+    const height = window.innerHeight
+    const state = motion.current
+    const narrow = width < 800
+    const base = narrow ? Math.min(height * 0.36, width * 0.74) : Math.min(height * 0.5, width * 0.34, 540)
+    let ringBox: { x: number; y: number; size: number } | null = null
+
+    discRefs.current.forEach((node, index) => {
+      if (!node.slot || !node.tilt || !node.spin) return
+      const delta = index - state.index
+      const distance = Math.abs(delta)
+      const size = base * (1 + clamp(delta) * 0.12)
+      const homeX = width * (narrow ? 0.46 : 0.54) + delta * width * (narrow ? 0.62 : 0.43)
+      const homeY = height * (narrow ? 0.66 : 0.55) - clamp(delta) * height * (narrow ? 0.04 : 0.055)
+      const focus = distance < 0.42
+      const opening = focus && state.flip < 0.999
+      const faceIn = smooth(state.flip)
+      const x =
+        homeX +
+        (delta > 0.12 ? (1 - state.arrive) * width * 0.34 : 0) +
+        (opening ? (1 - faceIn) * (width * 0.5 - homeX) : 0)
+      const y = homeY + (opening ? (1 - faceIn) * height * -0.02 : 0)
+      const rx = (opening ? lerp(6, REST_X, faceIn) : REST_X) + (focus ? state.tiltX : 0)
+      const ry = (opening ? lerp(88, REST_Y, faceIn) : REST_Y * (focus ? 1 : 0.92)) + (focus ? state.tiltY * 0.35 : 0)
+      const rz = (opening ? lerp(0, focus ? REST_Z : REST_Z * 0.28, faceIn) : focus ? REST_Z : REST_Z * 0.28) + (focus ? state.lean : state.lean * 0.3)
+      let opacity = distance > 1.25 ? 0 : 1
+      if (delta > 0.15) opacity *= state.arrive
+      if (delta < -0.05) opacity *= state.flip > 0.92 ? clamp(1 + delta * 1.6) : 0
+
+      node.slot.style.left = `${x}px`
+      node.slot.style.top = `${y}px`
+      node.slot.style.width = `${size}px`
+      node.slot.style.height = `${size}px`
+      node.slot.style.zIndex = String(30 - Math.round(distance * 8) + (delta > 0.2 ? 3 : 0))
+      node.slot.style.visibility = opacity < 0.03 ? 'hidden' : 'visible'
+      node.slot.style.pointerEvents = opacity < 0.45 ? 'none' : 'auto'
+      node.slot.style.setProperty('--disc-opacity', String(opacity))
+      node.tilt.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)`
+      node.spin.style.transform = `rotateZ(${focus ? state.spin : 0}deg)`
+
+      const shadow = shadowRefs.current[index]
+      if (shadow) {
+        shadow.style.left = `${x}px`
+        shadow.style.top = `${y + size * 0.36}px`
+        shadow.style.width = `${size * 0.76}px`
+        shadow.style.height = `${size * 0.16}px`
+        shadow.style.opacity = String(0.34 * opacity * faceIn)
+      }
+
+      if (Math.round(state.index) === index) ringBox = { x, y, size }
+    })
+
+    const ringNode = ringRef.current
+    if (ringNode && ringBox) {
+      ringNode.style.left = `${ringBox.x}px`
+      ringNode.style.top = `${ringBox.y}px`
+      ringNode.style.width = `${ringBox.size * 1.28}px`
+      ringNode.style.height = `${ringBox.size * 1.28}px`
+    }
+  }
+
+  useEffect(() => {
+    let cancel = false
+    Promise.all(places.map((place) => makePrint(place.image))).then((urls) => {
+      if (cancel) return
+      setPrints(urls)
+      setReady(true)
+    })
+    return () => {
+      cancel = true
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    if (reduced) {
+      motion.current.flip = 1
+      motion.current.arrive = 1
+      chromeRef.current = true
+      setChrome(true)
+    }
+    paint()
+  }, [ready, reduced])
+
+  useGSAP(
+    () => {
+      paint()
+      if (reduced || !ready) return
+      const state = motion.current
+      const intro = gsap.timeline({
+        onUpdate: () => {
+          paint()
+          if (!chromeRef.current && state.flip > 0.86) {
+            chromeRef.current = true
+            setChrome(true)
+          }
+        },
+      })
+      intro.to(state, { flip: 1, duration: 1.55, delay: 0.8, ease: 'power3.inOut' })
+      intro.to(state, { arrive: 1, duration: 0.9, ease: 'power3.out' }, '-=0.42')
+
+      const onWheel = (event: WheelEvent) => {
+        if (openRef.current || state.flip < 0.98 || state.arrive < 0.98) return
+        event.preventDefault()
+        wheelBank.current += event.deltaY
+        if (Math.abs(wheelBank.current) < 36) return
+        const direction = wheelBank.current > 0 ? 1 : -1
+        wheelBank.current = 0
+        step(direction)
+      }
+      const onResize = () => paint()
+      window.addEventListener('wheel', onWheel, { passive: false })
+      window.addEventListener('resize', onResize)
+      return () => {
+        intro.kill()
+        window.removeEventListener('wheel', onWheel)
+        window.removeEventListener('resize', onResize)
+      }
+    },
+    { scope: rootRef, dependencies: [ready, reduced] },
+  )
 
   const syncActive = (index: number) => {
     const next = Math.min(places.length - 1, Math.max(0, Math.round(index)))
     setActive((current) => (current === next ? current : next))
   }
 
-  useGSAP(
-    () => {
-      if (reduced) return
-      const state = motion.current
-      const intro = gsap.to(state, {
-        intro: 1,
-        duration: 1.25,
-        delay: 0.35,
-        ease: 'power3.inOut',
-        onUpdate: () => {
-          paintDiscs(discRefs.current, state)
-          if (state.intro > 0.72) setChrome(true)
-        },
-        onComplete: () => setChrome(true),
-      })
-      const onWheel = (event: WheelEvent) => {
-        if (openRef.current || state.intro < 0.98) return
-        if (Math.abs(event.deltaY) < 12) return
-        event.preventDefault()
-        step(event.deltaY > 0 ? 1 : -1)
-      }
-      window.addEventListener('wheel', onWheel, { passive: false })
-      paintDiscs(discRefs.current, state)
-      return () => {
-        intro.kill()
-        window.removeEventListener('wheel', onWheel)
-      }
-    },
-    { scope: rootRef, dependencies: [reduced] },
-  )
-
   const step = (direction: number) => {
     const state = motion.current
     const next = Math.min(places.length - 1, Math.max(0, Math.round(state.index) + direction))
     if (lock.current || next === Math.round(state.index)) return
     lock.current = true
+    setRing(0)
     gsap.to(state, {
       index: next,
-      duration: 0.62,
+      duration: 0.78,
       ease: 'power3.inOut',
       onUpdate: () => {
-        paintDiscs(discRefs.current, state)
+        paint()
         syncActive(state.index)
       },
       onComplete: () => {
@@ -101,47 +227,26 @@ export default function Internships() {
     })
     gsap.fromTo(
       state,
-      { lean: direction * 18 },
-      {
-        lean: 0,
-        duration: 0.78,
-        ease: 'power3.out',
-        onUpdate: () => paintDiscs(discRefs.current, state),
-      },
+      { lean: direction * 16 },
+      { lean: 0, duration: 0.9, ease: 'power3.out', onUpdate: paint },
     )
   }
 
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (reduced || open || motion.current.intro < 0.98) return
-    drag.current = { x: event.clientX, spin: motion.current.spin, moved: false, pointerId: event.pointerId, target: event.currentTarget }
-  }
-
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    const bounds = event.currentTarget.getBoundingClientRect()
-    motion.current.tiltX = ((event.clientY - bounds.top) / bounds.height - 0.5) * -8
-    motion.current.tiltY = ((event.clientX - bounds.left) / bounds.width - 0.5) * 10
-    if (drag.current) {
-      const delta = event.clientX - drag.current.x
-      if (Math.abs(delta) > 6) {
-        drag.current.moved = true
-        drag.current.target.setPointerCapture(drag.current.pointerId)
-        motion.current.spin = drag.current.spin + delta * 0.35
-      }
-    }
-    paintDiscs(discRefs.current, motion.current)
-  }
-
-  const onPointerUp = () => {
-    const moved = drag.current?.moved
+  const releaseDrag = () => {
+    const current = drag.current
     drag.current = null
-    if (moved) {
-      gsap.to(motion.current, {
-        spin: 0,
-        duration: 1.1,
-        ease: 'power3.out',
-        onUpdate: () => paintDiscs(discRefs.current, motion.current),
-      })
-    }
+    if (!current?.moved) return
+    const state = motion.current
+    state.spin += current.vx * 0.55
+    settle.current?.kill()
+    settle.current = gsap.to(state, {
+      spin: 0,
+      tiltX: 0,
+      tiltY: 0,
+      duration: 1.15,
+      ease: 'power3.out',
+      onUpdate: paint,
+    })
   }
 
   useEffect(() => {
@@ -155,95 +260,217 @@ export default function Internships() {
 
   const current = places[active]
 
-  if (reduced) {
-    return (
-      <div className="min-h-dvh bg-[#f4f1ea] text-[#1a1a1a]">
-        <SiteHeader />
-        <main className="mx-auto grid max-w-5xl gap-10 px-6 py-16 sm:grid-cols-2">
-          {places.map((place) => (
-            <article key={place.id}>
-              <img src={place.image} alt="" className="aspect-square w-full rounded-full object-cover" />
-              <h2 className="mt-4 text-3xl" style={{ fontFamily: serif }}>
-                {place.name}
-              </h2>
-            </article>
-          ))}
-        </main>
-      </div>
-    )
-  }
-
   return (
-    <div ref={rootRef} className="h-dvh overflow-hidden bg-[#f4f1ea] text-[#1a1a1a]">
-      <div
-        className="relative h-dvh"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-      >
-        <SiteHeader overlay />
-        <div
-          className="pointer-events-none absolute top-[15vh] left-[6vw] z-10 w-[min(36vw,460px)]"
-          style={{ opacity: chrome ? 1 : 0, transition: 'opacity 0.6s ease' }}
-        >
-          <div className="overflow-hidden">
-            <h1
-              key={current.id}
-              className="text-[clamp(32px,4vw,64px)] leading-[1.05]"
-              style={{ fontFamily: serif, animation: 'projects-line-in 0.7s cubic-bezier(0.215, 0.61, 0.355, 1) both' }}
+    <div ref={rootRef} className="relative h-dvh overflow-hidden text-[#1c1c1c]" style={{ background: paper, fontFamily: serif }}>
+      <header className="absolute inset-x-0 top-0 z-40 flex items-center justify-between px-[4vw] pt-4 text-[13px] tracking-[0.08em]">
+        <Link to="/" className="text-[#1c1c1c]">
+          {profile.name}
+        </Link>
+        <nav className="flex gap-5">
+          {sections.map((section) => (
+            <Link
+              key={section.href}
+              to={section.href}
+              className={section.href === '/internships' ? 'text-[#1c1c1c]' : 'text-black/45 hover:text-[#1c1c1c]'}
             >
-              {current.name}
-            </h1>
-          </div>
-          <div className="mt-6 border-t border-black/15">
-            <Credit label="岗位" />
-            <Credit label="时间" />
-          </div>
-        </div>
-        <div className="absolute inset-0" style={{ perspective: '1100px' }}>
-          {places.map((place, index) => (
-            <button
-              key={place.id}
-              type="button"
-              ref={(node) => {
-                discRefs.current[index] = node
-              }}
-              className="absolute top-[58%] left-1/2 size-[min(38vh,380px)] overflow-hidden rounded-full border border-black/10 bg-[#ebe6dc] shadow-[0_18px_40px_rgba(0,0,0,0.08)]"
-              style={{ opacity: 0 }}
-              onClick={() => {
-                if (drag.current?.moved || motion.current.intro < 0.98) return
-                if (Math.round(motion.current.index) !== index) {
-                  step(index > motion.current.index ? 1 : -1)
-                  return
-                }
-                setOpen(true)
-              }}
-            >
-              <img src={place.image} alt="" className="size-full object-cover" draggable={false} />
-              <span className="pointer-events-none absolute top-1/2 left-1/2 size-[15%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#f4f1ea] shadow-[inset_0_0_0_5px_rgba(255,255,255,0.85)]" />
-            </button>
+              {section.label}
+            </Link>
           ))}
-        </div>
-        <p
-          className="pointer-events-none absolute bottom-8 left-1/2 z-10 -translate-x-1/2 text-xs tracking-[0.22em] text-black/45"
-          style={{ fontFamily: serif, opacity: chrome ? 1 : 0 }}
-        >
-          {String(active + 1).padStart(2, '0')} / {String(places.length).padStart(2, '0')}
-        </p>
+        </nav>
+      </header>
+
+      <div
+        className="pointer-events-none absolute top-[7vh] left-[4.5vw] z-30 w-[min(88vw,440px)]"
+        style={{ opacity: chrome ? 1 : 0, transition: 'opacity 0.45s ease' }}
+      >
+        {chrome ? (
+          <>
+            <div className="overflow-hidden">
+              <h1
+                key={current.id}
+                className="text-[clamp(36px,4.4vw,68px)] leading-[1.04] font-normal"
+                style={{ animation: 'projects-line-in 0.7s cubic-bezier(0.215, 0.61, 0.355, 1) both' }}
+              >
+                {current.name}
+              </h1>
+            </div>
+            <div className="mt-5">
+              <Credit label="岗位" delay={0} />
+              <Credit label="时间" delay={0.08} />
+              <Credit label="内容" delay={0.16} />
+            </div>
+          </>
+        ) : null}
       </div>
+
+      <div className="absolute inset-0" style={{ perspective: '980px', perspectiveOrigin: '46% 42%' }}>
+        {places.map((place, index) => (
+          <button
+            key={place.id}
+            type="button"
+            aria-label={place.name}
+            ref={(node) => {
+              discRefs.current[index].slot = node
+            }}
+            className="absolute top-0 left-0 cursor-grab border-0 bg-transparent p-0 [transform:translate(-50%,-50%)] [transform-style:preserve-3d] active:cursor-grabbing"
+            style={{ touchAction: 'none' }}
+            onPointerEnter={() => {
+              if (Math.round(motion.current.index) !== index || motion.current.flip < 0.98) return
+              setRing((value) => value + 1)
+            }}
+            onPointerLeave={() => {
+              if (drag.current) return
+              setRing(0)
+              settle.current?.kill()
+              settle.current = gsap.to(motion.current, { tiltX: 0, tiltY: 0, duration: 0.6, ease: 'power3.out', onUpdate: paint })
+            }}
+            onPointerDown={(event) => {
+              if (reduced || open || motion.current.flip < 0.98) return
+              if (Math.round(motion.current.index) !== index) return
+              settle.current?.kill()
+              drag.current = {
+                x: event.clientX,
+                y: event.clientY,
+                spin: motion.current.spin,
+                tiltX: motion.current.tiltX,
+                moved: false,
+                lastX: event.clientX,
+                vx: 0,
+              }
+              try {
+                event.currentTarget.setPointerCapture(event.pointerId)
+              } catch {
+                /* The pointer is only capturable for a real press. */
+              }
+            }}
+            onPointerMove={(event) => {
+              const bounds = event.currentTarget.getBoundingClientRect()
+              const localX = (event.clientX - bounds.left) / bounds.width - 0.5
+              const localY = (event.clientY - bounds.top) / bounds.height - 0.5
+              if (drag.current && Math.round(motion.current.index) === index) {
+                const dx = event.clientX - drag.current.x
+                const dy = event.clientY - drag.current.y
+                if (Math.abs(dx) > 5 || Math.abs(dy) > 5) drag.current.moved = true
+                drag.current.vx = event.clientX - drag.current.lastX
+                drag.current.lastX = event.clientX
+                motion.current.spin = drag.current.spin + dx * 0.45
+                motion.current.tiltX = drag.current.tiltX + dy * -0.06
+                motion.current.tiltY = localX * 10
+                setRing((value) => (value === 0 ? 1 : value))
+              } else if (Math.round(motion.current.index) === index && motion.current.flip > 0.98 && !drag.current) {
+                motion.current.tiltX = localY * -8
+                motion.current.tiltY = localX * 12
+              } else {
+                return
+              }
+              paint()
+            }}
+            onPointerUp={(event) => {
+              const moved = drag.current?.moved
+              const delta = index - motion.current.index
+              releaseDrag()
+              if (moved || motion.current.flip < 0.98) return
+              if (delta > 0.45 && delta < 1.4) {
+                step(1)
+                return
+              }
+              if (Math.abs(delta) > 0.4) return
+              if (event.button !== 0) return
+              setOpen(true)
+            }}
+            onPointerCancel={releaseDrag}
+          >
+            <span
+              ref={(node) => {
+                discRefs.current[index].tilt = node
+              }}
+              className="absolute inset-0 [transform-style:preserve-3d]"
+            >
+              <span
+                ref={(node) => {
+                  discRefs.current[index].spin = node
+                }}
+                className="absolute inset-0 [transform-style:preserve-3d]"
+              >
+                <DiscBody print={prints[index]} />
+                <span
+                  className="pointer-events-none absolute inset-x-[16%] top-[14%] text-center text-[clamp(15px,1.35vw,22px)] leading-[1.25] text-[#f7f3ea]"
+                  style={{ transform: 'translateZ(8px)', textShadow: '0 1px 6px rgba(0,0,0,0.45)', fontFamily: serif }}
+                >
+                  {place.name}
+                </span>
+              </span>
+              <span
+                className="pointer-events-none absolute inset-0 rounded-full"
+                style={{
+                  background:
+                    'linear-gradient(118deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.08) 18%, transparent 36%, transparent 62%, rgba(255,255,255,0.16) 100%)',
+                  mixBlendMode: 'soft-light',
+                  transform: 'translateZ(10px)',
+                  WebkitMask: 'radial-gradient(circle closest-side at 50% 50%, transparent 0 17.5%, #000 18.3% 100%)',
+                  mask: 'radial-gradient(circle closest-side at 50% 50%, transparent 0 17.5%, #000 18.3% 100%)',
+                  opacity: 'var(--disc-opacity, 1)',
+                }}
+              />
+            </span>
+          </button>
+        ))}
+        {places.map((place, index) => (
+          <div
+            key={`${place.id}-shadow`}
+            ref={(node) => {
+              shadowRefs.current[index] = node
+            }}
+            className="pointer-events-none absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 rounded-[50%] bg-black/70 blur-2xl"
+          />
+        ))}
+      </div>
+
+      <svg
+        ref={ringRef}
+        className="pointer-events-none absolute top-0 left-0 z-20 -translate-x-1/2 -translate-y-1/2 overflow-visible"
+        viewBox="0 0 100 100"
+        style={{ opacity: ring > 0 ? 0.9 : 0, transition: 'opacity 0.35s ease' }}
+      >
+        {ring > 0 ? <InkRing play={ring} /> : null}
+      </svg>
+
+      <div
+        className="pointer-events-none absolute inset-x-[18vw] bottom-[5.5vh] z-30 grid grid-cols-2 gap-[6vw]"
+        style={{
+          opacity: chrome ? 1 : 0,
+          animation: chrome ? 'intern-quote-in 0.7s ease both' : undefined,
+        }}
+      >
+        <Quote />
+        <Quote />
+      </div>
+
       {open ? <InternshipDetail place={current} onClose={() => setOpen(false)} /> : null}
     </div>
   )
 }
 
-function Credit({ label }: { label: string }) {
+function Credit({ label, delay }: { label: string; delay: number }) {
   return (
-    <div className="grid grid-cols-[88px_1fr] items-baseline gap-4 border-b border-black/15 py-3">
-      <p className="text-[11px] tracking-[0.16em] text-black/45">{label}</p>
-      <p className="text-right text-sm text-black/35" style={{ fontFamily: serif }}>
-        待填
-      </p>
+    <div className="relative grid grid-cols-[72px_1fr] items-baseline gap-4 py-[0.72rem]">
+      <span
+        className="absolute inset-x-0 top-0 h-px origin-left bg-black/30"
+        style={{ animation: `intern-rule 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) ${delay}s both` }}
+      />
+      <p className="text-[11px] tracking-[0.18em] text-black/55">{label}</p>
+      <p className="text-right text-[15px]">待填</p>
+      <span className="absolute inset-x-0 bottom-0 h-px bg-black/20" />
+    </div>
+  )
+}
+
+function Quote() {
+  return (
+    <div className="text-center">
+      <p className="text-[12px] tracking-[0.18em]">★★★★</p>
+      <p className="mt-2 text-[10px] tracking-[0.24em] text-black/55">待填</p>
+      <p className="mt-2 text-[clamp(18px,1.7vw,26px)] leading-[1.25]">“待填”</p>
     </div>
   )
 }
@@ -253,46 +480,185 @@ function InternshipDetail({ place, onClose }: { place: Place; onClose: () => voi
 
   useGSAP(() => {
     if (!imageRef.current) return
-    gsap.fromTo(imageRef.current, { yPercent: 70, opacity: 0.4 }, { yPercent: 0, opacity: 1, duration: 1.05, ease: 'power3.out' })
+    gsap.fromTo(imageRef.current, { yPercent: 72, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 1.05, ease: 'power3.out' })
   })
 
   return (
-    <div className="fixed inset-0 z-[80] overflow-hidden bg-[#f4f1ea] text-[#1a1a1a]">
+    <div className="fixed inset-0 z-[80] overflow-hidden text-[#1c1c1c]" style={{ background: paper, fontFamily: serif }}>
       <button type="button" onClick={onClose} className="absolute top-6 left-6 z-10 text-sm tracking-[0.16em] underline underline-offset-4">
         返回
       </button>
-      <div className="mx-auto max-w-3xl px-6 pt-[16vh] text-center">
-        <h2 className="text-[clamp(36px,5vw,72px)] leading-none" style={{ fontFamily: serif }}>
-          {place.name}
-        </h2>
-        <div className="mx-auto mt-8 max-w-xl border-t border-black/20 text-left">
-          <Credit label="岗位" />
-          <Credit label="时间" />
+      <div className="mx-auto max-w-3xl px-6 pt-[14vh] text-center">
+        <h2 className="text-[clamp(36px,5vw,72px)] leading-[1.05] font-normal">{place.name}</h2>
+        <div className="mx-auto mt-8 max-w-xl text-left">
+          <Credit label="岗位" delay={0} />
+          <Credit label="时间" delay={0.06} />
+          <Credit label="内容" delay={0.12} />
         </div>
       </div>
-      <div ref={imageRef} className="absolute inset-x-0 bottom-0 flex justify-center">
-        <img src={place.image} alt="" className="size-[min(46vh,460px)] rounded-full object-cover" />
+      <div ref={imageRef} className="absolute inset-x-0 bottom-[-8vh] flex justify-center">
+        <img src={place.image} alt="" className="size-[min(62vh,680px)] rounded-full object-cover" />
       </div>
     </div>
   )
 }
 
-function paintDiscs(discs: Array<HTMLButtonElement | null>, state: Motion) {
-  const width = window.innerWidth
-  const spacing = Math.min(width * 0.34, 460)
-  discs.forEach((disc, index) => {
-    if (!disc) return
-    const delta = index - state.index
-    const distance = Math.abs(delta)
-    const opened = state.intro
-    const x = delta * spacing * opened + width * 0.1 * opened
-    const scale = distance < 0.45 ? 1 : 0.78
-    const opacity = index === 0 || opened > 0.45 ? (distance > 1.15 ? 0 : 1) : 0
-    const face = (1 - opened) * 86
-    const restY = opened * (index === Math.round(state.index) ? -18 : -10)
-    const spin = index === Math.round(state.index) ? state.spin + state.lean : state.lean * 0.35
-    disc.style.opacity = String(opacity)
-    disc.style.zIndex = String(30 - Math.round(distance * 10))
-    disc.style.transform = `translate3d(calc(-50% + ${x}px), -50%, 0) rotateX(${restY + state.tiltX}deg) rotateY(${face + state.tiltY * (index === Math.round(state.index) ? 1 : 0.4)}deg) rotateZ(${spin}deg) scale(${scale})`
+function DiscBody({ print }: { print: string }) {
+  const mask = 'radial-gradient(circle closest-side at 50% 50%, transparent 0 17.5%, #000 18.3%)'
+  return (
+    <span className="absolute inset-0 [transform-style:preserve-3d]">
+      {[0, 1, 2, 3, 4, 5, 6, 7].map((layer) => (
+        <span
+          key={layer}
+          className="absolute inset-0 rounded-full"
+          style={{
+            transform: `translateZ(${-1.2 - layer * 2}px)`,
+            background:
+              'linear-gradient(90deg, #6f6f6f 0%, #f7f7f7 14%, #c5c5c5 32%, #ffffff 48%, #b0b0b0 63%, #f3f3f3 78%, #7a7a7a 100%)',
+            WebkitMask: mask,
+            mask,
+            opacity: 'var(--disc-opacity, 1)',
+          }}
+        />
+      ))}
+      <span
+        className="absolute inset-0 rounded-full bg-cover bg-center"
+        style={{
+          backgroundImage: print ? `url(${print})` : undefined,
+          backgroundColor: '#cfc6b8',
+          transform: 'translateZ(0px)',
+          WebkitMask: mask,
+          mask,
+          boxShadow: 'inset 0 0 0 1.5px rgba(255,255,255,0.5)',
+          opacity: 'var(--disc-opacity, 1)',
+        }}
+      />
+      <span
+        className="absolute top-1/2 left-1/2 size-[26%] rounded-full"
+        style={{
+          transform: 'translate(-50%, -50%) translateZ(7px)',
+          background: 'linear-gradient(145deg, #ffffff 0%, #cfcfcf 32%, #f8f8f8 50%, #8a8a8a 78%, #dedede 100%)',
+          WebkitMask: 'radial-gradient(circle closest-side at 50% 50%, transparent 0 64%, #000 70%)',
+          mask: 'radial-gradient(circle closest-side at 50% 50%, transparent 0 64%, #000 70%)',
+          opacity: 'var(--disc-opacity, 1)',
+        }}
+      />
+    </span>
+  )
+}
+
+function InkRing({ play }: { play: number }) {
+  const pathRef = useRef<SVGPathElement>(null)
+  const path = inkPath()
+
+  useGSAP(() => {
+    const line = pathRef.current
+    if (!line) return
+    const length = line.getTotalLength()
+    line.style.strokeDasharray = `${length}`
+    gsap.fromTo(line, { strokeDashoffset: length }, { strokeDashoffset: 0, duration: 0.85, ease: 'none' })
+  }, { dependencies: [play] })
+
+  return (
+    <path ref={pathRef} d={path} fill="none" stroke="#161616" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round" />
+  )
+}
+
+function inkPath() {
+  let description = ''
+  for (let loop = 0; loop < 2; loop += 1) {
+    const points = 96
+    const stop = loop === 0 ? points : Math.round(points * 0.9)
+    for (let point = 0; point <= stop; point += 1) {
+      const angle = (point / points) * Math.PI * 2 - 0.5 + loop * 0.35
+      const wobble = Math.sin(angle * 2 + loop * 1.4) * 1.15 + Math.sin(angle * 5 + 0.6) * 0.45
+      const radiusX = 44 + loop * 2.4 + wobble
+      const radiusY = 45.2 + loop * 1.2 + wobble * 0.55
+      const x = 50 + Math.cos(angle) * radiusX
+      const y = 51 + Math.sin(angle) * radiusY + loop * 1.8
+      description += `${point === 0 ? (description ? ' M ' : 'M ') : ' L '}${x.toFixed(2)} ${y.toFixed(2)}`
+    }
+  }
+  return description
+}
+
+function makePrint(src: string) {
+  return new Promise<string>((resolve) => {
+    const image = new Image()
+    image.onload = () => resolve(drawPrint(image))
+    image.onerror = () => resolve('')
+    image.src = src
   })
+}
+
+function drawPrint(image: HTMLImageElement) {
+  const size = 1024
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return ''
+
+  const [red, green, blue] = fieldColor(image)
+  ctx.beginPath()
+  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2)
+  ctx.clip()
+  ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`
+  ctx.fillRect(0, 0, size, size)
+
+  const drawSize = size * 1.02
+  const dx = (size - drawSize) / 2
+  const dy = size * 0.58 - drawSize * 0.46
+  ctx.drawImage(image, dx, dy, drawSize, drawSize)
+
+  const fade = ctx.createLinearGradient(0, size * 0.16, 0, size * 0.4)
+  fade.addColorStop(0, `rgba(${red}, ${green}, ${blue}, 0.92)`)
+  fade.addColorStop(0.45, `rgba(${red}, ${green}, ${blue}, 0.55)`)
+  fade.addColorStop(1, `rgba(${red}, ${green}, ${blue}, 0)`)
+  ctx.fillStyle = fade
+  ctx.fillRect(0, 0, size, size * 0.42)
+
+  const vignette = ctx.createRadialGradient(size / 2, size / 2, size * 0.28, size / 2, size / 2, size * 0.5)
+  vignette.addColorStop(0, 'rgba(0,0,0,0)')
+  vignette.addColorStop(1, 'rgba(0,0,0,0.3)')
+  ctx.fillStyle = vignette
+  ctx.fillRect(0, 0, size, size)
+
+  ctx.save()
+  ctx.globalCompositeOperation = 'soft-light'
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)'
+  ctx.lineWidth = 1
+  for (let radius = size * 0.2; radius < size * 0.49; radius += 7) {
+    ctx.beginPath()
+    ctx.arc(size / 2, size / 2, radius, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+  ctx.restore()
+
+  return canvas.toDataURL('image/jpeg', 0.86)
+}
+
+function fieldColor(image: HTMLImageElement) {
+  const sample = document.createElement('canvas')
+  sample.width = 16
+  sample.height = 16
+  const ctx = sample.getContext('2d')
+  if (!ctx) return [112, 104, 90]
+  ctx.drawImage(image, 0, 0, 16, 16)
+  const data = ctx.getImageData(0, 0, 16, 16).data
+  let red = 0
+  let green = 0
+  let blue = 0
+  let count = 0
+  for (let index = 0; index < data.length; index += 4) {
+    if (data[index + 3] < 180) continue
+    red += data[index]
+    green += data[index + 1]
+    blue += data[index + 2]
+    count += 1
+  }
+  if (!count) return [112, 104, 90]
+  const mix = 0.5
+  const tone = (channel: number, target: number) => Math.round((channel / count) * (1 - mix) + target * mix)
+  return [tone(red, 96), tone(green, 90), tone(blue, 74)].map((channel) => Math.round(channel * 0.78))
 }
