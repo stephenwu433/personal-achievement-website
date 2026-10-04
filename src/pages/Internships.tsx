@@ -51,17 +51,42 @@ function discPose(delta: number, active: boolean) {
   return { x, y, z, scale, angle }
 }
 
-function scribblePoints(loop: number) {
-  const points: THREE.Vector3[] = []
-  const count = 72
-  const stop = loop === 0 ? count : Math.round(count * 0.7)
-  for (let point = 0; point <= stop; point += 1) {
-    const angle = (point / count) * Math.PI * 2 - 0.45 + loop * 0.55
-    const wobble = Math.sin(angle * 2 + loop * 1.3) * 0.028 + Math.sin(angle * 5.2) * 0.012
-    const radius = 1.07 + loop * 0.04 + wobble
-    points.push(new THREE.Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.05))
+type Scribble = {
+  line: THREE.Line
+  loop: number
+  angles: Float32Array
+  echo: boolean
+  material: THREE.LineBasicMaterial
+}
+
+function makeScribble(loop: number, echo: boolean) {
+  const count = 120
+  const stop = echo || loop === 0 ? count : Math.round(count * 0.7)
+  const angles = new Float32Array(stop + 1)
+  for (let point = 0; point <= stop; point += 1) angles[point] = (point / count) * Math.PI * 2 - 0.45 + loop * 0.55
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array((stop + 1) * 3), 3))
+  const material = new THREE.LineBasicMaterial({ color: 0x161616, transparent: true, opacity: 0 })
+  const line = new THREE.Line(geometry, material)
+  line.frustumCulled = false
+  return { line, loop, angles, echo, material }
+}
+
+function writeScribble(scribble: Scribble, time: number) {
+  const position = scribble.line.geometry.getAttribute('position') as THREE.BufferAttribute
+  const { loop, angles, echo } = scribble
+  const cycle = 3.2
+  const phase = ((time + loop * 1.05) % cycle) / cycle
+  for (let index = 0; index < angles.length; index += 1) {
+    const angle = angles[index]
+    const hand = Math.sin(angle * 2 + loop * 1.3) * 0.024 + Math.sin(angle * 5.2 + loop) * 0.008
+    const radius = echo
+      ? 1.09 + phase * 0.2 + hand * 0.45
+      : 1.065 + loop * 0.04 + hand + Math.sin(angle * 2 - time * 3.2 + loop * 1.6) * 0.048 + Math.sin(angle * 5 - time * 4.8 + loop) * 0.014
+    position.setXYZ(index, Math.cos(angle) * radius, Math.sin(angle) * radius, 0.05)
   }
-  return points
+  position.needsUpdate = true
+  scribble.material.opacity = echo ? Math.sin(phase * Math.PI) * 0.62 : 1
 }
 
 export default function Internships() {
@@ -144,13 +169,8 @@ export default function Internships() {
         return { group, mesh, spin: 0 }
       })
 
-      const ringMaterial = new THREE.LineBasicMaterial({ color: 0x161616, transparent: true, opacity: 0 })
-      const rings = [0, 1].map((loop) => {
-        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(scribblePoints(loop)), ringMaterial)
-        line.frustumCulled = false
-        gallery.add(line)
-        return line
-      })
+      const rings = [makeScribble(0, false), makeScribble(1, false), makeScribble(2, true)]
+      rings.forEach((ring) => gallery.add(ring.line))
 
       const intro: Intro = reduced
         ? { rise: 1, fan: 1, spin: 0, count: 100 }
@@ -218,14 +238,16 @@ export default function Internships() {
 
         const host = discs[focus]
         const showRing = intro.fan > 0.98 && Boolean(host)
+        const rippleTime = reduced ? 0 : gsap.ticker.time
         rings.forEach((ring) => {
-          ring.visible = showRing
-          ringMaterial.opacity = showRing ? 1 : 0
+          writeScribble(ring, showRing ? rippleTime : 0)
+          ring.line.visible = showRing
+          if (!showRing) ring.material.opacity = 0
           if (!host) return
-          if (ring.parent !== host.group) host.group.add(ring)
-          ring.position.set(0, 0, 0.045)
-          ring.rotation.set(0, 0, 0)
-          ring.scale.set(1, 1, 1)
+          if (ring.line.parent !== host.group) host.group.add(ring.line)
+          ring.line.position.set(0, 0, 0.045)
+          ring.line.rotation.set(0, 0, 0)
+          ring.line.scale.set(1, 1, 1)
         })
 
         if (countRef.current) countRef.current.textContent = String(Math.round(intro.count))
@@ -387,12 +409,14 @@ export default function Internships() {
       const resizeObserver = new ResizeObserver(() => layout())
       resizeObserver.observe(canvas)
 
+      const onTick = () => layout()
       let introTween: gsap.core.Timeline | null = null
       if (reduced) {
         setChrome(true)
         setActive(0)
       } else {
-        introTween = gsap.timeline({ onUpdate: layout })
+        gsap.ticker.add(onTick)
+        introTween = gsap.timeline()
         introTween.to(intro, { rise: 1, spin: 0, count: 100, duration: 1.45, ease: 'power2.inOut' }, 0.35)
         introTween.to(intro, { fan: 1, duration: 1.15, ease: 'power3.inOut' }, 1.45)
         introTween.call(() => {
@@ -403,6 +427,7 @@ export default function Internships() {
 
       return () => {
         alive = false
+        if (!reduced) gsap.ticker.remove(onTick)
         observer.kill()
         introTween?.kill()
         glide.tween.kill()
