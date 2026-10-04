@@ -23,10 +23,6 @@ const places: Place[] = [
 const serif = '"LXGW WenKai", "Iowan Old Style", Palatino, "Songti SC", serif'
 const paper = '#f3f1ec'
 
-const REST_X = 14
-const REST_Y = -16
-const REST_Z = -8
-
 type Motion = {
   index: number
   open: number
@@ -61,6 +57,22 @@ function smooth(value: number) {
   return t * t * (3 - 2 * t)
 }
 
+function rowPose(delta: number, width: number, height: number, narrow: boolean) {
+  const distance = (narrow ? 3.35 : 3.15) - delta * 0.78
+  const scale = 3.15 / Math.max(0.9, distance)
+  const hero = narrow ? Math.min(height * 0.42, width * 0.62) : Math.min(height * 0.5, width * 0.34)
+  const size = hero * scale
+  const x = width * (narrow ? 0.4 : 0.46) + delta * scale * width * (narrow ? 0.22 : 0.34)
+  const y = height * (narrow ? 0.56 : 0.52) - (scale - 1) * height * 0.1
+  const rx = 24 + (scale - 1) * 12
+  const ry = -28 - (scale - 1) * 20
+  const rz = -10 - (scale - 1) * 6
+  let opacity = 1
+  if (delta < -2.2) opacity = clamp((delta + 3.15) / 0.95)
+  if (delta > 1.2) opacity = clamp((1.55 - delta) / 0.35)
+  return { size, x, y, rx, ry, rz, opacity }
+}
+
 export default function Internships() {
   const rootRef = useRef<HTMLDivElement>(null)
   const discRefs = useRef<DiscNodes[]>(places.map(() => ({ slot: null, tilt: null, spin: null })))
@@ -69,10 +81,10 @@ export default function Internships() {
   const introRef = useRef<HTMLDivElement>(null)
   const countRef = useRef<HTMLSpanElement>(null)
   const motion = useRef<Motion>({ index: 0, open: 0, settle: 0, count: 0, spin: 0, tiltX: 0, tiltY: 0, lean: 0 })
-  const lock = useRef(false)
+  const glideTarget = useRef(0)
+  const snapTimer = useRef<number | null>(null)
   const drag = useRef<{ x: number; y: number; spin: number; tiltX: number; moved: boolean; lastX: number; vx: number } | null>(null)
   const settle = useRef<gsap.core.Tween | null>(null)
-  const wheelBank = useRef(0)
   const [prints, setPrints] = useState<string[]>(() => places.map(() => ''))
   const [ready, setReady] = useState(false)
   const [active, setActive] = useState(0)
@@ -89,7 +101,6 @@ export default function Internships() {
     const height = window.innerHeight
     const state = motion.current
     const narrow = width < 800
-    const base = narrow ? Math.min(height * 0.48, width * 0.86) : Math.min(height * 0.66, width * 0.48)
     const openT = smooth(state.open)
     const landT = smooth(state.settle)
     let ringBox: { x: number; y: number; size: number } | null = null
@@ -98,43 +109,40 @@ export default function Internships() {
       if (!node.slot || !node.tilt || !node.spin) return
       const delta = index - state.index
       const distance = Math.abs(delta)
-      const focus = distance < 0.42
-      const catalogueSize = base * (1 + clamp(delta) * 0.16)
-      const size = focus ? lerp(base * 1.06, catalogueSize, landT) : catalogueSize
-      const homeX = width * (narrow ? 0.5 : 0.56) + delta * width * (narrow ? 0.72 : 0.4)
-      const homeY = height * (narrow ? 0.66 : 0.58) - clamp(delta) * height * 0.045
-      const projX = width * (narrow ? 0.58 : 0.62)
-      const projY = height * 0.52
-      const swingY = openT < 0.68 ? lerp(88, 8, smooth(openT / 0.68)) : lerp(8, -12, smooth((openT - 0.68) / 0.32))
-      let x = homeX + (delta > 0.12 ? (1 - landT) * width * 0.4 : 0)
-      let y = homeY
-      let rx = REST_X
-      let ry = REST_Y * (focus ? 1 : 0.92)
-      let rz = focus ? REST_Z : REST_Z * 0.3
+      const focus = distance < 0.35
+      const pose = rowPose(delta, width, height, narrow)
+      const swingY = openT < 0.68 ? lerp(88, 8, smooth(openT / 0.68)) : lerp(8, pose.ry, smooth((openT - 0.68) / 0.32))
+      let x = pose.x + (delta > 0.15 ? (1 - landT) * width * 0.28 : 0)
+      let y = pose.y
+      let size = pose.size
+      let rx = pose.rx
+      let ry = pose.ry
+      let rz = pose.rz + (focus ? state.lean : state.lean * 0.25)
       if (focus && landT < 0.999) {
-        x = lerp(projX, homeX, landT)
-        y = lerp(projY, homeY, landT)
-        rx = lerp(lerp(4, 12, openT), REST_X, landT)
-        ry = lerp(swingY, REST_Y, landT)
-        rz = lerp(lerp(0, -6, openT), REST_Z, landT)
+        const projX = width * (narrow ? 0.58 : 0.6)
+        const projY = height * 0.52
+        x = lerp(projX, pose.x, landT)
+        y = lerp(projY, pose.y, landT)
+        size = lerp(pose.size * 1.05, pose.size, landT)
+        rx = lerp(lerp(4, 12, openT), pose.rx, landT)
+        ry = lerp(swingY, pose.ry, landT)
+        rz = lerp(lerp(0, -6, openT), pose.rz, landT)
       }
       rx += focus ? state.tiltX : 0
       ry += focus ? state.tiltY * 0.35 : 0
-      rz += focus ? state.lean : state.lean * 0.3
-      let opacity = distance > 1.25 ? 0 : 1
-      if (delta > 0.15) opacity *= landT
-      if (delta < -0.05) opacity *= landT > 0.15 ? clamp(1 + delta * 1.6) : 0
+      let opacity = pose.opacity
+      if (Math.abs(delta) > 0.2) opacity *= landT
 
       node.slot.style.left = `${x}px`
       node.slot.style.top = `${y}px`
       node.slot.style.width = `${size}px`
       node.slot.style.height = `${size}px`
-      node.slot.style.zIndex = String(30 - Math.round(distance * 8) + (delta > 0.2 ? 3 : 0))
+      node.slot.style.zIndex = String(24 + Math.round(delta * 12))
       node.slot.style.visibility = opacity < 0.03 ? 'hidden' : 'visible'
       node.slot.style.pointerEvents = opacity < 0.45 ? 'none' : 'auto'
       node.slot.style.setProperty('--disc-opacity', String(opacity))
       node.tilt.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)`
-      node.spin.style.transform = `rotateZ(${focus ? state.spin : 0}deg)`
+      node.spin.style.transform = `rotateZ(${distance < 0.45 ? state.spin * (1 - distance) : 0}deg)`
 
       const shadow = shadowRefs.current[index]
       if (shadow) {
@@ -205,20 +213,34 @@ export default function Internships() {
       intro.to(state, { count: 100, duration: 1.7, ease: 'power1.in' }, '<')
       intro.to(state, { settle: 1, duration: 1.2, ease: 'power3.inOut' }, '+=0.35')
 
+      const follow = () => {
+        if (drag.current || state.settle < 0.98) return
+        const gap = glideTarget.current - state.index
+        if (Math.abs(gap) < 0.001) return
+        state.index += gap * 0.065
+        state.lean = gap * 10
+        paint()
+        syncActive(state.index)
+      }
+      gsap.ticker.add(follow)
+
       const onWheel = (event: WheelEvent) => {
         if (openRef.current || state.settle < 0.98) return
         event.preventDefault()
-        wheelBank.current += event.deltaY
-        if (Math.abs(wheelBank.current) < 36) return
-        const direction = wheelBank.current > 0 ? 1 : -1
-        wheelBank.current = 0
-        step(direction)
+        const pixels = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY
+        glideTarget.current = Math.min(places.length - 1, Math.max(0, glideTarget.current + pixels * 0.0015))
+        if (snapTimer.current) window.clearTimeout(snapTimer.current)
+        snapTimer.current = window.setTimeout(() => {
+          glideTarget.current = Math.round(glideTarget.current)
+        }, 170)
       }
       const onResize = () => paint()
       window.addEventListener('wheel', onWheel, { passive: false })
       window.addEventListener('resize', onResize)
       return () => {
         intro.kill()
+        gsap.ticker.remove(follow)
+        if (snapTimer.current) window.clearTimeout(snapTimer.current)
         window.removeEventListener('wheel', onWheel)
         window.removeEventListener('resize', onResize)
       }
@@ -231,29 +253,10 @@ export default function Internships() {
     setActive((current) => (current === next ? current : next))
   }
 
-  const step = (direction: number) => {
-    const state = motion.current
-    const next = Math.min(places.length - 1, Math.max(0, Math.round(state.index) + direction))
-    if (lock.current || next === Math.round(state.index)) return
-    lock.current = true
+  const glideTo = (index: number) => {
+    glideTarget.current = Math.min(places.length - 1, Math.max(0, index))
+    if (snapTimer.current) window.clearTimeout(snapTimer.current)
     setRing(0)
-    gsap.to(state, {
-      index: next,
-      duration: 0.78,
-      ease: 'power3.inOut',
-      onUpdate: () => {
-        paint()
-        syncActive(state.index)
-      },
-      onComplete: () => {
-        lock.current = false
-      },
-    })
-    gsap.fromTo(
-      state,
-      { lean: direction * 16 },
-      { lean: 0, duration: 0.9, ease: 'power3.out', onUpdate: paint },
-    )
   }
 
   const releaseDrag = () => {
@@ -323,7 +326,7 @@ export default function Internships() {
             <div className="overflow-hidden">
               <h1
                 key={current.id}
-                className="text-[clamp(26px,2.6vw,40px)] leading-[1.45] font-normal"
+                className="text-[clamp(26px,2.5vw,38px)] leading-[1.2] font-normal"
                 style={{ animation: 'projects-line-in 0.7s cubic-bezier(0.215, 0.61, 0.355, 1) both' }}
               >
                 {current.lines.map((line) => (
@@ -333,7 +336,7 @@ export default function Internships() {
                 ))}
               </h1>
             </div>
-            <div className="mt-6">
+            <div className="mt-4 max-w-[340px]">
               <Credit label="岗位" delay={0} />
               <Credit label="时间" delay={0.08} />
               <Credit label="内容" delay={0.16} />
@@ -342,7 +345,7 @@ export default function Internships() {
         ) : null}
       </div>
 
-      <div className="absolute inset-0" style={{ perspective: '1500px', perspectiveOrigin: '52% 48%' }}>
+      <div className="absolute inset-0" style={{ perspective: '980px', perspectiveOrigin: '68% 42%' }}>
         {places.map((place, index) => (
           <button
             key={place.id}
@@ -365,7 +368,7 @@ export default function Internships() {
             }}
             onPointerDown={(event) => {
               if (reduced || open || motion.current.settle < 0.98) return
-              if (Math.round(motion.current.index) !== index) return
+              if (Math.abs(index - motion.current.index) > 0.45) return
               settle.current?.kill()
               drag.current = {
                 x: event.clientX,
@@ -409,11 +412,10 @@ export default function Internships() {
               const delta = index - motion.current.index
               releaseDrag()
               if (moved || motion.current.settle < 0.98) return
-              if (delta > 0.45 && delta < 1.4) {
-                step(1)
+              if (Math.abs(delta) > 0.45) {
+                glideTo(index)
                 return
               }
-              if (Math.abs(delta) > 0.4) return
               if (event.button !== 0) return
               setOpen(true)
             }}
@@ -475,7 +477,7 @@ export default function Internships() {
       </svg>
 
       <div
-        className="pointer-events-none absolute inset-x-[18vw] bottom-[5.5vh] z-30 grid grid-cols-2 gap-[6vw]"
+        className="pointer-events-none absolute right-[12vw] bottom-[3vh] left-[26vw] z-30 grid grid-cols-2 gap-[3vw]"
         style={{
           opacity: chrome ? 1 : 0,
           animation: chrome ? 'intern-quote-in 0.7s ease both' : undefined,
