@@ -58,17 +58,15 @@ function smooth(value: number) {
 }
 
 function rowPose(delta: number, width: number, height: number, narrow: boolean) {
-  const unit = narrow ? Math.min(height * 0.34, width * 0.46) : Math.min(height * 0.48, width * 0.3)
-  const angle = delta * 0.35
-  const span = unit * 1.08
-  const scale = Math.abs(delta) < 0.45 ? 1 : Math.max(0.72, 1 - Math.abs(delta) * 0.14)
-  const x = width * (narrow ? 0.48 : 0.62) + Math.sin(angle) * span
-  const y = height * (narrow ? 0.56 : 0.44)
-  const z = (-Math.cos(angle) * 2.4 + 2.4) * span * 0.36
+  const unit = narrow ? Math.min(height * 0.34, width * 0.48) : Math.min(height * 0.36, width * 0.26)
+  const scale = delta >= 0 ? clamp(1 + delta * 0.46, 1, 1.72) : clamp(1 + delta * 0.28, 0.46, 1)
   const size = unit * scale
+  const x = width * (narrow ? 0.46 : 0.52) + delta * unit * (narrow ? 0.58 : 0.78)
+  const y = height * (narrow ? 0.54 : 0.42)
+  const z = delta * 28
   let opacity = 1
-  if (delta < -2.4) opacity = clamp((delta + 3.2) / 0.8)
-  if (delta > 1.35) opacity = clamp((1.7 - delta) / 0.35)
+  if (delta < -2.6) opacity = clamp((delta + 3.4) / 0.8)
+  if (delta > 2.35) opacity = clamp((3.05 - delta) / 0.7)
   return { size, x, y, z, rx: 0, ry: 0, rz: 0, opacity }
 }
 
@@ -77,6 +75,7 @@ export default function Internships() {
   const discRefs = useRef<DiscNodes[]>(places.map(() => ({ slot: null, tilt: null, spin: null })))
   const shadowRefs = useRef<Array<HTMLDivElement | null>>([])
   const ringRef = useRef<SVGSVGElement>(null)
+  const quoteRefs = useRef<Array<HTMLDivElement | null>>([])
   const introRef = useRef<HTMLDivElement>(null)
   const countRef = useRef<HTMLSpanElement>(null)
   const motion = useRef<Motion>({ index: 0, open: 0, settle: 0, count: 0, spin: 0, tiltX: 0, tiltY: 0, lean: 0 })
@@ -103,6 +102,8 @@ export default function Internships() {
     const openT = smooth(state.open)
     const landT = smooth(state.settle)
     const ringBoxes: { x: number; y: number; size: number; z: number }[] = []
+    const quoteSpots: { x: number; top: number }[] = []
+    const focusIndex = Math.round(state.index)
 
     discRefs.current.forEach((node, index) => {
       if (!node.slot || !node.tilt || !node.spin) return
@@ -136,7 +137,7 @@ export default function Internships() {
       node.slot.style.top = `${y}px`
       node.slot.style.width = `${size}px`
       node.slot.style.height = `${size}px`
-      node.slot.style.zIndex = String(40 + Math.round(pose.z))
+      node.slot.style.zIndex = String(40 + Math.round(delta * 10))
       node.slot.style.transform = `translate(-50%, -50%) translateZ(${pose.z}px)`
       node.slot.style.visibility = opacity < 0.03 ? 'hidden' : 'visible'
       node.slot.style.pointerEvents = opacity < 0.45 ? 'none' : 'auto'
@@ -153,7 +154,11 @@ export default function Internships() {
         shadow.style.opacity = String(0.28 * opacity * Math.max(openT, landT))
       }
 
-      if (Math.round(state.index) === index) ringBoxes.push({ x, y, size, z: pose.z })
+      if (focusIndex === index) ringBoxes.push({ x, y, size, z: pose.z })
+      const quoteTop = y + size * 0.64
+      if ((index === focusIndex || index === focusIndex + 1) && x > width * 0.18 && x < width * 0.78 && quoteTop < height - 36) {
+        quoteSpots.push({ x, top: quoteTop })
+      }
     })
 
     if (countRef.current) countRef.current.textContent = String(Math.round(state.count))
@@ -168,11 +173,20 @@ export default function Internships() {
     if (ringNode && ringBox) {
       ringNode.style.left = `${ringBox.x}px`
       ringNode.style.top = `${ringBox.y}px`
-      ringNode.style.width = `${ringBox.size * 1.2}px`
-      ringNode.style.height = `${ringBox.size * 1.2}px`
-      ringNode.style.transform = `translate(-50%, -50%) translateZ(${ringBox.z + 28}px)`
+      ringNode.style.width = `${ringBox.size * 1.16}px`
+      ringNode.style.height = `${ringBox.size * 1.16}px`
+      ringNode.style.transform = `translate(-50%, -50%) translateZ(${ringBox.z + 36}px)`
       ringNode.style.opacity = String(clamp(state.settle))
+      ringNode.style.zIndex = '80'
     }
+    quoteRefs.current.forEach((quote, index) => {
+      if (!quote) return
+      const spot = quoteSpots[index]
+      quote.style.opacity = spot ? String(clamp(state.settle)) : '0'
+      if (!spot) return
+      quote.style.left = `${spot.x}px`
+      quote.style.top = `${spot.top}px`
+    })
   }
 
   useEffect(() => {
@@ -348,10 +362,10 @@ export default function Internships() {
         ) : null}
       </div>
 
-      <div className="absolute inset-0" style={{ perspective: '980px', perspectiveOrigin: '54% 42%' }}>
+      <div className="absolute inset-0" style={{ perspective: '1400px', perspectiveOrigin: '56% 46%' }}>
         <div
           className="absolute inset-0"
-          style={{ transformStyle: 'preserve-3d', transform: 'rotateX(-30deg) rotateY(-34deg)', transformOrigin: '58% 44%' }}
+          style={{ transformStyle: 'preserve-3d', transform: 'rotateX(-18deg) rotateY(-26deg)', transformOrigin: '52% 48%' }}
         >
         {places.map((place, index) => (
           <button
@@ -474,7 +488,7 @@ export default function Internships() {
         ))}
         <svg
           ref={ringRef}
-          className="pointer-events-none absolute top-0 left-0 z-30 overflow-visible"
+          className="pointer-events-none absolute top-0 left-0 z-[80] overflow-visible"
           viewBox="0 0 100 100"
           style={{ opacity: 0 }}
         >
@@ -483,16 +497,18 @@ export default function Internships() {
         </div>
       </div>
 
-      <div
-        className="pointer-events-none absolute right-[12vw] bottom-[3vh] left-[26vw] z-30 grid grid-cols-2 gap-[3vw]"
-        style={{
-          opacity: chrome ? 1 : 0,
-          animation: chrome ? 'intern-quote-in 0.7s ease both' : undefined,
-        }}
-      >
-        <Quote />
-        <Quote />
-      </div>
+      {[0, 1].map((slot) => (
+        <div
+          key={slot}
+          ref={(node) => {
+            quoteRefs.current[slot] = node
+          }}
+          className="pointer-events-none absolute z-30 w-[220px] -translate-x-1/2 text-center"
+          style={{ opacity: 0 }}
+        >
+          <Quote />
+        </div>
+      ))}
 
       {open ? <InternshipDetail place={current} onClose={() => setOpen(false)} /> : null}
     </div>
