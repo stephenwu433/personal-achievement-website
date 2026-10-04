@@ -9,27 +9,29 @@ gsap.registerPlugin(useGSAP)
 type Place = {
   id: string
   name: string
+  lines: string[]
   image: string
 }
 
 const places: Place[] = [
-  { id: 'dongpeng', name: '东鹏控股股份有限公司', image: '/internships/dongpeng.png' },
-  { id: 'zhijunzhu', name: '知君竹科技传媒', image: '/internships/zhijunzhu.png' },
-  { id: 'huigu', name: '慧谷科技', image: '/internships/huigu.png' },
-  { id: 'gaodun', name: '高顿', image: '/internships/gaodun.png' },
+  { id: 'dongpeng', name: '东鹏控股股份有限公司', lines: ['东鹏控股', '股份有限公司'], image: '/internships/dongpeng.png' },
+  { id: 'zhijunzhu', name: '知君竹科技传媒', lines: ['知君竹科技传媒'], image: '/internships/zhijunzhu.png' },
+  { id: 'huigu', name: '慧谷科技', lines: ['慧谷科技'], image: '/internships/huigu.png' },
+  { id: 'gaodun', name: '高顿', lines: ['高顿'], image: '/internships/gaodun.png' },
 ]
 
-const serif = '"Iowan Old Style", Palatino, "Palatino Linotype", "Songti SC", "Noto Serif SC", "Droid Sans Fallback", serif'
+const serif = '"Noto Serif SC", "Iowan Old Style", Palatino, "Palatino Linotype", "Songti SC", serif'
 const paper = '#f3f1ec'
 
-const REST_X = 24
-const REST_Y = -32
-const REST_Z = -16
+const REST_X = 14
+const REST_Y = -16
+const REST_Z = -8
 
 type Motion = {
   index: number
-  flip: number
-  arrive: number
+  open: number
+  settle: number
+  count: number
   spin: number
   tiltX: number
   tiltY: number
@@ -64,7 +66,9 @@ export default function Internships() {
   const discRefs = useRef<DiscNodes[]>(places.map(() => ({ slot: null, tilt: null, spin: null })))
   const shadowRefs = useRef<Array<HTMLDivElement | null>>([])
   const ringRef = useRef<SVGSVGElement>(null)
-  const motion = useRef<Motion>({ index: 0, flip: 0, arrive: 0, spin: 0, tiltX: 0, tiltY: 0, lean: 0 })
+  const introRef = useRef<HTMLDivElement>(null)
+  const countRef = useRef<HTMLSpanElement>(null)
+  const motion = useRef<Motion>({ index: 0, open: 0, settle: 0, count: 0, spin: 0, tiltX: 0, tiltY: 0, lean: 0 })
   const lock = useRef(false)
   const drag = useRef<{ x: number; y: number; spin: number; tiltX: number; moved: boolean; lastX: number; vx: number } | null>(null)
   const settle = useRef<gsap.core.Tween | null>(null)
@@ -85,30 +89,41 @@ export default function Internships() {
     const height = window.innerHeight
     const state = motion.current
     const narrow = width < 800
-    const base = narrow ? Math.min(height * 0.36, width * 0.74) : Math.min(height * 0.5, width * 0.34, 540)
+    const base = narrow ? Math.min(height * 0.48, width * 0.86) : Math.min(height * 0.66, width * 0.48)
+    const openT = smooth(state.open)
+    const landT = smooth(state.settle)
     let ringBox: { x: number; y: number; size: number } | null = null
 
     discRefs.current.forEach((node, index) => {
       if (!node.slot || !node.tilt || !node.spin) return
       const delta = index - state.index
       const distance = Math.abs(delta)
-      const size = base * (1 + clamp(delta) * 0.12)
-      const homeX = width * (narrow ? 0.46 : 0.54) + delta * width * (narrow ? 0.62 : 0.43)
-      const homeY = height * (narrow ? 0.66 : 0.55) - clamp(delta) * height * (narrow ? 0.04 : 0.055)
       const focus = distance < 0.42
-      const opening = focus && state.flip < 0.999
-      const faceIn = smooth(state.flip)
-      const x =
-        homeX +
-        (delta > 0.12 ? (1 - state.arrive) * width * 0.34 : 0) +
-        (opening ? (1 - faceIn) * (width * 0.5 - homeX) : 0)
-      const y = homeY + (opening ? (1 - faceIn) * height * -0.02 : 0)
-      const rx = (opening ? lerp(6, REST_X, faceIn) : REST_X) + (focus ? state.tiltX : 0)
-      const ry = (opening ? lerp(88, REST_Y, faceIn) : REST_Y * (focus ? 1 : 0.92)) + (focus ? state.tiltY * 0.35 : 0)
-      const rz = (opening ? lerp(0, focus ? REST_Z : REST_Z * 0.28, faceIn) : focus ? REST_Z : REST_Z * 0.28) + (focus ? state.lean : state.lean * 0.3)
+      const catalogueSize = base * (1 + clamp(delta) * 0.16)
+      const size = focus ? lerp(base * 1.06, catalogueSize, landT) : catalogueSize
+      const homeX = width * (narrow ? 0.5 : 0.56) + delta * width * (narrow ? 0.72 : 0.4)
+      const homeY = height * (narrow ? 0.66 : 0.58) - clamp(delta) * height * 0.045
+      const projX = width * (narrow ? 0.58 : 0.62)
+      const projY = height * 0.52
+      const swingY = openT < 0.68 ? lerp(88, 8, smooth(openT / 0.68)) : lerp(8, -12, smooth((openT - 0.68) / 0.32))
+      let x = homeX + (delta > 0.12 ? (1 - landT) * width * 0.4 : 0)
+      let y = homeY
+      let rx = REST_X
+      let ry = REST_Y * (focus ? 1 : 0.92)
+      let rz = focus ? REST_Z : REST_Z * 0.3
+      if (focus && landT < 0.999) {
+        x = lerp(projX, homeX, landT)
+        y = lerp(projY, homeY, landT)
+        rx = lerp(lerp(4, 12, openT), REST_X, landT)
+        ry = lerp(swingY, REST_Y, landT)
+        rz = lerp(lerp(0, -6, openT), REST_Z, landT)
+      }
+      rx += focus ? state.tiltX : 0
+      ry += focus ? state.tiltY * 0.35 : 0
+      rz += focus ? state.lean : state.lean * 0.3
       let opacity = distance > 1.25 ? 0 : 1
-      if (delta > 0.15) opacity *= state.arrive
-      if (delta < -0.05) opacity *= state.flip > 0.92 ? clamp(1 + delta * 1.6) : 0
+      if (delta > 0.15) opacity *= landT
+      if (delta < -0.05) opacity *= landT > 0.15 ? clamp(1 + delta * 1.6) : 0
 
       node.slot.style.left = `${x}px`
       node.slot.style.top = `${y}px`
@@ -127,11 +142,18 @@ export default function Internships() {
         shadow.style.top = `${y + size * 0.36}px`
         shadow.style.width = `${size * 0.76}px`
         shadow.style.height = `${size * 0.16}px`
-        shadow.style.opacity = String(0.34 * opacity * faceIn)
+        shadow.style.opacity = String(0.28 * opacity * Math.max(openT, landT))
       }
 
       if (Math.round(state.index) === index) ringBox = { x, y, size }
     })
+
+    if (countRef.current) countRef.current.textContent = String(Math.round(state.count))
+    if (introRef.current) {
+      const appear = smooth(state.open / 0.18)
+      const leave = 1 - smooth(clamp((state.settle - 0.05) / 0.62))
+      introRef.current.style.opacity = String(appear * leave)
+    }
 
     const ringNode = ringRef.current
     if (ringNode && ringBox) {
@@ -156,8 +178,9 @@ export default function Internships() {
 
   useLayoutEffect(() => {
     if (reduced) {
-      motion.current.flip = 1
-      motion.current.arrive = 1
+      motion.current.open = 1
+      motion.current.settle = 1
+      motion.current.count = 100
       chromeRef.current = true
       setChrome(true)
     }
@@ -172,17 +195,18 @@ export default function Internships() {
       const intro = gsap.timeline({
         onUpdate: () => {
           paint()
-          if (!chromeRef.current && state.flip > 0.86) {
+          if (!chromeRef.current && state.settle > 0.42) {
             chromeRef.current = true
             setChrome(true)
           }
         },
       })
-      intro.to(state, { flip: 1, duration: 1.55, delay: 0.8, ease: 'power3.inOut' })
-      intro.to(state, { arrive: 1, duration: 0.9, ease: 'power3.out' }, '-=0.42')
+      intro.to(state, { open: 1, duration: 1.7, delay: 0.45, ease: 'power2.inOut' })
+      intro.to(state, { count: 100, duration: 1.7, ease: 'power1.in' }, '<')
+      intro.to(state, { settle: 1, duration: 1.2, ease: 'power3.inOut' }, '+=0.35')
 
       const onWheel = (event: WheelEvent) => {
-        if (openRef.current || state.flip < 0.98 || state.arrive < 0.98) return
+        if (openRef.current || state.settle < 0.98) return
         event.preventDefault()
         wheelBank.current += event.deltaY
         if (Math.abs(wheelBank.current) < 36) return
@@ -279,8 +303,19 @@ export default function Internships() {
         </nav>
       </header>
 
+      <div ref={introRef} className="pointer-events-none absolute inset-0 z-20" style={{ opacity: 0 }}>
+        <p className="absolute top-1/2 left-[4vw] -translate-y-1/2 text-[12px] tracking-[0.28em] text-black/55">实习目录</p>
+        <p
+          className="absolute top-1/2 left-[18vw] -translate-y-1/2 text-[clamp(84px,10vw,148px)] leading-none font-normal"
+          style={{ fontFamily: '"Iowan Old Style", Palatino, "Noto Serif SC", serif' }}
+        >
+          <span ref={countRef}>0</span>
+        </p>
+        <p className="absolute top-1/2 right-[4vw] -translate-y-1/2 text-[13px] tracking-[0.22em] text-black/55">01</p>
+      </div>
+
       <div
-        className="pointer-events-none absolute top-[7vh] left-[4.5vw] z-30 w-[min(88vw,440px)]"
+        className="pointer-events-none absolute top-[6.5vh] left-[4.2vw] z-30 w-[min(36vw,440px)]"
         style={{ opacity: chrome ? 1 : 0, transition: 'opacity 0.45s ease' }}
       >
         {chrome ? (
@@ -288,13 +323,17 @@ export default function Internships() {
             <div className="overflow-hidden">
               <h1
                 key={current.id}
-                className="text-[clamp(36px,4.4vw,68px)] leading-[1.04] font-normal"
+                className="text-[clamp(40px,4.5vw,68px)] leading-[1.14] font-medium"
                 style={{ animation: 'projects-line-in 0.7s cubic-bezier(0.215, 0.61, 0.355, 1) both' }}
               >
-                {current.name}
+                {current.lines.map((line) => (
+                  <span key={line} className="block">
+                    {line}
+                  </span>
+                ))}
               </h1>
             </div>
-            <div className="mt-5">
+            <div className="mt-6">
               <Credit label="岗位" delay={0} />
               <Credit label="时间" delay={0.08} />
               <Credit label="内容" delay={0.16} />
@@ -303,7 +342,7 @@ export default function Internships() {
         ) : null}
       </div>
 
-      <div className="absolute inset-0" style={{ perspective: '980px', perspectiveOrigin: '46% 42%' }}>
+      <div className="absolute inset-0" style={{ perspective: '1500px', perspectiveOrigin: '52% 48%' }}>
         {places.map((place, index) => (
           <button
             key={place.id}
@@ -315,7 +354,7 @@ export default function Internships() {
             className="absolute top-0 left-0 cursor-grab border-0 bg-transparent p-0 [transform:translate(-50%,-50%)] [transform-style:preserve-3d] active:cursor-grabbing"
             style={{ touchAction: 'none' }}
             onPointerEnter={() => {
-              if (Math.round(motion.current.index) !== index || motion.current.flip < 0.98) return
+              if (Math.round(motion.current.index) !== index || motion.current.settle < 0.98) return
               setRing((value) => value + 1)
             }}
             onPointerLeave={() => {
@@ -325,7 +364,7 @@ export default function Internships() {
               settle.current = gsap.to(motion.current, { tiltX: 0, tiltY: 0, duration: 0.6, ease: 'power3.out', onUpdate: paint })
             }}
             onPointerDown={(event) => {
-              if (reduced || open || motion.current.flip < 0.98) return
+              if (reduced || open || motion.current.settle < 0.98) return
               if (Math.round(motion.current.index) !== index) return
               settle.current?.kill()
               drag.current = {
@@ -357,7 +396,7 @@ export default function Internships() {
                 motion.current.tiltX = drag.current.tiltX + dy * -0.06
                 motion.current.tiltY = localX * 10
                 setRing((value) => (value === 0 ? 1 : value))
-              } else if (Math.round(motion.current.index) === index && motion.current.flip > 0.98 && !drag.current) {
+              } else if (Math.round(motion.current.index) === index && motion.current.settle > 0.98 && !drag.current) {
                 motion.current.tiltX = localY * -8
                 motion.current.tiltY = localX * 12
               } else {
@@ -369,7 +408,7 @@ export default function Internships() {
               const moved = drag.current?.moved
               const delta = index - motion.current.index
               releaseDrag()
-              if (moved || motion.current.flip < 0.98) return
+              if (moved || motion.current.settle < 0.98) return
               if (delta > 0.45 && delta < 1.4) {
                 step(1)
                 return
@@ -394,7 +433,7 @@ export default function Internships() {
               >
                 <DiscBody print={prints[index]} />
                 <span
-                  className="pointer-events-none absolute inset-x-[16%] top-[14%] text-center text-[clamp(15px,1.35vw,22px)] leading-[1.25] text-[#f7f3ea]"
+                  className="pointer-events-none absolute inset-x-[14%] top-[13%] text-center text-[clamp(18px,1.7vw,28px)] leading-[1.25] font-medium text-[#f7f3ea]"
                   style={{ transform: 'translateZ(8px)', textShadow: '0 1px 6px rgba(0,0,0,0.45)', fontFamily: serif }}
                 >
                   {place.name}
@@ -453,13 +492,13 @@ export default function Internships() {
 
 function Credit({ label, delay }: { label: string; delay: number }) {
   return (
-    <div className="relative grid grid-cols-[72px_1fr] items-baseline gap-4 py-[0.72rem]">
+    <div className="relative grid grid-cols-[4.5rem_1fr] items-baseline gap-6 py-[0.62rem]">
       <span
         className="absolute inset-x-0 top-0 h-px origin-left bg-black/30"
         style={{ animation: `intern-rule 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) ${delay}s both` }}
       />
-      <p className="text-[11px] tracking-[0.18em] text-black/55">{label}</p>
-      <p className="text-right text-[15px]">待填</p>
+      <p className="text-[11px] tracking-[0.22em] text-black/50">{label}</p>
+      <p className="text-right text-[15px] font-medium">待填</p>
       <span className="absolute inset-x-0 bottom-0 h-px bg-black/20" />
     </div>
   )
@@ -489,7 +528,13 @@ function InternshipDetail({ place, onClose }: { place: Place; onClose: () => voi
         返回
       </button>
       <div className="mx-auto max-w-3xl px-6 pt-[14vh] text-center">
-        <h2 className="text-[clamp(36px,5vw,72px)] leading-[1.05] font-normal">{place.name}</h2>
+        <h2 className="text-[clamp(36px,4.6vw,68px)] leading-[1.14] font-medium">
+          {place.lines.map((line) => (
+            <span key={line} className="block">
+              {line}
+            </span>
+          ))}
+        </h2>
         <div className="mx-auto mt-8 max-w-xl text-left">
           <Credit label="岗位" delay={0} />
           <Credit label="时间" delay={0.06} />
