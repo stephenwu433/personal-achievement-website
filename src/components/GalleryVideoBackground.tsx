@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
-const VIDEO_SRC = '/backgrounds/gallery-background.mp4'
-const POSTER_SRC = '/backgrounds/meadow.jpg'
+const DEFAULT_VIDEO_SRC = '/backgrounds/gallery-background.mp4'
+const DEFAULT_POSTER_SRC = '/backgrounds/meadow.jpg'
 
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -14,7 +14,13 @@ function playVideo(video: HTMLVideoElement) {
   })
 }
 
-export default function GalleryVideoBackground() {
+export default function GalleryVideoBackground({
+  videoSrc = DEFAULT_VIDEO_SRC,
+  posterSrc = DEFAULT_POSTER_SRC,
+}: {
+  videoSrc?: string
+  posterSrc?: string
+}) {
   const firstRef = useRef<HTMLVideoElement>(null)
   const secondRef = useRef<HTMLVideoElement>(null)
   const [reduced, setReduced] = useState(prefersReducedMotion)
@@ -90,7 +96,7 @@ export default function GalleryVideoBackground() {
   return (
     <div className="pointer-events-none absolute inset-0" aria-hidden="true">
       <img
-        src={POSTER_SRC}
+        src={posterSrc}
         alt=""
         className={clipClass}
         style={{ objectPosition: '72% 42%' }}
@@ -103,8 +109,8 @@ export default function GalleryVideoBackground() {
             ref={firstRef}
             className={clipClass}
             style={{ objectPosition: '72% 42%' }}
-            src={VIDEO_SRC}
-            poster={POSTER_SRC}
+            src={videoSrc}
+            poster={posterSrc}
             muted
             playsInline
             preload="auto"
@@ -114,8 +120,8 @@ export default function GalleryVideoBackground() {
             ref={secondRef}
             className={clipClass}
             style={{ objectPosition: '72% 42%', opacity: 0 }}
-            src={VIDEO_SRC}
-            poster={POSTER_SRC}
+            src={videoSrc}
+            poster={posterSrc}
             muted
             playsInline
             preload="auto"

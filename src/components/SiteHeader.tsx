@@ -16,6 +16,7 @@ type SiteHeaderProps = {
 
 export default function SiteHeader({ overlay = false, onPhoto = false }: SiteHeaderProps) {
   const { pathname } = useLocation()
+  const bare = pathname === '/skills'
 
   return (
     <header
@@ -24,19 +25,21 @@ export default function SiteHeader({ overlay = false, onPhoto = false }: SiteHea
           ? 'relative z-20 px-4 pt-4 pb-1 sm:px-6 sm:pt-5'
           : overlay
             ? 'absolute inset-x-0 top-0 z-20 px-4 pt-4 sm:px-6 sm:pt-5'
-            : 'sticky top-0 z-30 border-b border-border bg-background px-4 py-3 sm:px-6'
+            : bare
+              ? 'sticky top-0 z-30 bg-transparent px-4 py-3 sm:px-6'
+              : 'sticky top-0 z-30 border-b border-border bg-background px-4 py-3 sm:px-6'
       }
     >
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
         <div className="flex items-center justify-between">
-          <Link to="/" className={`text-lg tracking-tight ${onPhoto ? 'text-white' : ''}`}>
-            Stephen<span className={onPhoto ? 'text-white/70' : 'text-muted-foreground'}>舞</span>
+          <Link to="/" className={`text-lg tracking-tight ${onPhoto ? 'text-white' : bare ? 'text-[#3a2a1a]' : ''}`}>
+            Stephen<span className={onPhoto ? 'text-white/70' : bare ? 'text-[#3a2a1a]/70' : 'text-muted-foreground'}>舞</span>
           </Link>
           <a
             href={profile.github}
             target="_blank"
             rel="noreferrer"
-            className={`text-sm hover:text-foreground ${onPhoto ? 'text-white/80 hover:text-white' : 'text-muted-foreground'}`}
+            className={`text-sm hover:text-foreground ${onPhoto ? 'text-white/80 hover:text-white' : bare ? 'text-[#3a2a1a]/80 hover:text-[#3a2a1a]' : 'text-muted-foreground'}`}
           >
             GitHub
           </a>
