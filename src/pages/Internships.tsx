@@ -35,6 +35,7 @@ type Intro = {
   rise: number
   fan: number
   spin: number
+  count: number
 }
 
 function prefersReducedMotion() {
@@ -42,11 +43,12 @@ function prefersReducedMotion() {
 }
 
 function discPose(delta: number, active: boolean) {
-  const x = delta * 1.22 + 0.42
-  const z = delta * 1.15
-  const y = -delta * 0.05 + 0.18
-  const scale = active ? 1 : delta > 0 ? 1 : Math.max(0.7, 1 + delta * 0.14)
-  return { x, y, z, scale }
+  const angle = delta * 0.35
+  const x = Math.sin(angle) * 2.3 * 2.4
+  const z = -Math.cos(angle) * 2.4 + 2.4
+  const y = active ? 0.06 : 0
+  const scale = active ? 1 : Math.max(0.8, 1 - Math.abs(delta) * 0.2)
+  return { x, y, z, scale, angle }
 }
 
 function scribblePoints(loop: number) {
@@ -56,7 +58,7 @@ function scribblePoints(loop: number) {
   for (let point = 0; point <= stop; point += 1) {
     const angle = (point / count) * Math.PI * 2 - 0.45 + loop * 0.55
     const wobble = Math.sin(angle * 2 + loop * 1.3) * 0.028 + Math.sin(angle * 5.2) * 0.012
-    const radius = 1.045 + loop * 0.035 + wobble
+    const radius = 1.07 + loop * 0.04 + wobble
     points.push(new THREE.Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.05))
   }
   return points
@@ -66,6 +68,8 @@ export default function Internships() {
   const rootRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const quoteRefs = useRef<Array<HTMLDivElement | null>>([])
+  const introRef = useRef<HTMLDivElement>(null)
+  const countRef = useRef<HTMLSpanElement>(null)
   const [prints, setPrints] = useState<HTMLCanvasElement[]>([])
   const [active, setActive] = useState(0)
   const [chrome, setChrome] = useState(false)
@@ -101,12 +105,13 @@ export default function Internships() {
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       renderer.outputColorSpace = THREE.SRGBColorSpace
       const scene = new THREE.Scene()
-      const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100)
-      camera.position.set(0, 0.05, 5.6)
-      camera.lookAt(0, 0.15, 0)
+      const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100)
+      camera.position.set(0, 0, 4.4)
+      camera.lookAt(0, 0, 0)
       const gallery = new THREE.Group()
-      gallery.rotation.x = THREE.MathUtils.degToRad(-6)
-      gallery.scale.setScalar(0.9)
+      gallery.rotation.x = THREE.MathUtils.degToRad(-30)
+      gallery.rotation.y = THREE.MathUtils.degToRad(-30)
+      gallery.scale.setScalar(1.02)
       scene.add(gallery)
 
       const hole = holeTexture()
@@ -148,8 +153,8 @@ export default function Internships() {
       })
 
       const intro: Intro = reduced
-        ? { rise: 1, fan: 1, spin: 0 }
-        : { rise: 0, fan: 0, spin: 1 }
+        ? { rise: 1, fan: 1, spin: 0, count: 100 }
+        : { rise: 0, fan: 0, spin: 1, count: 0 }
       const play = { index: 0 }
       const tilt = { x: 0, y: 0 }
       let target = 0
@@ -204,8 +209,8 @@ export default function Internships() {
           const delta = raw * intro.fan
           const settled = Math.abs(raw) < 0.45 && intro.fan > 0.92
           const pose = discPose(delta, settled && index === focus)
-          disc.group.position.set(pose.x, pose.y - (1 - intro.rise) * 2.6, pose.z + (1 - intro.fan) * index * 0.04)
-          disc.group.rotation.set(index === focus ? tilt.x : 0, intro.spin * Math.PI * 0.5, disc.spin + (index === focus ? tilt.y : 0))
+          disc.group.position.set(pose.x, pose.y - (1 - intro.rise) * 3.2, pose.z + (1 - intro.fan) * index * 0.05)
+          disc.group.rotation.set(index === focus ? tilt.x : 0, -pose.angle + intro.spin * Math.PI * 0.5, disc.spin + (index === focus ? tilt.y : 0))
           const grown = 0.62 + 0.38 * intro.rise
           disc.group.scale.setScalar(pose.scale * grown)
           disc.group.visible = Math.abs(raw) < 3.4
@@ -223,6 +228,9 @@ export default function Internships() {
           ring.scale.set(1, 1, 1)
         })
 
+        if (countRef.current) countRef.current.textContent = String(Math.round(intro.count))
+        if (introRef.current) introRef.current.style.opacity = String(Math.max(0, 1 - intro.fan) * Math.min(1, intro.rise * 2))
+
         const spots: { x: number; top: number }[] = []
         const quoteFor = focus > 0 ? [focus - 1, focus] : [focus, focus + 1]
         quoteFor.forEach((index) => {
@@ -235,8 +243,8 @@ export default function Internships() {
             const angle = (step / 8) * Math.PI * 2
             lower = Math.max(lower, project(disc.group.localToWorld(edge.set(Math.cos(angle), Math.sin(angle), 0))).y)
           }
-          if (origin.x < width * 0.2 || origin.x > width * 0.72) return
-          const top = lower + 34
+          if (origin.x < width * 0.16 || origin.x > width * 0.8) return
+          const top = lower + 22
           if (top > height - 64) return
           spots.push({ x: origin.x, top })
         })
@@ -385,8 +393,8 @@ export default function Internships() {
         setActive(0)
       } else {
         introTween = gsap.timeline({ onUpdate: layout })
-        introTween.to(intro, { rise: 1, spin: 0, duration: 1.2, ease: 'power2.inOut' }, 0.15)
-        introTween.to(intro, { fan: 1, duration: 1.05, ease: 'power3.inOut' }, 1.05)
+        introTween.to(intro, { rise: 1, spin: 0, count: 100, duration: 1.45, ease: 'power2.inOut' }, 0.35)
+        introTween.to(intro, { fan: 1, duration: 1.15, ease: 'power3.inOut' }, 1.45)
         introTween.call(() => {
           if (alive) setChrome(true)
         })
@@ -439,6 +447,17 @@ export default function Internships() {
       </header>
 
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" style={{ touchAction: 'none' }} />
+
+      <div ref={introRef} className="pointer-events-none absolute inset-0 z-20" style={{ opacity: 0 }}>
+        <p className="absolute top-1/2 left-[4vw] -translate-y-1/2 text-[12px] tracking-[0.28em] text-black/55">实习目录</p>
+        <p
+          className="absolute top-1/2 left-[18vw] -translate-y-1/2 text-[clamp(84px,10vw,148px)] leading-none font-normal"
+          style={{ fontFamily: '"Iowan Old Style", Palatino, "Noto Serif SC", serif' }}
+        >
+          <span ref={countRef}>0</span>
+        </p>
+        <p className="absolute top-1/2 right-[4vw] -translate-y-1/2 text-[13px] tracking-[0.22em] text-black/55">01</p>
+      </div>
 
       <div
         className="pointer-events-none absolute top-[6.5vh] left-[4.2vw] z-30 w-[min(22vw,270px)]"
