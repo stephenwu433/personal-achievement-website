@@ -20,7 +20,7 @@ const places: Place[] = [
   { id: 'gaodun', name: '高顿', lines: ['高顿'], image: '/internships/gaodun.png' },
 ]
 
-const serif = '"Noto Serif SC", "Iowan Old Style", Palatino, "Palatino Linotype", "Songti SC", serif'
+const serif = '"LXGW WenKai", "Iowan Old Style", Palatino, "Songti SC", serif'
 const paper = '#f3f1ec'
 
 const REST_X = 14
@@ -323,7 +323,7 @@ export default function Internships() {
             <div className="overflow-hidden">
               <h1
                 key={current.id}
-                className="text-[clamp(40px,4.5vw,68px)] leading-[1.14] font-medium"
+                className="text-[clamp(26px,2.6vw,40px)] leading-[1.45] font-normal"
                 style={{ animation: 'projects-line-in 0.7s cubic-bezier(0.215, 0.61, 0.355, 1) both' }}
               >
                 {current.lines.map((line) => (
@@ -433,7 +433,7 @@ export default function Internships() {
               >
                 <DiscBody print={prints[index]} />
                 <span
-                  className="pointer-events-none absolute inset-x-[14%] top-[13%] text-center text-[clamp(18px,1.7vw,28px)] leading-[1.25] font-medium text-[#f7f3ea]"
+                  className="pointer-events-none absolute inset-x-[14%] top-[13%] text-center text-[clamp(16px,1.5vw,22px)] leading-[1.35] font-normal text-[#f7f3ea]"
                   style={{ transform: 'translateZ(8px)', textShadow: '0 1px 6px rgba(0,0,0,0.45)', fontFamily: serif }}
                 >
                   {place.name}
@@ -498,7 +498,7 @@ function Credit({ label, delay }: { label: string; delay: number }) {
         style={{ animation: `intern-rule 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) ${delay}s both` }}
       />
       <p className="text-[11px] tracking-[0.22em] text-black/50">{label}</p>
-      <p className="text-right text-[15px] font-medium">待填</p>
+      <p className="text-right text-[15px] font-normal">待填</p>
       <span className="absolute inset-x-0 bottom-0 h-px bg-black/20" />
     </div>
   )
@@ -528,7 +528,7 @@ function InternshipDetail({ place, onClose }: { place: Place; onClose: () => voi
         返回
       </button>
       <div className="mx-auto max-w-3xl px-6 pt-[14vh] text-center">
-        <h2 className="text-[clamp(36px,4.6vw,68px)] leading-[1.14] font-medium">
+        <h2 className="text-[clamp(28px,3vw,44px)] leading-[1.45] font-normal">
           {place.lines.map((line) => (
             <span key={line} className="block">
               {line}
