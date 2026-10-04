@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
-import InternshipDisc from '@/src/components/InternshipDisc'
+import InternshipShelf, { type InternshipShelfHandle } from '@/src/components/InternshipShelf'
 import { internships, profile, sections } from '@/src/content'
 
 const pageBg = '#e6e3dc'
-const ink = '#1a1a1a'
 const serif = { fontFamily: '"Noto Serif SC", "Noto Sans SC", serif' }
 
 function clamp(value: number, min: number, max: number) {
@@ -36,23 +35,12 @@ function useStageSize(ref: RefObject<HTMLElement | null>) {
   return size
 }
 
-function stageLayout(w: number, h: number, narrow: boolean) {
-  const disc = clamp(Math.min(w * (narrow ? 0.7 : 0.34), h * (narrow ? 0.42 : 0.5)), 200, 520)
-  const gap = disc * (narrow ? 0.62 : 0.58)
-  const anchorX = w * (narrow ? 0.48 : 0.5)
-  const anchorY = narrow ? h * 0.56 : h * 0.44
-  const scaleStep = narrow ? 0.22 : 0.46
-  return { disc, gap, anchorX, anchorY, scaleStep }
-}
-
-const ringPath =
-  'M14 46 C 6 24, 22 8, 48 11 C 74 6, 98 24, 94 50 C 102 78, 76 104, 48 96 C 18 108, 2 78, 14 46'
-
 export default function Internships() {
   const narrow = useNarrowScreen()
   const stageRef = useRef<HTMLDivElement>(null)
-  const { w, h } = useStageSize(stageRef)
-  const { disc, gap, anchorX, anchorY, scaleStep } = stageLayout(w, h, narrow)
+  const shelfRef = useRef<InternshipShelfHandle>(null)
+  const { w } = useStageSize(stageRef)
+  const gap = Math.max(w * (narrow ? 0.62 : 0.34), 160)
   const count = internships.length
   const progressRef = useRef(0)
   const velocityRef = useRef(0)
@@ -69,6 +57,7 @@ export default function Internships() {
   const [detail, setDetail] = useState<number | null>(null)
   const [indexOpen, setIndexOpen] = useState(false)
   const [reduced] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const [revealed, setRevealed] = useState(reduced)
 
   useEffect(() => {
     const previousTitle = document.title
@@ -239,18 +228,8 @@ export default function Internships() {
   const active = clamp(Math.round(progress), 0, count - 1)
   const current = internships[active]
 
-  const poseFor = (index: number) => {
-    const delta = index - progress
-    const scale = clamp(1 + delta * scaleStep, 0.4, 1.72)
-    return {
-      x: anchorX + delta * gap,
-      y: anchorY,
-      scale,
-    }
-  }
-
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || detail !== null) return
+    if (event.button !== 0 || detail !== null || !revealed) return
     draggingRef.current = true
     glideRef.current = null
     targetRef.current = null
@@ -263,7 +242,7 @@ export default function Internships() {
       moved: 0,
       last: event.clientX,
       time: performance.now(),
-      hit: discIndexAt(event.clientX, event.clientY),
+      hit: shelfRef.current?.pick(event.clientX, event.clientY) ?? null,
     }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
@@ -310,14 +289,12 @@ export default function Internships() {
     goToRef.current(Math.round(flicked))
   }
 
-  const quoteWidth = narrow ? Math.min(280, w - 48) : Math.min(220, gap * 0.68)
-  const quoteIndexes = narrow ? [active] : [active, active + 1].filter((index) => index >= 0 && index < count)
-
   return (
     <div className="fixed inset-0 overflow-hidden text-[#1a1a1a]" style={{ background: pageBg }}>
       <CatalogNav
         indexOpen={indexOpen}
         showIndex={detail === null}
+        concealed={!revealed && detail === null}
         narrow={narrow}
         active={active}
         onToggleIndex={() => setIndexOpen((open) => !open)}
@@ -343,86 +320,29 @@ export default function Internships() {
       <div
         ref={stageRef}
         className={`absolute inset-0 ${detail === null ? 'cursor-grab active:cursor-grabbing' : ''}`}
-        style={{ touchAction: 'none', perspective: '980px', zIndex: 1 }}
+        style={{ touchAction: 'none', zIndex: 1 }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
-        {detail === null ? (
-          <>
-            <p className="sr-only" aria-live="polite">
-              {current.title}，{current.organization}，{current.role}
-            </p>
-            {internships.map((item, index) => {
-              const pose = poseFor(index)
-              return (
-                <div key={item.slug}>
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute"
-                    style={{
-                      left: pose.x,
-                      top: pose.y + disc * pose.scale * 0.36,
-                      width: disc * pose.scale * 0.72,
-                      height: disc * pose.scale * 0.14,
-                      transform: 'translate(-50%, -50%)',
-                      background: 'radial-gradient(ellipse, rgba(0,0,0,0.28), rgba(0,0,0,0) 70%)',
-                      zIndex: 1,
-                    }}
-                  />
-                  <button
-                    type="button"
-                    data-index={index}
-                    aria-label={`查看${item.title}`}
-                    aria-current={index === active ? 'true' : undefined}
-                    className="absolute border-0 bg-transparent p-0 outline-none"
-                    style={{
-                      left: pose.x,
-                      top: pose.y,
-                      width: disc,
-                      height: disc,
-                      zIndex: 2 + index,
-                      transform: `translate(-50%, -50%) rotateX(18deg) rotateY(-34deg) scale(${pose.scale})`,
-                      transformStyle: 'preserve-3d',
-                      containerType: 'inline-size',
-                    }}
-                  >
-                    <InternshipDisc item={item} />
-                  </button>
-                </div>
-              )
-            })}
-            <SelectionRing progress={progress} count={count} poseFor={poseFor} disc={disc} />
-            {quoteIndexes.map((index) => {
-              const pose = poseFor(index)
-              if (pose.x < quoteWidth * 0.4 || pose.x > w - quoteWidth * 0.4) return null
-              const item = internships[index]
-              return (
-                <figure
-                  key={item.slug}
-                  className="pointer-events-none absolute text-center"
-                  style={{
-                    left: pose.x,
-                    top: pose.y + (disc * pose.scale) / 2 + (narrow ? 36 : 72),
-                    width: quoteWidth,
-                    transform: 'translateX(-50%)',
-                    zIndex: 20,
-                  }}
-                >
-                  <p className="tracking-[0.35em]">★★★★</p>
-                  <figcaption className="mt-2 text-[10px] tracking-[0.2em]">{item.note.source}</figcaption>
-                  <blockquote className="mt-2 text-lg leading-snug" style={serif}>
-                    “{item.note.quote}”
-                  </blockquote>
-                </figure>
-              )
-            })}
-          </>
-        ) : null}
+        <p className="sr-only" aria-live="polite">
+          {current.title}，{current.organization}，{current.role}
+        </p>
+        <InternshipShelf
+          ref={shelfRef}
+          items={internships}
+          progress={progress}
+          reduced={reduced}
+          narrow={narrow}
+          showCopy={revealed && detail === null}
+          onReady={() => setRevealed(true)}
+        />
       </div>
 
-      {detail === null ? (
+      {detail !== null ? (
+        <DetailView index={detail} onStep={showDetail} />
+      ) : revealed ? (
         <aside
           key={current.slug}
           className={`absolute z-20 ${narrow ? 'inset-x-5 top-16' : 'top-20 left-8 w-[250px]'}`}
@@ -437,12 +357,7 @@ export default function Internships() {
             <CreditRow label="内容">{current.work.join('、')}</CreditRow>
           </dl>
         </aside>
-      ) : (
-        <DetailView
-          index={detail}
-          onStep={showDetail}
-        />
-      )}
+      ) : null}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 z-40 opacity-[0.16] mix-blend-multiply"
@@ -451,55 +366,6 @@ export default function Internships() {
             'url("data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22140%22 height=%22140%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%222%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22 opacity=%220.55%22/%3E%3C/svg%3E")',
         }}
       />
-    </div>
-  )
-}
-
-function discIndexAt(x: number, y: number) {
-  const elements = document.elementsFromPoint(x, y)
-  for (const element of elements) {
-    const index = element.closest('[data-index]')?.getAttribute('data-index')
-    if (index !== null && index !== undefined) return Number(index)
-  }
-  return null
-}
-
-function SelectionRing({
-  progress,
-  count,
-  poseFor,
-  disc,
-}: {
-  progress: number
-  count: number
-  poseFor: (index: number) => { x: number; y: number; scale: number }
-  disc: number
-}) {
-  const base = clamp(Math.floor(progress), 0, Math.max(0, count - 1))
-  const next = clamp(base + 1, 0, Math.max(0, count - 1))
-  const frac = progress - Math.floor(progress)
-  const handoff = frac < 0.32 ? 0 : frac > 0.68 ? 1 : (frac - 0.32) / 0.36
-  const blend = handoff * handoff * (3 - 2 * handoff)
-  const from = poseFor(base)
-  const to = poseFor(next)
-  const scale = from.scale + (to.scale - from.scale) * blend
-  const size = disc * scale * 1.22
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute"
-      style={{
-        left: from.x + (to.x - from.x) * blend,
-        top: from.y + (to.y - from.y) * blend + size * 0.04,
-        width: size,
-        height: size * 1.05,
-        transform: 'translate(-50%, -50%)',
-        zIndex: 8,
-      }}
-    >
-      <svg viewBox="0 0 100 110" className="pointer-events-none size-full overflow-visible">
-        <path d={ringPath} fill="none" stroke={ink} strokeWidth="1.6" strokeLinecap="round" />
-      </svg>
     </div>
   )
 }
@@ -516,6 +382,7 @@ function CreditRow({ label, children }: { label: string; children: ReactNode }) 
 function CatalogNav({
   indexOpen,
   showIndex,
+  concealed,
   narrow,
   active,
   onToggleIndex,
@@ -524,6 +391,7 @@ function CatalogNav({
 }: {
   indexOpen: boolean
   showIndex: boolean
+  concealed: boolean
   narrow: boolean
   active: number
   onToggleIndex: () => void
@@ -531,7 +399,14 @@ function CatalogNav({
   onPick: (index: number) => void
 }) {
   return (
-    <header className="absolute inset-x-0 top-0 z-30 flex items-center justify-between px-6 py-5 sm:px-8">
+    <header
+      className="absolute inset-x-0 top-0 z-30 flex items-center justify-between px-6 py-5 sm:px-8"
+      style={{
+        opacity: concealed ? 0 : 1,
+        pointerEvents: concealed ? 'none' : 'auto',
+        transition: 'opacity 520ms ease',
+      }}
+    >
       <Link to="/" className="text-[15px] tracking-tight" onClick={onCatalog}>
         {profile.name}
       </Link>
