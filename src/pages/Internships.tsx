@@ -80,13 +80,13 @@ function writeScribble(scribble: Scribble, time: number) {
   for (let index = 0; index < angles.length; index += 1) {
     const angle = angles[index]
     const hand = Math.sin(angle * 2 + loop * 1.3) * 0.024 + Math.sin(angle * 5.2 + loop) * 0.008
-    const radius = echo
-      ? 1.09 + phase * 0.2 + hand * 0.45
-      : 1.065 + loop * 0.04 + hand + Math.sin(angle * 2 - time * 3.2 + loop * 1.6) * 0.048 + Math.sin(angle * 5 - time * 4.8 + loop) * 0.014
+    const travel = Math.sin(angle * 2 - time * 3.4 + loop * 1.7)
+    const wake = Math.sin(angle * 5 - time * 5.1 + loop)
+    const radius = echo ? 1.08 + phase * 0.1 + hand * 0.35 : 1.06 + loop * 0.038 + hand + travel * 0.034 + wake * 0.012
     position.setXYZ(index, Math.cos(angle) * radius, Math.sin(angle) * radius, 0.05)
   }
   position.needsUpdate = true
-  scribble.material.opacity = echo ? Math.sin(phase * Math.PI) * 0.62 : 1
+  scribble.material.opacity = echo ? Math.sin(phase * Math.PI) * 0.5 : 1
 }
 
 export default function Internships() {
@@ -266,7 +266,7 @@ export default function Internships() {
             lower = Math.max(lower, project(disc.group.localToWorld(edge.set(Math.cos(angle), Math.sin(angle), 0))).y)
           }
           if (origin.x < width * 0.16 || origin.x > width * 0.8) return
-          const top = lower + 22
+          const top = lower + 36
           if (top > height - 64) return
           spots.push({ x: origin.x, top })
         })
