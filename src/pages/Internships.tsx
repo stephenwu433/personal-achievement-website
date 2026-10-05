@@ -24,7 +24,7 @@ const places: Place[] = [
     image: '/internships/dongpeng.png',
     role: '海外市场实习生',
     period: '2026.05–2026.09',
-    work: '负责海外市场宣传内容制作与展会推广，\n参与视频、推文、海报等内容的策划和发布。',
+    work: '负责海外展会内容策划与多平台交付；\n拆解传播需求，\n统筹从选题、制作到发布的内容协同流程。',
   },
   {
     id: 'zhijunzhu',
@@ -32,7 +32,7 @@ const places: Place[] = [
     image: '/internships/zhijunzhu.png',
     role: 'AI 与市场推广负责人',
     period: '2025.06–2026.04',
-    work: '负责用户分析、品牌内容策划、投放推广和效果复盘，\n参与搭建内容增长与营销优化流程。',
+    work: '主导品牌增长项目，\n统筹用户洞察、内容策略与投放验证，\n并将有效经验沉淀为可复用的增长机制。',
   },
   {
     id: 'huigu',
@@ -40,15 +40,15 @@ const places: Place[] = [
     image: '/internships/huigu.png',
     role: '海外市场实习生',
     period: '2025.06–2025.09',
-    work: '协助意大利 Marmomac 展会筹备，\n负责英文邮件沟通、\n海外资料翻译及石材机械产品宣传材料制作。',
+    work: '负责海外展会沟通、信息统筹及产品资料本地化；\n将海外客户需求转化为清晰的产品展示方案。',
   },
   {
     id: 'gaodun',
     name: '高顿教育',
     image: '/internships/gaodun.png',
-    role: '市场营销实习生（校园方向）',
+    role: '市场营销实习生',
     period: '2024.11–2025.02',
-    work: '负责校园市场推广、社群运营、活动宣传及学生咨询，\n协助提升课程和活动触达。',
+    work: '负责校园市场触达、活动传播与咨询转化；\n从用户反馈中提炼需求，设计标准化答疑与转化流程。',
   },
 ]
 
