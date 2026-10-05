@@ -132,7 +132,28 @@ export default function DongpengCase() {
 
   return (
     <div ref={rootRef} id="dongpeng-case" className="relative">
-      <section data-reveal-block className="mx-auto w-full max-w-[860px] px-8 pt-20 pb-8">
+      <section data-reveal-block className="mx-auto w-full max-w-[1080px] px-8 pt-20 pb-4">
+        <p data-rise className="text-[12px] tracking-[0.28em] text-black/45">可量化成果</p>
+        <p data-rise className="mt-4 max-w-[40rem] text-[16px] leading-[1.75]">
+          <span className="block">内容发布频率提升，并完成视频、推文、海报与可复用模板。</span>
+          <span className="block">数字来自简历中已写明的交付记录。</span>
+        </p>
+        <ul className="mt-8 grid grid-cols-2 border border-black/15 sm:grid-cols-3 lg:grid-cols-6">
+          {results.map((item) => (
+            <li key={item.label} data-frame className="min-w-0 px-4 py-5 [&:not(:last-child)]:border-r [&:not(:last-child)]:border-black/10">
+              <p className="text-[clamp(22px,1.8vw,28px)] leading-none">{item.value}</p>
+              <p className="mt-2 h-4 text-[12px] tracking-[0.04em] text-black/45">{item.unit}</p>
+              <p className="mt-2 text-[13px] leading-[1.45] text-black/55">{item.label}</p>
+            </li>
+          ))}
+        </ul>
+        <div data-rise className="mt-6 max-w-[44rem] text-[14px] leading-[1.8] text-black/60">
+          <p>市场文档里的广告价格、客户决策周期和平台比例不是个人业绩；展会资源数量只说明整理规模。</p>
+          <p className="mt-2">个人贡献边界：市场研究与展会资源清单为个人工作成果；企业介绍、产品资料和认证文件仅作为项目背景与内容依据使用。</p>
+        </div>
+      </section>
+
+      <section data-reveal-block className="mx-auto w-full max-w-[860px] px-8 pt-12 pb-8">
         <p data-rise className="text-[12px] tracking-[0.28em] text-black/45">一、项目概述</p>
         <div className="mt-4 overflow-hidden">
           <p data-title className="text-[18px] leading-[1.85]">
@@ -241,26 +262,6 @@ export default function DongpengCase() {
         </ol>
       </section>
 
-      <section data-reveal-block className="mx-auto w-full max-w-[1080px] px-8 pt-4 pb-28">
-        <p data-rise className="text-[12px] tracking-[0.28em] text-black/45">四、可量化成果</p>
-        <p data-rise className="mt-4 max-w-[40rem] text-[16px] leading-[1.75]">
-          <span className="block">内容发布频率提升，并完成视频、推文、海报与可复用模板。</span>
-          <span className="block">数字来自简历中已写明的交付记录。</span>
-        </p>
-        <ul className="mt-8 grid grid-cols-2 border border-black/15 sm:grid-cols-3 lg:grid-cols-6">
-          {results.map((item) => (
-            <li key={item.label} data-frame className="min-w-0 px-4 py-5 [&:not(:last-child)]:border-r [&:not(:last-child)]:border-black/10">
-              <p className="text-[clamp(22px,1.8vw,28px)] leading-none">{item.value}</p>
-              <p className="mt-2 h-4 text-[12px] tracking-[0.04em] text-black/45">{item.unit}</p>
-              <p className="mt-2 text-[13px] leading-[1.45] text-black/55">{item.label}</p>
-            </li>
-          ))}
-        </ul>
-        <div data-rise className="mt-6 max-w-[44rem] text-[14px] leading-[1.8] text-black/60">
-          <p>市场文档里的广告价格、客户决策周期和平台比例不是个人业绩；展会资源数量只说明整理规模。</p>
-          <p className="mt-2">个人贡献边界：市场研究与展会资源清单为个人工作成果；企业介绍、产品资料和认证文件仅作为项目背景与内容依据使用。</p>
-        </div>
-      </section>
     </div>
   )
 }
