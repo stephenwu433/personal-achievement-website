@@ -8,6 +8,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import * as THREE from 'three'
 import { profile, sections } from '@/src/content'
 import DongpengCase from '@/src/internships/DongpengCase'
+import InternshipCase from '@/src/internships/InternshipCase'
 
 gsap.registerPlugin(useGSAP, Observer, CustomEase, ScrollTrigger)
 
@@ -58,7 +59,7 @@ const places: Place[] = [
     id: 'gaodun',
     name: '高顿教育',
     image: '/internships/gaodun.png',
-    role: '市场营销实习生',
+    role: '市场营销实习生（校园方向）',
     period: '2024.11–2025.02',
     work: '负责校园市场触达、活动传播与咨询转化；从用户反馈中提炼需求，设计标准化答疑与转化流程。',
   },
@@ -712,7 +713,7 @@ function Quote({ place }: { place: Place }) {
 function InternshipDetail({ place, onClose }: { place: Place; onClose: () => void }) {
   return (
     <InternshipSheet place={place} onClose={onClose}>
-      {place.id === 'dongpeng' ? <DongpengCase /> : null}
+      {place.id === 'dongpeng' ? <DongpengCase /> : <InternshipCase id={place.id} />}
     </InternshipSheet>
   )
 }
