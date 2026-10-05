@@ -1,13 +1,23 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
+import { CustomEase } from 'gsap/CustomEase'
 import { Observer } from 'gsap/Observer'
 import * as THREE from 'three'
 import { profile, sections } from '@/src/content'
 import DongpengCase from '@/src/internships/DongpengCase'
 
-gsap.registerPlugin(useGSAP, Observer)
+gsap.registerPlugin(useGSAP, Observer, CustomEase)
+
+function energyEase() {
+  try {
+    if (!CustomEase.get('energy')) CustomEase.create('energy', 'M0,0 C0.32,0.72 0,1 1,1')
+    return 'energy'
+  } catch {
+    return 'power2.out'
+  }
+}
 
 type Place = {
   id: string
@@ -67,6 +77,13 @@ type Intro = {
   fan: number
   spin: number
   count: number
+}
+
+type Flight = {
+  others: number
+  active: number
+  spin: number
+  fade: number
 }
 
 function prefersReducedMotion() {
@@ -134,6 +151,10 @@ export default function Internships() {
   const quoteRefs = useRef<Array<HTMLDivElement | null>>([])
   const introRef = useRef<HTMLDivElement>(null)
   const countRef = useRef<HTMLSpanElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const headerRef = useRef<HTMLElement>(null)
+  const flightRef = useRef<Flight>({ others: 1, active: 1, spin: 0, fade: 1 })
+  const layoutRef = useRef<() => void>(() => {})
   const [prints, setPrints] = useState<HTMLCanvasElement[]>([])
   const [active, setActive] = useState(0)
   const [chrome, setChrome] = useState(false)
@@ -263,20 +284,26 @@ export default function Internships() {
         const width = canvas.clientWidth
         const height = canvas.clientHeight
         const focus = Math.round(play.index)
+        const flight = flightRef.current
         discs.forEach((disc, index) => {
           const raw = index - play.index
           const delta = raw * intro.fan
           const settled = Math.abs(raw) < 0.45 && intro.fan > 0.92
           const pose = discPose(delta, settled && index === focus)
           disc.group.position.set(pose.x, pose.y - (1 - intro.rise) * 3.2, pose.z + (1 - intro.fan) * index * 0.05)
-          disc.group.rotation.set(index === focus ? tilt.x : 0, -pose.angle + intro.spin * Math.PI * 0.5, disc.spin + (index === focus ? tilt.y : 0))
+          disc.group.rotation.set(
+            index === focus ? tilt.x : 0,
+            -pose.angle + intro.spin * Math.PI * 0.5 + (index === focus ? flight.spin : 0),
+            disc.spin + (index === focus ? tilt.y : 0),
+          )
           const grown = 0.62 + 0.38 * intro.rise
-          disc.group.scale.setScalar(pose.scale * grown)
+          const flightScale = index === focus ? flight.active : flight.others
+          disc.group.scale.setScalar(pose.scale * grown * flightScale)
           disc.group.visible = Math.abs(raw) < 3.4
         })
 
         const host = discs[focus]
-        const showRing = intro.fan > 0.98 && Boolean(host)
+        const showRing = intro.fan > 0.98 && Boolean(host) && flight.active > 0.9 && flight.spin < 0.04
         const rippleTime = reduced ? 0 : gsap.ticker.time
         rings.forEach((ring) => {
           writeScribble(ring, showRing ? rippleTime : 0)
@@ -309,8 +336,13 @@ export default function Internships() {
           if (top > height - 64) return
           spots.push({ x: origin.x, top })
         })
+        const settling = flight.fade < 0.999 || flight.others < 0.999
         quoteRefs.current.forEach((quote, index) => {
           if (!quote) return
+          if (settling) {
+            quote.style.opacity = String(flight.fade)
+            return
+          }
           const spot = spots[index]
           quote.style.opacity = spot ? '1' : '0'
           if (!spot) return
@@ -323,8 +355,16 @@ export default function Internships() {
           shown = rounded
           setActive(rounded)
         }
+        if (flight.fade < 0.999) {
+          if (panelRef.current) {
+            panelRef.current.style.transition = 'none'
+            panelRef.current.style.opacity = String(flight.fade)
+          }
+          if (headerRef.current) headerRef.current.style.opacity = String(flight.fade)
+        }
         renderer.render(scene, camera)
       }
+      layoutRef.current = layout
 
       const glide = gsap.quickTo(play, 'index', {
         duration: 0.5,
@@ -419,12 +459,32 @@ export default function Internships() {
           gsap.to(disc, { spin: 0, duration: 0.45, ease: 'power3.out', overwrite: 'auto', onUpdate: layout })
         })
         if (!moved && picked >= 0) {
-          if (picked === Math.round(play.index)) setOpen(true)
+          if (picked === Math.round(play.index)) openPlace()
           else glideTo(picked)
           return
         }
         const flicked = gsap.utils.clamp(-1, 1, pointer.vx * 420)
         glideTo(Math.round(play.index + flicked))
+      }
+
+      const openPlace = () => {
+        if (openRef.current || intro.fan < 0.98) return
+        openRef.current = true
+        glide.tween.pause()
+        if (reduced) {
+          setOpen(true)
+          return
+        }
+        const flight = flightRef.current
+        gsap.timeline({
+          onComplete: () => {
+            if (alive) setOpen(true)
+          },
+        })
+          .to(flight, { active: 0.94, duration: 0.12, ease: 'power2.out', onUpdate: layout })
+          .to(flight, { active: 1.015, duration: 0.16, ease: 'power2.out', onUpdate: layout })
+          .to(flight, { others: 0, fade: 0, duration: 0.55, ease: 'none', onUpdate: layout }, 0.12)
+          .to(flight, { active: 0.001, spin: Math.PI / 2, duration: 0.8, ease: 'power2.in', onUpdate: layout }, 0.67)
       }
 
       const onKey = (event: KeyboardEvent) => {
@@ -489,11 +549,31 @@ export default function Internships() {
     { scope: rootRef, dependencies: [prints, reduced] },
   )
 
+  const closeSheet = () => {
+    const flight = flightRef.current
+    flight.others = 1
+    flight.active = 1
+    flight.spin = 0
+    flight.fade = 1
+    if (panelRef.current) {
+      panelRef.current.style.transition = ''
+      panelRef.current.style.opacity = ''
+    }
+    if (headerRef.current) headerRef.current.style.opacity = ''
+    openRef.current = false
+    layoutRef.current()
+    setOpen(false)
+  }
+
   const current = places[active]
 
   return (
     <div ref={rootRef} className="relative h-dvh overflow-hidden text-[#1c1c1c]" style={{ background: paper, fontFamily: serif }}>
-      <header className="absolute inset-x-0 top-0 z-40 flex items-center justify-between px-[4vw] pt-4 text-[13px] tracking-[0.08em]">
+      <header
+        ref={headerRef}
+        className="absolute inset-x-0 top-0 z-40 flex items-center justify-between px-[4vw] pt-4 text-[13px] tracking-[0.08em]"
+        style={{ opacity: open ? 0 : 1 }}
+      >
         <Link to="/" className="text-[#1c1c1c]">
           {profile.name}
         </Link>
@@ -524,8 +604,9 @@ export default function Internships() {
       </div>
 
       <div
+        ref={panelRef}
         className="pointer-events-none absolute top-[6.5vh] left-[4.2vw] z-30"
-        style={{ opacity: chrome ? 1 : 0, transition: 'opacity 0.45s ease' }}
+        style={{ opacity: open ? 0 : chrome ? 1 : 0, transition: open ? 'none' : 'opacity 0.45s ease' }}
       >
         {chrome ? (
           <>
@@ -560,27 +641,51 @@ export default function Internships() {
         </div>
       ))}
 
-      {open ? <InternshipDetail place={current} onClose={() => setOpen(false)} /> : null}
+      {open ? <InternshipDetail place={current} onClose={closeSheet} /> : null}
     </div>
   )
 }
 
-function Credit({ label, value, delay, paragraph = false }: { label: string; value: string; delay: number; paragraph?: boolean }) {
+function Credit({
+  label,
+  value,
+  delay,
+  paragraph = false,
+  masked = false,
+}: {
+  label: string
+  value: string
+  delay: number
+  paragraph?: boolean
+  masked?: boolean
+}) {
+  const line = (text: string, className: string) =>
+    masked ? (
+      <div className="overflow-hidden">
+        <p data-reveal="line" className={className}>
+          {text}
+        </p>
+      </div>
+    ) : (
+      <p className={className}>{text}</p>
+    )
+
   return (
     <div className={paragraph ? 'relative py-[0.62rem]' : 'relative grid grid-cols-[3.25rem_1fr] items-start gap-4 py-[0.62rem]'}>
       <span
+        data-reveal={masked ? 'rule' : undefined}
         className="absolute inset-x-0 top-0 h-px origin-left bg-black/30"
-        style={{ animation: `intern-rule 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) ${delay}s both` }}
+        style={masked ? undefined : { animation: `intern-rule 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) ${delay}s both` }}
       />
       {paragraph ? (
         <>
-          <p className="text-[11px] tracking-[0.22em] text-black/50">{label}</p>
-          <p className="mt-1.5 text-left text-[14px] leading-[1.6] font-normal whitespace-pre-line">{value}</p>
+          {line(label, 'text-[11px] tracking-[0.22em] text-black/50')}
+          {line(value, 'mt-1.5 text-left text-[14px] leading-[1.6] font-normal whitespace-pre-line')}
         </>
       ) : (
         <>
-          <p className="pt-[3px] text-[11px] tracking-[0.22em] text-black/50">{label}</p>
-          <p className="text-right text-[14px] leading-[1.45] font-normal">{value}</p>
+          {line(label, 'pt-[3px] text-[11px] tracking-[0.22em] text-black/50')}
+          {line(value, 'text-right text-[14px] leading-[1.45] font-normal')}
         </>
       )}
       <span className="absolute inset-x-0 bottom-0 h-px bg-black/20" />
@@ -599,34 +704,77 @@ function Quote({ place }: { place: Place }) {
 }
 
 function InternshipDetail({ place, onClose }: { place: Place; onClose: () => void }) {
-  if (place.id === 'dongpeng') return <DongpengCase onClose={onClose} />
-  return <SimpleInternshipDetail place={place} onClose={onClose} />
+  return (
+    <InternshipSheet place={place} onClose={onClose}>
+      {place.id === 'dongpeng' ? <DongpengCase /> : null}
+    </InternshipSheet>
+  )
 }
 
-function SimpleInternshipDetail({ place, onClose }: { place: Place; onClose: () => void }) {
-  const imageRef = useRef<HTMLDivElement>(null)
+function InternshipSheet({ place, onClose, children }: { place: Place; onClose: () => void; children?: ReactNode }) {
+  const rootRef = useRef<HTMLDivElement>(null)
 
-  useGSAP(() => {
-    if (!imageRef.current) return
-    gsap.fromTo(imageRef.current, { yPercent: 72, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 1.05, ease: 'power3.out' })
-  })
+  useGSAP(
+    () => {
+      const root = rootRef.current
+      if (!root) return
+      if (prefersReducedMotion()) {
+        gsap.set(root, { autoAlpha: 1 })
+        return
+      }
+      const ease = energyEase()
+      const title = root.querySelector('[data-reveal="title"]')
+      const rules = root.querySelectorAll('[data-reveal="rule"]')
+      const lines = root.querySelectorAll('[data-reveal="line"]')
+      const art = root.querySelector('[data-reveal="art"]')
+      const back = root.querySelector('[data-reveal="back"]')
+      gsap.set(root, { autoAlpha: 0 })
+      if (title) gsap.set(title, { yPercent: 120 })
+      if (lines.length) gsap.set(lines, { yPercent: 120 })
+      if (back) gsap.set(back, { yPercent: 120 })
+      if (rules.length) gsap.set(rules, { scaleX: 0, transformOrigin: '0% 50%' })
+      if (art) gsap.set(art, { yPercent: 72, autoAlpha: 0 })
+      const reveal = gsap.timeline()
+      reveal.to(root, { autoAlpha: 1, duration: 0.35, ease: 'power2.out' }, 0)
+      if (title) reveal.to(title, { yPercent: 0, duration: 0.7, ease }, 0.35)
+      if (rules.length) reveal.to(rules, { scaleX: 1, duration: 0.9, stagger: 0.06, ease }, 0.43)
+      if (lines.length) reveal.to(lines, { yPercent: 0, duration: 0.7, stagger: 0.05, ease }, 0.47)
+      if (back) reveal.to(back, { yPercent: 0, duration: 0.7, ease }, 0.73)
+      if (art) reveal.to(art, { yPercent: 0, autoAlpha: 1, duration: 1.05, ease: 'power3.out' }, 0.35)
+    },
+    { scope: rootRef },
+  )
 
   return (
-    <div className="fixed inset-0 z-[80] overflow-hidden text-[#1c1c1c]" style={{ background: paper, fontFamily: serif }}>
-      <button type="button" onClick={onClose} className="absolute top-6 left-6 z-10 text-sm tracking-[0.16em] underline underline-offset-4">
-        返回
-      </button>
-      <div className="relative z-10 mx-auto max-w-3xl px-6 pt-[10vh] text-center">
-        <h2 className="whitespace-nowrap text-[clamp(26px,2.6vw,42px)] leading-none font-normal">{place.name}</h2>
-        <div className="mx-auto mt-8 max-w-xl text-left">
-          <Credit label="岗位" value={place.role} delay={0} />
-          <Credit label="时间" value={place.period} delay={0.06} />
-          <Credit label="内容" value={place.work} delay={0.12} paragraph />
+    <div
+      ref={rootRef}
+      data-internship-sheet={place.id}
+      className={`fixed inset-0 z-[80] text-[#1c1c1c] ${children ? 'overflow-y-auto' : 'overflow-hidden'}`}
+      style={{ background: paper, fontFamily: serif }}
+    >
+      <div className="fixed top-6 left-6 z-[90] overflow-hidden">
+        <button data-reveal="back" type="button" onClick={onClose} className="text-sm tracking-[0.16em] underline underline-offset-4">
+          返回
+        </button>
+      </div>
+      <div className="relative min-h-dvh">
+        <div className="relative z-10 mx-auto max-w-3xl px-6 pt-[10vh] text-center">
+          <div className="overflow-hidden">
+            <h2 data-reveal="title" className="whitespace-nowrap text-[clamp(26px,2.6vw,42px)] leading-none font-normal">
+              {place.name}
+            </h2>
+          </div>
+          <div className="mx-auto mt-8 max-w-xl text-left">
+            <Credit label="岗位" value={place.role} delay={0} masked />
+            <Credit label="时间" value={place.period} delay={0.06} masked />
+            <Credit label="内容" value={place.work} delay={0.12} paragraph masked />
+          </div>
+        </div>
+        <div data-reveal="art" className="absolute inset-x-0 bottom-[-4vh] flex justify-center">
+          <img src={place.image} alt="" className="size-[min(46vh,520px)] rounded-full object-cover" />
         </div>
       </div>
-      <div ref={imageRef} className="absolute inset-x-0 bottom-[-4vh] flex justify-center">
-        <img src={place.image} alt="" className="size-[min(46vh,520px)] rounded-full object-cover" />
-      </div>
+      {children}
     </div>
   )
 }

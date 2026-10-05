@@ -1,8 +1,5 @@
 import type { ReactNode } from 'react'
 
-const serif = '"LXGW WenKai", "Iowan Old Style", Palatino, "Songti SC", serif'
-const paper = '#f3f1ec'
-
 type Slot = {
   title: string
   hint: string
@@ -65,16 +62,9 @@ const modules: Module[] = [
 
 const method = ['市场信息整理', '客户与渠道分析', '展会任务拆解', '英文内容与视觉设计', '传播物料交付']
 
-export default function DongpengCase({ onClose }: { onClose: () => void }) {
+export default function DongpengCase() {
   return (
-    <div id="dongpeng-case" className="fixed inset-0 z-[80] overflow-y-auto text-[#1c1c1c]" style={{ background: paper, fontFamily: serif }}>
-      <div className="mx-auto max-w-3xl px-6 pt-8 pb-24">
-        <button type="button" onClick={onClose} className="text-sm tracking-[0.16em] underline underline-offset-4">
-          返回
-        </button>
-        <h2 className="mt-10 whitespace-nowrap text-[clamp(28px,3vw,44px)] leading-none font-normal">东鹏控股股份有限公司</h2>
-        <p className="mt-4 text-[15px] text-black/70">海外市场实习生 · 2026.05–2026.09</p>
-
+    <div id="dongpeng-case" className="relative z-10 mx-auto max-w-3xl px-6 pt-6 pb-24">
         <Section index="一" title="项目概述">
           <p className="text-[16px] leading-[1.8]">
             围绕海外市场拓展，负责市场资料整理、展会资源梳理、英文内容策划与视觉物料交付，支持产品和品牌信息在海外市场中的传播与沟通。
@@ -140,7 +130,6 @@ export default function DongpengCase({ onClose }: { onClose: () => void }) {
             个人贡献边界：市场研究与展会资源清单为个人工作成果；企业介绍、产品资料和认证文件仅作为项目背景与内容依据使用。
           </p>
         </Section>
-      </div>
     </div>
   )
 }
