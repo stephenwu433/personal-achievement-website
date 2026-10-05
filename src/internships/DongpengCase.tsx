@@ -12,25 +12,54 @@ type Slot = {
   hint: string
 }
 
+type Evidence = {
+  kicker: string
+  title: string[]
+  lines: string[]
+  steps?: string[]
+}
+
 type Module = {
   index: string
   title: string
   lines: string[]
-  output: string[]
-  slots: Slot[]
+  output?: string[]
+  slots?: Slot[]
+  cards?: Evidence[]
   notes?: { title: string; lines: string[] }[]
 }
+
+const results = [
+  { value: '2 → 5', unit: '条/周', label: '发布频率' },
+  { value: '10+', unit: '条', label: '海外推广视频' },
+  { value: '3', unit: '篇', label: '英文推文' },
+  { value: '5', unit: '张', label: '视觉海报' },
+  { value: '5 万+', unit: '', label: '内容触达' },
+  { value: '5+', unit: '套', label: '内容模板' },
+]
 
 const modules: Module[] = [
   {
     index: '01',
-    title: '从市场信息中识别客户触达路径',
-    lines: ['围绕马来西亚 B2B 建材市场，梳理户外广告、LinkedIn、WhatsApp 等客户触达渠道，', '分析不同渠道的使用场景与内容形式，为海外市场传播和客户沟通提供资料支持。'],
-    output: ['马来西亚市场渠道研究', 'B2B 客户触达路径', '海外内容方向建议'],
-    slots: [
-      { title: '马来西亚市场渠道分析', hint: '待放入截图' },
-      { title: 'LinkedIn / WhatsApp 客户沟通路径', hint: '待放入截图' },
-      { title: '内容方向或传播建议', hint: '待放入截图' },
+    title: '从市场信息到海外客户触达策略',
+    lines: ['围绕马来西亚 B2B 建材市场，完成渠道研究、客户沟通路径设计和内容方向规划，', '为海外市场传播与展会获客提供策略依据。'],
+    cards: [
+      {
+        kicker: '研究范围',
+        title: ['马来西亚 B2B 建材市场'],
+        lines: ['梳理户外广告、LinkedIn、WhatsApp', '等海外客户触达渠道，', '明确不同渠道的使用场景', '与传播形式。'],
+      },
+      {
+        kicker: '关键判断',
+        title: ['LinkedIn 建立认知，', 'WhatsApp 承接沟通'],
+        lines: ['海外客户触达被拆成一条可执行的路径。'],
+        steps: ['专业内容建立信任', '站内沟通', 'WhatsApp 深度沟通', '样品 / 验厂跟进'],
+      },
+      {
+        kicker: '工作产出',
+        title: ['形成市场策略资料包'],
+        lines: ['输出市场渠道分析、客户沟通路径', '和海外内容方向，', '为后续展会传播、产品介绍', '和客户沟通提供统一参考。'],
+      },
     ],
   },
   {
@@ -107,8 +136,9 @@ export default function DongpengCase() {
         <p data-rise className="text-[12px] tracking-[0.28em] text-black/45">一、项目概述</p>
         <div className="mt-4 overflow-hidden">
           <p data-title className="text-[18px] leading-[1.85]">
-            <span className="block">围绕海外市场拓展，负责市场资料整理、展会资源梳理、英文内容策划与视觉物料交付，</span>
-            <span className="block">支持产品和品牌信息在海外市场中的传播与沟通。</span>
+            <span className="block">梳理了马来西亚海外客户触达路径，形成市场传播策略；</span>
+            <span className="block">同时参与海外内容交付，推动发布频率提升，</span>
+            <span className="block">完成多类传播物料并沉淀可复用模板。</span>
           </p>
         </div>
       </section>
@@ -131,7 +161,7 @@ export default function DongpengCase() {
                 {line}
               </p>
             ))}
-            <p data-rise className="mt-4 text-[13px] leading-[1.6] text-black/50">{item.output.join(' · ')}</p>
+            {item.output ? <p data-rise className="mt-4 text-[13px] leading-[1.6] text-black/50">{item.output.join(' · ')}</p> : null}
           </div>
           {item.notes ? (
             <div className="mt-6 grid gap-x-12 gap-y-4 md:grid-cols-2">
@@ -147,16 +177,49 @@ export default function DongpengCase() {
               ))}
             </div>
           ) : null}
-          <div className="mt-8 grid grid-cols-3 gap-5">
-            {item.slots.map((slot) => (
-              <figure key={slot.title} data-frame className="min-w-0">
-                <div className="flex h-[200px] items-center justify-center border border-black/15 bg-white/45 px-4 text-center text-[13px] text-black/40">
-                  {slot.hint}
+          {item.cards ? (
+            <div className="mt-8 grid gap-4 md:grid-cols-3">
+              {item.cards.map((card) => (
+                <div key={card.kicker} data-frame className="border border-black/15 bg-white/45 px-5 py-6">
+                  <p className="text-[12px] tracking-[0.18em] text-black/40">{card.kicker}</p>
+                  <p className="mt-3 text-[18px] leading-[1.45]">
+                    {card.title.map((line) => (
+                      <span key={line} className="block">
+                        {line}
+                      </span>
+                    ))}
+                  </p>
+                  {card.lines.map((line) => (
+                    <p key={line} className="mt-3 text-[14px] leading-[1.7] text-black/65">
+                      {line}
+                    </p>
+                  ))}
+                  {card.steps ? (
+                    <ol className="mt-4 space-y-2">
+                      {card.steps.map((step, index) => (
+                        <li key={step} className="text-[14px] leading-[1.55]">
+                          <span className="mr-2 text-black/35">0{index + 1}</span>
+                          {step}
+                        </li>
+                      ))}
+                    </ol>
+                  ) : null}
                 </div>
-                <figcaption className="mt-3 text-[15px] leading-[1.4]">{slot.title}</figcaption>
-              </figure>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : null}
+          {item.slots ? (
+            <div className="mt-8 grid grid-cols-3 gap-5">
+              {item.slots.map((slot) => (
+                <figure key={slot.title} data-frame className="min-w-0">
+                  <div className="flex h-[200px] items-center justify-center border border-black/15 bg-white/45 px-4 text-center text-[13px] text-black/40">
+                    {slot.hint}
+                  </div>
+                  <figcaption className="mt-3 text-[15px] leading-[1.4]">{slot.title}</figcaption>
+                </figure>
+              ))}
+            </div>
+          ) : null}
         </article>
       ))}
 
@@ -178,18 +241,25 @@ export default function DongpengCase() {
         </ol>
       </section>
 
-      <section data-reveal-block className="mx-auto w-full max-w-[860px] px-8 pt-4 pb-28">
-        <p data-rise className="text-[12px] tracking-[0.28em] text-black/45">四、这段经历证明了什么</p>
-        <div className="mt-4 overflow-hidden">
-          <p data-title className="text-[18px] leading-[1.85]">
-            <span className="block">具备将海外市场信息、产品资料和展会需求转化为传播方案与内容资产的能力，</span>
-            <span className="block">能够参与完成从信息整理、任务拆解到视觉交付的完整工作链路。</span>
-          </p>
-        </div>
-        <p data-rise className="mt-5 text-[14px] leading-[1.8] text-black/60">
-          <span className="block">个人贡献边界：市场研究与展会资源清单为个人工作成果；</span>
-          <span className="block">企业介绍、产品资料和认证文件仅作为项目背景与内容依据使用。</span>
+      <section data-reveal-block className="mx-auto w-full max-w-[1080px] px-8 pt-4 pb-28">
+        <p data-rise className="text-[12px] tracking-[0.28em] text-black/45">四、可量化成果</p>
+        <p data-rise className="mt-4 max-w-[40rem] text-[16px] leading-[1.75]">
+          <span className="block">内容发布频率提升，并完成视频、推文、海报与可复用模板。</span>
+          <span className="block">数字来自简历中已写明的交付记录。</span>
         </p>
+        <ul className="mt-8 grid grid-cols-2 border border-black/15 sm:grid-cols-3 lg:grid-cols-6">
+          {results.map((item) => (
+            <li key={item.label} data-frame className="min-w-0 px-4 py-5 [&:not(:last-child)]:border-r [&:not(:last-child)]:border-black/10">
+              <p className="text-[clamp(22px,1.8vw,28px)] leading-none">{item.value}</p>
+              <p className="mt-2 h-4 text-[12px] tracking-[0.04em] text-black/45">{item.unit}</p>
+              <p className="mt-2 text-[13px] leading-[1.45] text-black/55">{item.label}</p>
+            </li>
+          ))}
+        </ul>
+        <div data-rise className="mt-6 max-w-[44rem] text-[14px] leading-[1.8] text-black/60">
+          <p>市场文档里的广告价格、客户决策周期和平台比例不是个人业绩；展会资源数量只说明整理规模。</p>
+          <p className="mt-2">个人贡献边界：市场研究与展会资源清单为个人工作成果；企业介绍、产品资料和认证文件仅作为项目背景与内容依据使用。</p>
+        </div>
       </section>
     </div>
   )
