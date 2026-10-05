@@ -552,7 +552,7 @@ export default function Internships() {
           ref={(node) => {
             quoteRefs.current[slot] = node
           }}
-          className="pointer-events-none absolute z-30 w-[280px] -translate-x-1/2 text-center"
+          className="pointer-events-none absolute z-30 w-[320px] -translate-x-1/2 text-center"
           style={{ opacity: 0 }}
         >
           <Quote place={places[active > 0 ? active - 1 + slot : active + slot]} />
@@ -591,8 +591,8 @@ function Quote({ place }: { place: Place }) {
   return (
     <div className="text-center">
       <p className="text-[12px] tracking-[0.18em]">★★★★</p>
-      <p className="mt-2 text-[10px] tracking-[0.24em] text-black/55">{place.period}</p>
-      <p className="mt-2 text-[15px] leading-[1.35]">“{place.role}”</p>
+      <p className="mt-2 text-[10px] tracking-[0.18em] text-black/55">{place.role}</p>
+      <p className="mt-2 text-[13px] leading-[1.5] whitespace-pre-line">{place.work}</p>
     </div>
   )
 }
