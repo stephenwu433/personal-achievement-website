@@ -5,6 +5,7 @@ import { useGSAP } from '@gsap/react'
 import { Observer } from 'gsap/Observer'
 import * as THREE from 'three'
 import { profile, sections } from '@/src/content'
+import DongpengCase from '@/src/internships/DongpengCase'
 
 gsap.registerPlugin(useGSAP, Observer)
 
@@ -598,6 +599,11 @@ function Quote({ place }: { place: Place }) {
 }
 
 function InternshipDetail({ place, onClose }: { place: Place; onClose: () => void }) {
+  if (place.id === 'dongpeng') return <DongpengCase onClose={onClose} />
+  return <SimpleInternshipDetail place={place} onClose={onClose} />
+}
+
+function SimpleInternshipDetail({ place, onClose }: { place: Place; onClose: () => void }) {
   const imageRef = useRef<HTMLDivElement>(null)
 
   useGSAP(() => {
