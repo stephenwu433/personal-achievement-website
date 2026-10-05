@@ -13,13 +13,48 @@ type Place = {
   name: string
   lines: string[]
   image: string
+  role: string
+  period: string
+  work: string
 }
 
 const places: Place[] = [
-  { id: 'dongpeng', name: '东鹏控股股份有限公司', lines: ['东鹏控股', '股份有限公司'], image: '/internships/dongpeng.png' },
-  { id: 'zhijunzhu', name: '知君竹科技传媒', lines: ['知君竹科技传媒'], image: '/internships/zhijunzhu.png' },
-  { id: 'huigu', name: '慧谷科技', lines: ['慧谷科技'], image: '/internships/huigu.png' },
-  { id: 'gaodun', name: '高顿', lines: ['高顿'], image: '/internships/gaodun.png' },
+  {
+    id: 'dongpeng',
+    name: '东鹏控股股份有限公司',
+    lines: ['东鹏控股', '股份有限公司'],
+    image: '/internships/dongpeng.png',
+    role: '海外市场实习生',
+    period: '2026.05–2026.09',
+    work: '负责海外市场宣传内容制作与展会推广，参与视频、推文、海报等内容的策划和发布。',
+  },
+  {
+    id: 'zhijunzhu',
+    name: '知君竹科技传媒公司',
+    lines: ['知君竹科技', '传媒公司'],
+    image: '/internships/zhijunzhu.png',
+    role: 'AI 与市场推广负责人',
+    period: '2025.06–2026.04',
+    work: '负责用户分析、品牌内容策划、投放推广和效果复盘，参与搭建内容增长与营销优化流程。',
+  },
+  {
+    id: 'huigu',
+    name: '佛山慧谷科技股份有限公司',
+    lines: ['佛山慧谷科技', '股份有限公司'],
+    image: '/internships/huigu.png',
+    role: '海外市场实习生',
+    period: '2025.06–2025.09',
+    work: '协助意大利 Marmomac 展会筹备，负责英文邮件沟通、海外资料翻译及石材机械产品宣传材料制作。',
+  },
+  {
+    id: 'gaodun',
+    name: '高顿教育',
+    lines: ['高顿教育'],
+    image: '/internships/gaodun.png',
+    role: '市场营销实习生（校园方向）',
+    period: '2024.11–2025.02',
+    work: '负责校园市场推广、社群运营、活动宣传及学生咨询，协助提升课程和活动触达。',
+  },
 ]
 
 const serif = '"LXGW WenKai", "Iowan Old Style", Palatino, "Songti SC", serif'
@@ -512,9 +547,9 @@ export default function Internships() {
               </h1>
             </div>
             <div className="mt-4 max-w-[340px]">
-              <Credit label="岗位" delay={0} />
-              <Credit label="时间" delay={0.08} />
-              <Credit label="内容" delay={0.16} />
+              <Credit label="岗位" value={current.role} delay={0} />
+              <Credit label="时间" value={current.period} delay={0.08} />
+              <Credit label="内容" value={current.work} delay={0.16} />
             </div>
           </>
         ) : null}
@@ -526,10 +561,10 @@ export default function Internships() {
           ref={(node) => {
             quoteRefs.current[slot] = node
           }}
-          className="pointer-events-none absolute z-30 w-[220px] -translate-x-1/2 text-center"
+          className="pointer-events-none absolute z-30 w-[250px] -translate-x-1/2 text-center"
           style={{ opacity: 0 }}
         >
-          <Quote />
+          <Quote place={places[active > 0 ? active - 1 + slot : active + slot]} />
         </div>
       ))}
 
@@ -538,26 +573,26 @@ export default function Internships() {
   )
 }
 
-function Credit({ label, delay }: { label: string; delay: number }) {
+function Credit({ label, value, delay }: { label: string; value: string; delay: number }) {
   return (
-    <div className="relative grid grid-cols-[4.5rem_1fr] items-baseline gap-6 py-[0.62rem]">
+    <div className="relative grid grid-cols-[4.5rem_1fr] items-start gap-6 py-[0.62rem]">
       <span
         className="absolute inset-x-0 top-0 h-px origin-left bg-black/30"
         style={{ animation: `intern-rule 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) ${delay}s both` }}
       />
-      <p className="text-[11px] tracking-[0.22em] text-black/50">{label}</p>
-      <p className="text-right text-[15px] font-normal">待填</p>
+      <p className="pt-[3px] text-[11px] tracking-[0.22em] text-black/50">{label}</p>
+      <p className="text-right text-[14px] leading-[1.45] font-normal">{value}</p>
       <span className="absolute inset-x-0 bottom-0 h-px bg-black/20" />
     </div>
   )
 }
 
-function Quote() {
+function Quote({ place }: { place: Place }) {
   return (
     <div className="text-center">
       <p className="text-[12px] tracking-[0.18em]">★★★★</p>
-      <p className="mt-2 text-[10px] tracking-[0.24em] text-black/55">待填</p>
-      <p className="mt-2 text-[clamp(18px,1.7vw,26px)] leading-[1.25]">“待填”</p>
+      <p className="mt-2 text-[10px] tracking-[0.24em] text-black/55">{place.period}</p>
+      <p className="mt-2 text-[clamp(15px,1.35vw,22px)] leading-[1.35]">“{place.role}”</p>
     </div>
   )
 }
@@ -584,9 +619,9 @@ function InternshipDetail({ place, onClose }: { place: Place; onClose: () => voi
           ))}
         </h2>
         <div className="mx-auto mt-8 max-w-xl text-left">
-          <Credit label="岗位" delay={0} />
-          <Credit label="时间" delay={0.06} />
-          <Credit label="内容" delay={0.12} />
+          <Credit label="岗位" value={place.role} delay={0} />
+          <Credit label="时间" value={place.period} delay={0.06} />
+          <Credit label="内容" value={place.work} delay={0.12} />
         </div>
       </div>
       <div ref={imageRef} className="absolute inset-x-0 bottom-[-8vh] flex justify-center">
