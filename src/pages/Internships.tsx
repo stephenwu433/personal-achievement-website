@@ -747,26 +747,6 @@ function InternshipSheet({ place, onClose, children }: { place: Place; onClose: 
       if (lines.length) reveal.to(lines, { yPercent: 0, duration: 0.7, stagger: 0.05, ease }, 0.47)
       if (back) reveal.to(back, { yPercent: 0, duration: 0.7, ease }, 0.73)
       if (art) reveal.to(art, { yPercent: 0, autoAlpha: 1, duration: 1.05, ease: 'power3.out' }, 0.35)
-      const portrait = art?.querySelector('img')
-      const hero = root.querySelector('[data-hero]')
-      if (portrait && hero && root.scrollHeight > root.clientHeight + 8) {
-        gsap.fromTo(
-          portrait,
-          { y: 0 },
-          {
-            y: -120,
-            ease: 'none',
-            scrollTrigger: {
-              trigger: hero,
-              scroller: root,
-              start: 'top top',
-              end: 'bottom top',
-              scrub: 0.6,
-              refreshPriority: -1,
-            },
-          },
-        )
-      }
     },
     { scope: rootRef },
   )
@@ -775,7 +755,7 @@ function InternshipSheet({ place, onClose, children }: { place: Place; onClose: 
     <div
       ref={rootRef}
       data-internship-sheet={place.id}
-      className={`fixed inset-0 z-[80] overscroll-contain text-[#1c1c1c] ${children ? 'overflow-y-auto' : 'overflow-hidden'}`}
+      className={`fixed inset-0 z-[80] overscroll-y-contain text-[#1c1c1c] ${children ? 'overflow-x-clip overflow-y-auto' : 'overflow-hidden'}`}
       style={{ background: paper, fontFamily: serif }}
     >
       <div className="fixed top-6 left-6 z-[90] overflow-hidden">
