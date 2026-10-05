@@ -1,4 +1,9 @@
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
+import gsap from 'gsap'
+import { useGSAP } from '@gsap/react'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+
+gsap.registerPlugin(useGSAP, ScrollTrigger)
 
 type Slot = {
   title: string
@@ -63,84 +68,131 @@ const modules: Module[] = [
 const method = ['市场信息整理', '客户与渠道分析', '展会任务拆解', '英文内容与视觉设计', '传播物料交付']
 
 export default function DongpengCase() {
-  return (
-    <div id="dongpeng-case" className="relative z-10 mx-auto max-w-3xl px-6 pt-6 pb-24">
-        <Section index="一" title="项目概述">
-          <p className="text-[16px] leading-[1.8]">
-            围绕海外市场拓展，负责市场资料整理、展会资源梳理、英文内容策划与视觉物料交付，支持产品和品牌信息在海外市场中的传播与沟通。
-          </p>
-        </Section>
+  const rootRef = useRef<HTMLDivElement>(null)
 
-        <Section index="二" title="工作模块">
-          <div className="space-y-14">
-            {modules.map((item) => (
-              <article key={item.index}>
-                <p className="text-[12px] tracking-[0.22em] text-black/45">{item.index}</p>
-                <h3 className="mt-2 text-[clamp(22px,2vw,28px)] leading-[1.35] font-normal">{item.title}</h3>
-                <p className="mt-4 text-[16px] leading-[1.8]">{item.body}</p>
-                <p className="mt-6 text-[12px] tracking-[0.18em] text-black/45">输出</p>
-                <ul className="mt-2 space-y-1 text-[15px] leading-[1.7]">
-                  {item.output.map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
-                <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                  {item.slots.map((slot) => (
-                    <figure key={slot.title}>
-                      <div className="flex aspect-[4/3] items-center justify-center border border-dashed border-black/25 px-3 text-center text-[13px] text-black/40">
-                        {slot.hint}
-                      </div>
-                      <figcaption className="mt-2 text-[13px] leading-[1.45]">{slot.title}</figcaption>
-                    </figure>
-                  ))}
+  useGSAP(
+    () => {
+      const root = rootRef.current
+      if (!root) return
+      const scroller = root.closest('[data-internship-sheet]')
+      if (!scroller || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+      gsap.utils.toArray<HTMLElement>('[data-chapter]', root).forEach((chapter) => {
+        gsap.from(chapter, {
+          autoAlpha: 0,
+          y: 56,
+          duration: 0.9,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: chapter,
+            scroller,
+            start: 'top 88%',
+            toggleActions: 'play none none none',
+          },
+        })
+      })
+
+      const exhibits = gsap.utils.toArray<HTMLElement>('[data-exhibit]', root)
+      gsap.set(exhibits, { autoAlpha: 0, y: 32 })
+      ScrollTrigger.batch(exhibits, {
+        scroller,
+        start: 'top 90%',
+        once: true,
+        interval: 0.08,
+        batchMax: 3,
+        onEnter: (batch) => {
+          gsap.to(batch, {
+            autoAlpha: 1,
+            y: 0,
+            duration: 0.8,
+            stagger: 0.1,
+            ease: 'power2.out',
+            overwrite: true,
+          })
+        },
+      })
+
+      ScrollTrigger.refresh()
+    },
+    { scope: rootRef },
+  )
+
+  return (
+    <div ref={rootRef} id="dongpeng-case" className="relative z-10 mx-auto max-w-3xl px-6 pt-8 pb-28">
+      <Chapter index="一" title="项目概述">
+        <p className="text-[16px] leading-[1.8]">
+          围绕海外市场拓展，负责市场资料整理、展会资源梳理、英文内容策划与视觉物料交付，支持产品和品牌信息在海外市场中的传播与沟通。
+        </p>
+      </Chapter>
+
+      <Chapter index="二" title="工作模块" />
+
+      {modules.map((item) => (
+        <article key={item.index} className="mt-16">
+          <div data-chapter>
+            <p className="text-[12px] tracking-[0.22em] text-black/45">{item.index}</p>
+            <h3 className="mt-2 text-[clamp(22px,2vw,28px)] leading-[1.35] font-normal">{item.title}</h3>
+            <p className="mt-4 text-[16px] leading-[1.8]">{item.body}</p>
+            <p className="mt-6 text-[12px] tracking-[0.18em] text-black/45">输出</p>
+            <ul className="mt-2 space-y-1 text-[15px] leading-[1.7]">
+              {item.output.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            {item.notes ? (
+              <div className="mt-6 space-y-4">
+                {item.notes.map((note) => (
+                  <p key={note.title} className="text-[14px] leading-[1.75] text-black/75">
+                    <span className="text-[#1c1c1c]">{note.title}</span> {note.body}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            {item.slots.map((slot) => (
+              <figure key={slot.title} data-exhibit>
+                <div className="flex aspect-[4/3] items-center justify-center border border-dashed border-black/25 px-3 text-center text-[13px] text-black/40">
+                  {slot.hint}
                 </div>
-                {item.notes ? (
-                  <div className="mt-6 space-y-4">
-                    {item.notes.map((note) => (
-                      <p key={note.title} className="text-[14px] leading-[1.75] text-black/75">
-                        <span className="text-[#1c1c1c]">{note.title}</span>
-                        {' '}
-                        {note.body}
-                      </p>
-                    ))}
-                  </div>
-                ) : null}
-              </article>
+                <figcaption className="mt-2 text-[13px] leading-[1.45]">{slot.title}</figcaption>
+              </figure>
             ))}
           </div>
-        </Section>
+        </article>
+      ))}
 
-        <Section index="三" title="我的工作方式">
-          <p className="text-[16px] leading-[1.8]">先梳理市场与客户信息，再拆解展会和传播任务，最后通过英文文案、视觉物料和资料整理完成内容交付。</p>
-          <ol className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-[15px]">
-            {method.map((step, index) => (
-              <li key={step} className="flex items-center gap-3">
-                <span>{step}</span>
-                {index < method.length - 1 ? <span className="text-black/35">→</span> : null}
-              </li>
-            ))}
-          </ol>
-        </Section>
+      <Chapter index="三" title="我的工作方式">
+        <p className="text-[16px] leading-[1.8]">先梳理市场与客户信息，再拆解展会和传播任务，最后通过英文文案、视觉物料和资料整理完成内容交付。</p>
+      </Chapter>
+      <ol className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-[15px]">
+        {method.map((step, index) => (
+          <li key={step} data-exhibit className="flex items-center gap-3">
+            <span>{step}</span>
+            {index < method.length - 1 ? <span className="text-black/35">→</span> : null}
+          </li>
+        ))}
+      </ol>
 
-        <Section index="四" title="这段经历证明了什么">
-          <p className="text-[16px] leading-[1.8]">
-            具备将海外市场信息、产品资料和展会需求转化为传播方案与内容资产的能力，能够参与完成从信息整理、任务拆解到视觉交付的完整工作链路。
-          </p>
-          <p className="mt-6 text-[14px] leading-[1.75] text-black/70">
-            个人贡献边界：市场研究与展会资源清单为个人工作成果；企业介绍、产品资料和认证文件仅作为项目背景与内容依据使用。
-          </p>
-        </Section>
+      <Chapter index="四" title="这段经历证明了什么">
+        <p className="text-[16px] leading-[1.8]">
+          具备将海外市场信息、产品资料和展会需求转化为传播方案与内容资产的能力，能够参与完成从信息整理、任务拆解到视觉交付的完整工作链路。
+        </p>
+        <p className="mt-6 text-[14px] leading-[1.75] text-black/70">
+          个人贡献边界：市场研究与展会资源清单为个人工作成果；企业介绍、产品资料和认证文件仅作为项目背景与内容依据使用。
+        </p>
+      </Chapter>
     </div>
   )
 }
 
-function Section({ index, title, children }: { index: string; title: string; children: ReactNode }) {
+function Chapter({ index, title, children }: { index: string; title: string; children?: ReactNode }) {
   return (
-    <section className="mt-14 border-t border-black/15 pt-6">
+    <section className="mt-16 border-t border-black/15 pt-6" data-chapter>
       <p className="text-[12px] tracking-[0.22em] text-black/45">
         {index}、{title}
       </p>
-      <div className="mt-4">{children}</div>
+      {children ? <div className="mt-4">{children}</div> : null}
     </section>
   )
 }
