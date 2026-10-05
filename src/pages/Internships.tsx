@@ -84,6 +84,7 @@ type Flight = {
   active: number
   spin: number
   fade: number
+  hold: number
 }
 
 function prefersReducedMotion() {
@@ -153,7 +154,7 @@ export default function Internships() {
   const countRef = useRef<HTMLSpanElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLElement>(null)
-  const flightRef = useRef<Flight>({ others: 1, active: 1, spin: 0, fade: 1 })
+  const flightRef = useRef<Flight>({ others: 1, active: 1, spin: 0, fade: 1, hold: 0 })
   const layoutRef = useRef<() => void>(() => {})
   const [prints, setPrints] = useState<HTMLCanvasElement[]>([])
   const [active, setActive] = useState(0)
@@ -336,11 +337,11 @@ export default function Internships() {
           if (top > height - 64) return
           spots.push({ x: origin.x, top })
         })
-        const settling = flight.fade < 0.999 || flight.others < 0.999
+        const settling = flight.hold > 0 || flight.fade < 0.999 || flight.others < 0.999 || flight.active < 0.999 || flight.spin > 0.001
         quoteRefs.current.forEach((quote, index) => {
           if (!quote) return
           if (settling) {
-            quote.style.opacity = String(flight.fade)
+            quote.style.opacity = String(Math.min(Number(quote.style.opacity || '0'), flight.fade))
             return
           }
           const spot = spots[index]
@@ -471,19 +472,21 @@ export default function Internships() {
         if (openRef.current || intro.fan < 0.98) return
         openRef.current = true
         glide.tween.pause()
+        const flight = flightRef.current
+        flight.hold = 1
         if (reduced) {
           setOpen(true)
           return
         }
-        const flight = flightRef.current
         gsap.timeline({
           onComplete: () => {
             if (alive) setOpen(true)
           },
         })
-          .to(flight, { active: 0.94, duration: 0.12, ease: 'power2.out', onUpdate: layout })
-          .to(flight, { active: 1.015, duration: 0.16, ease: 'power2.out', onUpdate: layout })
-          .to(flight, { others: 0, fade: 0, duration: 0.55, ease: 'none', onUpdate: layout }, 0.12)
+          .to(flight, { fade: 0, duration: 0.24, ease: 'power2.out', onUpdate: layout }, 0)
+          .to(flight, { active: 0.94, duration: 0.12, ease: 'power2.out', onUpdate: layout }, 0)
+          .to(flight, { active: 1.015, duration: 0.16, ease: 'power2.out', onUpdate: layout }, 0.12)
+          .to(flight, { others: 0, duration: 0.55, ease: 'none', onUpdate: layout }, 0.12)
           .to(flight, { active: 0.001, spin: Math.PI / 2, duration: 0.8, ease: 'power2.in', onUpdate: layout }, 0.67)
       }
 
@@ -555,6 +558,7 @@ export default function Internships() {
     flight.active = 1
     flight.spin = 0
     flight.fade = 1
+    flight.hold = 0
     if (panelRef.current) {
       panelRef.current.style.transition = ''
       panelRef.current.style.opacity = ''
