@@ -11,7 +11,6 @@ gsap.registerPlugin(useGSAP, Observer)
 type Place = {
   id: string
   name: string
-  lines: string[]
   image: string
   role: string
   period: string
@@ -22,7 +21,6 @@ const places: Place[] = [
   {
     id: 'dongpeng',
     name: '东鹏控股股份有限公司',
-    lines: ['东鹏控股', '股份有限公司'],
     image: '/internships/dongpeng.png',
     role: '海外市场实习生',
     period: '2026.05–2026.09',
@@ -31,7 +29,6 @@ const places: Place[] = [
   {
     id: 'zhijunzhu',
     name: '知君竹科技传媒公司',
-    lines: ['知君竹科技', '传媒公司'],
     image: '/internships/zhijunzhu.png',
     role: 'AI 与市场推广负责人',
     period: '2025.06–2026.04',
@@ -40,7 +37,6 @@ const places: Place[] = [
   {
     id: 'huigu',
     name: '佛山慧谷科技股份有限公司',
-    lines: ['佛山慧谷科技', '股份有限公司'],
     image: '/internships/huigu.png',
     role: '海外市场实习生',
     period: '2025.06–2025.09',
@@ -49,7 +45,6 @@ const places: Place[] = [
   {
     id: 'gaodun',
     name: '高顿教育',
-    lines: ['高顿教育'],
     image: '/internships/gaodun.png',
     role: '市场营销实习生（校园方向）',
     period: '2024.11–2025.02',
@@ -150,7 +145,7 @@ export default function Internships() {
 
   useEffect(() => {
     let cancel = false
-    Promise.all(places.map((place) => makePrint(place.image, place.lines))).then((canvases) => {
+    Promise.all(places.map((place) => makePrint(place.image, place.name))).then((canvases) => {
       if (!cancel) setPrints(canvases)
     })
     return () => {
@@ -528,7 +523,7 @@ export default function Internships() {
       </div>
 
       <div
-        className="pointer-events-none absolute top-[6.5vh] left-[4.2vw] z-30 w-[min(30vw,380px)]"
+        className="pointer-events-none absolute top-[6.5vh] left-[4.2vw] z-30"
         style={{ opacity: chrome ? 1 : 0, transition: 'opacity 0.45s ease' }}
       >
         {chrome ? (
@@ -536,17 +531,13 @@ export default function Internships() {
             <div className="overflow-hidden">
               <h1
                 key={current.id}
-                className="text-[clamp(26px,2.5vw,38px)] leading-[1.2] font-normal"
+                className="whitespace-nowrap text-[clamp(22px,1.85vw,30px)] leading-none font-normal"
                 style={{ animation: 'projects-line-in 0.7s cubic-bezier(0.215, 0.61, 0.355, 1) both' }}
               >
-                {current.lines.map((line) => (
-                  <span key={line} className="block">
-                    {line}
-                  </span>
-                ))}
+                {current.name}
               </h1>
             </div>
-            <div className="mt-4 max-w-[340px]">
+            <div className="mt-4 w-[min(30vw,380px)]">
               <Credit label="岗位" value={current.role} delay={0} />
               <Credit label="时间" value={current.period} delay={0.08} />
               <Credit label="内容" value={current.work} delay={0.16} paragraph />
@@ -620,13 +611,7 @@ function InternshipDetail({ place, onClose }: { place: Place; onClose: () => voi
         返回
       </button>
       <div className="relative z-10 mx-auto max-w-3xl px-6 pt-[10vh] text-center">
-        <h2 className="text-[clamp(28px,3vw,44px)] leading-[1.45] font-normal">
-          {place.lines.map((line) => (
-            <span key={line} className="block">
-              {line}
-            </span>
-          ))}
-        </h2>
+        <h2 className="whitespace-nowrap text-[clamp(26px,2.6vw,42px)] leading-none font-normal">{place.name}</h2>
         <div className="mx-auto mt-8 max-w-xl text-left">
           <Credit label="岗位" value={place.role} delay={0} />
           <Credit label="时间" value={place.period} delay={0.06} />
@@ -666,13 +651,13 @@ function loadImage(src: string) {
   })
 }
 
-async function makePrint(src: string, lines: string[]) {
+async function makePrint(src: string, name: string) {
   const image = await loadImage(src)
   await document.fonts.load('64px "LXGW WenKai"').catch(() => undefined)
-  return drawPrint(image, lines)
+  return drawPrint(image, name)
 }
 
-function drawPrint(image: HTMLImageElement, lines: string[]) {
+function drawPrint(image: HTMLImageElement, name: string) {
   const size = 1024
   const canvas = document.createElement('canvas')
   canvas.width = size
@@ -707,10 +692,14 @@ function drawPrint(image: HTMLImageElement, lines: string[]) {
 
   ctx.fillStyle = '#f7f3ea'
   ctx.textAlign = 'center'
-  ctx.font = '64px "LXGW WenKai", serif'
-  lines.forEach((line, index) => {
-    ctx.fillText(line, size / 2, size * 0.24 + index * 72)
-  })
+  const maxWidth = size * 0.72
+  let fontSize = 68
+  ctx.font = `${fontSize}px "LXGW WenKai", serif`
+  while (fontSize > 28 && ctx.measureText(name).width > maxWidth) {
+    fontSize -= 2
+    ctx.font = `${fontSize}px "LXGW WenKai", serif`
+  }
+  ctx.fillText(name, size / 2, size * 0.27)
 
   return canvas
 }
