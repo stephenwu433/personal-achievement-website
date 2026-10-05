@@ -1,9 +1,11 @@
 import { useRef } from 'react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
+import { CustomEase } from 'gsap/CustomEase'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
-gsap.registerPlugin(useGSAP, ScrollTrigger)
+gsap.registerPlugin(useGSAP, CustomEase, ScrollTrigger)
+if (!CustomEase.get('type-in')) CustomEase.create('type-in', 'M0,0 C0.22,0.84 0.18,1 1,1')
 
 type Slot = {
   title: string
@@ -77,123 +79,98 @@ export default function DongpengCase() {
       const scroller = root.closest('[data-internship-sheet]')
       if (!(scroller instanceof HTMLElement) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
-      const reel = root.querySelector('[data-reel]')
-      const track = root.querySelector('[data-track]')
-      const bar = root.querySelector('[data-reel-bar]')
-      const label = root.querySelector('[data-reel-index]')
-      if (reel && track instanceof HTMLElement) {
-        const panels = gsap.utils.toArray<HTMLElement>('article', track)
-        const fit = () => {
-          const width = scroller.clientWidth
-          panels.forEach((panel) => {
-            panel.style.width = `${width}px`
-          })
-        }
-        fit()
-        ScrollTrigger.addEventListener('refreshInit', fit)
-        const distance = () => Math.max(0, track.scrollWidth - scroller.clientWidth)
-        gsap.timeline({
-          defaults: { ease: 'none' },
+      const ease = 'type-in'
+      gsap.utils.toArray<HTMLElement>('[data-reveal-block]', root).forEach((block) => {
+        const title = block.querySelector('[data-title]')
+        const lines = block.querySelectorAll('[data-rise]')
+        const frames = block.querySelectorAll('[data-frame]')
+        const timeline = gsap.timeline({
           scrollTrigger: {
-            trigger: reel,
+            trigger: block,
             scroller,
-            pin: true,
-            pinType: 'transform',
-            anticipatePin: 0,
-            scrub: true,
-            start: 'top top',
-            end: () => '+=' + distance(),
-            invalidateOnRefresh: true,
-            onUpdate: (self) => {
-              if (!label) return
-              const index = Math.min(modules.length - 1, Math.round(self.progress * (modules.length - 1)))
-              label.textContent = modules[index].index
-            },
+            start: 'top 82%',
+            once: true,
           },
         })
-          .to(track, { x: () => -distance(), ease: 'none', force3D: true }, 0)
-          .fromTo(bar, { scaleX: 0 }, { scaleX: 1, ease: 'none' }, 0)
-
-        return () => ScrollTrigger.removeEventListener('refreshInit', fit)
-      }
+        if (title) timeline.from(title, { yPercent: 110, duration: 0.85, ease }, 0.1)
+        if (lines.length) timeline.from(lines, { y: 20, autoAlpha: 0, duration: 0.75, stagger: 0.16, ease }, 0.18)
+        if (frames.length) timeline.from(frames, { y: 24, autoAlpha: 0, duration: 0.8, stagger: 0.12, ease }, 0.4)
+      })
+      ScrollTrigger.refresh()
     },
     { scope: rootRef },
   )
 
   return (
     <div ref={rootRef} id="dongpeng-case" className="relative">
-      <section className="mx-auto w-full max-w-[860px] px-8 pt-20 pb-16">
-        <p className="text-[12px] tracking-[0.28em] text-black/45">一、项目概述</p>
-        <p className="mt-4 text-[18px] leading-[1.85]">
-          <span className="block">围绕海外市场拓展，负责市场资料整理、展会资源梳理、英文内容策划与视觉物料交付，</span>
-          <span className="block">支持产品和品牌信息在海外市场中的传播与沟通。</span>
-        </p>
+      <section data-reveal-block className="mx-auto w-full max-w-[860px] px-8 pt-20 pb-8">
+        <p data-rise className="text-[12px] tracking-[0.28em] text-black/45">一、项目概述</p>
+        <div className="mt-4 overflow-hidden">
+          <p data-title className="text-[18px] leading-[1.85]">
+            <span className="block">围绕海外市场拓展，负责市场资料整理、展会资源梳理、英文内容策划与视觉物料交付，</span>
+            <span className="block">支持产品和品牌信息在海外市场中的传播与沟通。</span>
+          </p>
+        </div>
       </section>
 
-      <section data-reel className="relative h-dvh overflow-hidden motion-reduce:h-auto motion-reduce:overflow-visible">
-        <div className="pointer-events-none absolute top-7 right-[6vw] left-28 z-10 flex items-center justify-between text-[12px] tracking-[0.22em] text-black/50 motion-reduce:hidden">
-          <span>二、工作模块</span>
-          <span data-reel-index>01</span>
-        </div>
-        <div data-track className="flex h-dvh motion-reduce:h-auto motion-reduce:flex-col">
-          {modules.map((item) => (
-            <article key={item.index} className="box-border flex h-dvh max-h-dvh shrink-0 flex-col overflow-hidden px-[7vw] pt-24 pb-20 motion-reduce:h-auto motion-reduce:max-h-none motion-reduce:w-full motion-reduce:overflow-visible motion-reduce:py-16">
-              <div className="flex h-[212px] shrink-0 items-start justify-between gap-10 motion-reduce:h-auto">
-                <div className="min-w-0">
-                  <h3 className="text-[clamp(32px,2.8vw,44px)] leading-[1.2] font-normal whitespace-nowrap">{item.title}</h3>
-                  <p className="mt-5 text-[16px] leading-[1.75]">
-                    {item.lines.map((line) => (
-                      <span key={line} className="block">
-                        {line}
-                      </span>
-                    ))}
-                  </p>
-                  <p className="mt-4 text-[13px] leading-[1.6] text-black/50">{item.output.join(' · ')}</p>
-                </div>
-                {item.notes ? (
-                  <div className="w-[min(30vw,380px)] shrink-0 space-y-3 pt-1">
-                    {item.notes.map((note) => (
-                      <p key={note.title} className="text-[13px] leading-[1.65] text-black/60">
-                        <span className="block text-[#1c1c1c]">{note.title}</span>
-                        {note.lines.map((line) => (
-                          <span key={line} className="block">
-                            {line}
-                          </span>
-                        ))}
-                      </p>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <div className="mt-2 grid min-h-0 flex-1 grid-cols-3 items-stretch gap-5">
-                {item.slots.map((slot) => (
-                  <figure key={slot.title} className="flex min-h-0 min-w-0 flex-col">
-                    <div className="flex min-h-[140px] flex-1 items-center justify-center border border-black/15 bg-white/45 px-4 text-center text-[13px] text-black/40">
-                      {slot.hint}
-                    </div>
-                    <figcaption className="mt-3 shrink-0 text-[15px] leading-[1.4]">{slot.title}</figcaption>
-                  </figure>
-                ))}
-              </div>
-            </article>
-          ))}
-        </div>
-        <div className="absolute right-[6vw] bottom-7 left-[6vw] z-10 motion-reduce:hidden">
-          <div className="h-px bg-black/15">
-            <div data-reel-bar className="h-px origin-left bg-[#1c1c1c]" />
+      <section className="mx-auto w-full max-w-[1080px] px-8 pt-16">
+        <p className="text-[12px] tracking-[0.28em] text-black/45">二、工作模块</p>
+      </section>
+
+      {modules.map((item) => (
+        <article key={item.index} data-reveal-block className="mx-auto w-full max-w-[1080px] px-8 py-12">
+          <p data-rise className="text-[12px] tracking-[0.22em] text-black/40">{item.index}</p>
+          <div className="mt-3 overflow-hidden">
+            <h3 data-title className="text-[clamp(32px,2.8vw,44px)] leading-[1.25] font-normal whitespace-nowrap">
+              {item.title}
+            </h3>
           </div>
-        </div>
-      </section>
+          <div className="mt-5">
+            {item.lines.map((line) => (
+              <p key={line} data-rise className="text-[16px] leading-[1.75]">
+                {line}
+              </p>
+            ))}
+            <p data-rise className="mt-4 text-[13px] leading-[1.6] text-black/50">{item.output.join(' · ')}</p>
+          </div>
+          {item.notes ? (
+            <div className="mt-6 grid gap-x-12 gap-y-4 md:grid-cols-2">
+              {item.notes.map((note) => (
+                <p key={note.title} data-rise className="text-[13px] leading-[1.7] text-black/60">
+                  <span className="block text-[#1c1c1c]">{note.title}</span>
+                  {note.lines.map((line) => (
+                    <span key={line} className="block">
+                      {line}
+                    </span>
+                  ))}
+                </p>
+              ))}
+            </div>
+          ) : null}
+          <div className="mt-8 grid grid-cols-3 gap-5">
+            {item.slots.map((slot) => (
+              <figure key={slot.title} data-frame className="min-w-0">
+                <div className="flex h-[200px] items-center justify-center border border-black/15 bg-white/45 px-4 text-center text-[13px] text-black/40">
+                  {slot.hint}
+                </div>
+                <figcaption className="mt-3 text-[15px] leading-[1.4]">{slot.title}</figcaption>
+              </figure>
+            ))}
+          </div>
+        </article>
+      ))}
 
-      <section className="mx-auto w-full max-w-[860px] px-8 py-20">
-        <p className="text-[12px] tracking-[0.28em] text-black/45">三、我的工作方式</p>
-        <p className="mt-4 text-[18px] leading-[1.85]">
-          <span className="block">先梳理市场与客户信息，再拆解展会和传播任务，</span>
-          <span className="block">最后通过英文文案、视觉物料和资料整理完成内容交付。</span>
-        </p>
+      <section data-reveal-block className="mx-auto w-full max-w-[860px] px-8 py-20">
+        <p data-rise className="text-[12px] tracking-[0.28em] text-black/45">三、我的工作方式</p>
+        <div className="mt-4 overflow-hidden">
+          <p data-title className="text-[18px] leading-[1.85]">
+            <span className="block">先梳理市场与客户信息，再拆解展会和传播任务，</span>
+            <span className="block">最后通过英文文案、视觉物料和资料整理完成内容交付。</span>
+          </p>
+        </div>
         <ol className="mt-8 space-y-3">
           {method.map((step, index) => (
-            <li key={step} className="grid grid-cols-[2.5rem_1fr] gap-3 text-[15px] leading-[1.7]">
+            <li key={step} data-rise className="grid grid-cols-[2.5rem_1fr] gap-3 text-[15px] leading-[1.7]">
               <span className="text-black/40">0{index + 1}</span>
               <span>{step}</span>
             </li>
@@ -201,13 +178,15 @@ export default function DongpengCase() {
         </ol>
       </section>
 
-      <section className="mx-auto w-full max-w-[860px] px-8 pt-4 pb-28">
-        <p className="text-[12px] tracking-[0.28em] text-black/45">四、这段经历证明了什么</p>
-        <p className="mt-4 text-[18px] leading-[1.85]">
-          <span className="block">具备将海外市场信息、产品资料和展会需求转化为传播方案与内容资产的能力，</span>
-          <span className="block">能够参与完成从信息整理、任务拆解到视觉交付的完整工作链路。</span>
-        </p>
-        <p className="mt-5 text-[14px] leading-[1.8] text-black/60">
+      <section data-reveal-block className="mx-auto w-full max-w-[860px] px-8 pt-4 pb-28">
+        <p data-rise className="text-[12px] tracking-[0.28em] text-black/45">四、这段经历证明了什么</p>
+        <div className="mt-4 overflow-hidden">
+          <p data-title className="text-[18px] leading-[1.85]">
+            <span className="block">具备将海外市场信息、产品资料和展会需求转化为传播方案与内容资产的能力，</span>
+            <span className="block">能够参与完成从信息整理、任务拆解到视觉交付的完整工作链路。</span>
+          </p>
+        </div>
+        <p data-rise className="mt-5 text-[14px] leading-[1.8] text-black/60">
           <span className="block">个人贡献边界：市场研究与展会资源清单为个人工作成果；</span>
           <span className="block">企业介绍、产品资料和认证文件仅作为项目背景与内容依据使用。</span>
         </p>
