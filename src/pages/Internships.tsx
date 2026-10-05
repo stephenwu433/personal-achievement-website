@@ -75,18 +75,26 @@ function makeScribble(loop: number, echo: boolean) {
 function writeScribble(scribble: Scribble, time: number) {
   const position = scribble.line.geometry.getAttribute('position') as THREE.BufferAttribute
   const { loop, angles, echo } = scribble
-  const cycle = 3.2
-  const phase = ((time + loop * 1.05) % cycle) / cycle
+  const cycle = 2.4
+  const phase = ((time + (echo ? (loop - 2) * cycle * 0.5 : 0)) % cycle) / cycle
+  const orbit = time * 2.6
   for (let index = 0; index < angles.length; index += 1) {
     const angle = angles[index]
-    const hand = Math.sin(angle * 2 + loop * 1.3) * 0.024 + Math.sin(angle * 5.2 + loop) * 0.008
-    const travel = Math.sin(angle * 2 - time * 3.4 + loop * 1.7)
-    const wake = Math.sin(angle * 5 - time * 5.1 + loop)
-    const radius = echo ? 1.08 + phase * 0.1 + hand * 0.35 : 1.06 + loop * 0.038 + hand + travel * 0.034 + wake * 0.012
+    const hand = Math.sin(angle * 2 + loop * 1.3) * 0.022 + Math.sin(angle * 5.2 + loop) * 0.007
+    const crest = Math.sin(angle * 2 - orbit + loop * 0.85)
+    const fine = Math.sin(angle * 6 - orbit * 1.7) * 0.01
+    const radius = echo
+      ? 1.08 + phase * 0.09 + hand * 0.4 + crest * 0.02
+      : 1.05 + loop * 0.042 + hand + crest * 0.05 + fine
     position.setXYZ(index, Math.cos(angle) * radius, Math.sin(angle) * radius, 0.05)
   }
   position.needsUpdate = true
-  scribble.material.opacity = echo ? Math.sin(phase * Math.PI) * 0.5 : 1
+  if (!echo) {
+    scribble.material.opacity = 0.92
+    return
+  }
+  const fade = phase < 0.18 ? phase / 0.18 : 1 - (phase - 0.18) / 0.82
+  scribble.material.opacity = Math.max(0, fade) * 0.55
 }
 
 export default function Internships() {
@@ -169,7 +177,7 @@ export default function Internships() {
         return { group, mesh, spin: 0 }
       })
 
-      const rings = [makeScribble(0, false), makeScribble(1, false), makeScribble(2, true)]
+      const rings = [makeScribble(0, false), makeScribble(1, false), makeScribble(2, true), makeScribble(3, true)]
       rings.forEach((ring) => gallery.add(ring.line))
 
       const intro: Intro = reduced
