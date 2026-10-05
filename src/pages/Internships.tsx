@@ -762,6 +762,7 @@ function InternshipSheet({ place, onClose, children }: { place: Place; onClose: 
               start: 'top top',
               end: 'bottom top',
               scrub: 0.6,
+              refreshPriority: -1,
             },
           },
         )
