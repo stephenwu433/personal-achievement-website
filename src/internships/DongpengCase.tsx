@@ -82,7 +82,6 @@ const modules: Module[] = [
     slots: [
       { title: '香港澳门主题海报', hint: '待放入海报', image: '/internships/dongpeng/hongkong-macao.jpg' },
       { title: 'ARCHIDEX 2026 邀请海报', hint: '待放入海报', image: '/internships/dongpeng/archidex-2026.jpg' },
-      { title: '东鹏陶瓷万能品牌片头方案', hint: '待放入关键页' },
     ],
     notes: [
       {
@@ -227,10 +226,10 @@ export default function DongpengCase() {
             </div>
           ) : null}
           {item.slots ? (
-            <div className="mt-8 grid grid-cols-3 gap-5">
+            <div className={`mt-8 grid gap-5 ${item.slots.some((slot) => slot.image) ? 'max-w-[760px] grid-cols-2' : 'grid-cols-3'}`}>
               {item.slots.map((slot) => (
                 <figure key={slot.title} data-frame className="min-w-0">
-                  <div className={`flex items-center justify-center overflow-hidden border border-black/15 bg-white/45 text-center text-[13px] text-black/40 ${slot.image || item.slots?.some((itemSlot) => itemSlot.image) ? 'aspect-[3/4]' : 'h-[200px] px-4'}`}>
+                  <div className={`flex items-center justify-center overflow-hidden border border-black/15 bg-white/45 text-center text-[13px] text-black/40 ${slot.image ? 'aspect-[3/4]' : 'h-[200px] px-4'}`}>
                     {slot.image ? <img src={slot.image} alt={slot.title} className="h-full w-full object-contain" /> : slot.hint}
                   </div>
                   <figcaption className="mt-3 text-[15px] leading-[1.4]">{slot.title}</figcaption>
