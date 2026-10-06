@@ -147,10 +147,6 @@ export default function DongpengCase() {
             </li>
           ))}
         </ul>
-        <div data-rise className="mt-6 max-w-[44rem] text-[14px] leading-[1.8] text-black/60">
-          <p>市场文档里的广告价格、客户决策周期和平台比例不是个人业绩；展会资源数量只说明整理规模。</p>
-          <p className="mt-2">个人贡献边界：市场研究与展会资源清单为个人工作成果；企业介绍、产品资料和认证文件仅作为项目背景与内容依据使用。</p>
-        </div>
       </section>
 
       <section data-reveal-block className="mx-auto w-full max-w-[860px] px-8 pt-12 pb-8">
