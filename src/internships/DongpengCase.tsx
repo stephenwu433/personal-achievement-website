@@ -10,6 +10,7 @@ if (!CustomEase.get('type-in')) CustomEase.create('type-in', 'M0,0 C0.22,0.84 0.
 type Slot = {
   title: string
   hint: string
+  image?: string
 }
 
 type Evidence = {
@@ -79,8 +80,8 @@ const modules: Module[] = [
     lines: ['根据不同海外市场和传播节点，参与英文主题提炼、视觉设计和图文物料制作，', '将企业、产品和展会信息转化为适合海外受众理解和传播的内容。'],
     output: ['海外主题海报', 'ARCHIDEX 2026 邀请海报', '英文品牌与产品内容', '海外市场视觉物料'],
     slots: [
-      { title: '香港澳门主题海报', hint: '待放入海报' },
-      { title: 'ARCHIDEX 2026 邀请海报', hint: '待放入海报' },
+      { title: '香港澳门主题海报', hint: '待放入海报', image: '/internships/dongpeng/hongkong-macao.jpg' },
+      { title: 'ARCHIDEX 2026 邀请海报', hint: '待放入海报', image: '/internships/dongpeng/archidex-2026.jpg' },
       { title: '东鹏陶瓷万能品牌片头方案', hint: '待放入关键页' },
     ],
     notes: [
@@ -229,8 +230,8 @@ export default function DongpengCase() {
             <div className="mt-8 grid grid-cols-3 gap-5">
               {item.slots.map((slot) => (
                 <figure key={slot.title} data-frame className="min-w-0">
-                  <div className="flex h-[200px] items-center justify-center border border-black/15 bg-white/45 px-4 text-center text-[13px] text-black/40">
-                    {slot.hint}
+                  <div className={`flex items-center justify-center overflow-hidden border border-black/15 bg-white/45 text-center text-[13px] text-black/40 ${slot.image || item.slots?.some((itemSlot) => itemSlot.image) ? 'aspect-[3/4]' : 'h-[200px] px-4'}`}>
+                    {slot.image ? <img src={slot.image} alt={slot.title} className="h-full w-full object-contain" /> : slot.hint}
                   </div>
                   <figcaption className="mt-3 text-[15px] leading-[1.4]">{slot.title}</figcaption>
                 </figure>
