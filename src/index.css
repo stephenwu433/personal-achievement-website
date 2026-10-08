@@ -535,11 +535,38 @@ span.meijian-line.is-in {
   transform: scaleX(1);
 }
 
+.loreal-reveal {
+  opacity: 0;
+  transform: translateY(48px);
+  transition:
+    opacity 0.95s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.95s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.loreal-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+.loreal-line {
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.loreal-reveal.is-in .loreal-line {
+  transform: scaleX(1);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hr-reveal,
   .hr-reveal.is-in,
   .hr-line,
-  .hr-reveal.is-in .hr-line {
+  .hr-reveal.is-in .hr-line,
+  .loreal-reveal,
+  .loreal-reveal.is-in,
+  .loreal-line,
+  .loreal-reveal.is-in .loreal-line {
     opacity: 1;
     transform: none;
     transition: none;

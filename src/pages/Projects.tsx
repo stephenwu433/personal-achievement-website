@@ -10,6 +10,7 @@ if (!CustomEase.get('type-in')) CustomEase.create('type-in', 'M0,0 C0.22,0.84 0.
 import { CTASection } from '@/components/ui/cta-with-rectangle'
 import AnkerCase from '@/src/projects/AnkerCase'
 import HrCase from '@/src/projects/HrCase'
+import LorealCase from '@/src/projects/LorealCase'
 import MeijianCase from '@/src/projects/MeijianCase'
 import { ankerLinks } from '@/src/projects/ankerCase.data'
 import { hrLinks } from '@/src/projects/hrCase.data'
@@ -855,9 +856,9 @@ const records: Record<string, ProjectRecord> = {
     takeaway: '我把售后处理拆成事实版本、风险门禁、步骤依赖和局部回退，高风险情况进入追问或人工接管。',
   },
   loreal: {
-    name: '欧莱雅 Data Empathy',
-    tag: 'BEAUTY SERVICE / PRODUCT DESIGN',
-    line: '为美妆用户设计一条从问题识别、补充信息、排查建议到人工升级的服务路径。',
+    name: '数据共情智能服务系统',
+    tag: 'DATA EMPATHY SERVICE SYSTEM',
+    line: '把聊天、订单、售后和历史承诺收成同一条服务轨迹，让客服知道该回复、补问还是升级。',
     status: '产品设计阶段',
     scene: ['护肤困扰往往描述模糊，且会涉及安全风险、重复推荐和复杂售后。用户需要的不只是产品答案，而是被理解、被引导和被正确分流。'],
     judgment: ['产品第一步不应急着给推荐。', '先判断信息是否足够、是否需要追问、是否存在风险，再决定自动回答、辅助人工或直接升级。'],
@@ -1012,7 +1013,7 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
             </div>
           )}
         </div>
-        {piece.id === 'meijian' ? <MeijianCase embedded /> : piece.id === 'anker' ? <AnkerCase embedded /> : piece.id === 'hr' ? <HrCase embedded /> : record ? <ProjectRecord record={record} /> : null}
+        {piece.id === 'meijian' ? <MeijianCase embedded /> : piece.id === 'anker' ? <AnkerCase embedded /> : piece.id === 'loreal' ? <LorealCase embedded /> : piece.id === 'hr' ? <HrCase embedded /> : record ? <ProjectRecord record={record} /> : null}
       </div>
     </div>
   )
