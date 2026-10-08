@@ -6,6 +6,11 @@ export const planflowLinks = [
     href: 'https://ban-weld.vercel.app',
     note: '打开后是 PlanFlow 的线上协作产品，可以进入团队、项目、排期、任务和日报。未配置模型时，系统不会伪造 AI 排期结论。',
   },
+  {
+    label: '代码仓库',
+    href: 'https://github.com/stephenwu433/planflow-app',
+    note: 'PlanFlow 的公开代码，可在 GitHub 查看团队、项目、排期、任务和日报的实现。',
+  },
 ] as const
 
 export const planflowHero = {
