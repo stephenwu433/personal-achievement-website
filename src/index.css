@@ -438,17 +438,26 @@ span.meijian-line.is-in {
 .anker-step {
   border-color: rgba(26, 25, 22, 0.15);
   color: #1a1916;
-  transition: border-color 0.35s ease, color 0.35s ease, background-color 0.35s ease;
+  transition:
+    border-color 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .anker-step.is-wait {
   color: rgba(26, 25, 22, 0.45);
+  opacity: 0.4;
+  transform: translateY(18px);
 }
 
 .anker-step.is-lit {
   border-color: #1a1916;
   color: #1a1916;
   background: #efede8;
+  opacity: 1;
+  transform: none;
 }
 
 .anker-diagram {
@@ -482,13 +491,25 @@ span.meijian-line.is-in {
 
 .anker-reveal {
   opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
+  transform: translateY(48px);
+  transition:
+    opacity 0.95s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.95s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .anker-reveal.is-in {
   opacity: 1;
   transform: none;
+}
+
+.anker-line {
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.anker-reveal.is-in .anker-line {
+  transform: scaleX(1);
 }
 
 .hr-reveal {
@@ -520,7 +541,9 @@ span.meijian-line.is-in {
   .anker-detail,
   .anker-detail.is-open,
   .anker-reveal,
-  .anker-reveal.is-in {
+  .anker-reveal.is-in,
+  .anker-line,
+  .anker-reveal.is-in .anker-line {
     opacity: 1;
     transform: none;
     transition: none;
