@@ -1,12 +1,17 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { forwardRef, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
-  ankerFeatures,
-  ankerFlow,
+  ankerAcceptance,
+  ankerArchitecture,
+  ankerFact,
+  ankerGoals,
   ankerHero,
-  ankerJudgment,
-  ankerMeta,
+  ankerLinks,
+  ankerOverview,
   ankerProblem,
+  ankerRisk,
+  ankerStep,
   ankerValue,
+  ankerWork,
 } from '@/src/projects/ankerCase.data'
 
 const song = '"Noto Serif SC", "Source Han Serif SC", "STZhongsong", "华文中宋", "Songti SC", "SimSun", serif'
@@ -17,12 +22,7 @@ function reducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-function sheetOf(node: HTMLElement | null) {
-  const scroller = node?.closest('[data-project-sheet]')
-  return scroller instanceof HTMLElement ? scroller : null
-}
-
-function useInView<T extends HTMLElement>(threshold = 0.28) {
+function useInView<T extends HTMLElement>(threshold = 0.22) {
   const ref = useRef<T>(null)
   const [shown, setShown] = useState(false)
 
@@ -33,14 +33,14 @@ function useInView<T extends HTMLElement>(threshold = 0.28) {
       setShown(true)
       return
     }
-    const scroller = sheetOf(node)
+    const scroller = node.closest('[data-project-sheet]')
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry?.isIntersecting) return
         setShown(true)
         observer.disconnect()
       },
-      { root: scroller, threshold },
+      { root: scroller instanceof HTMLElement ? scroller : null, threshold },
     )
     observer.observe(node)
     return () => observer.disconnect()
@@ -50,13 +50,13 @@ function useInView<T extends HTMLElement>(threshold = 0.28) {
 }
 
 function useFlowPhase(count: number) {
-  const ref = useRef<HTMLDivElement>(null)
+  const ref = useRef<HTMLOListElement>(null)
   const [phase, setPhase] = useState(-1)
 
   useEffect(() => {
     const node = ref.current
-    const scroller = sheetOf(node)
-    if (!node || !scroller) return
+    const scroller = node?.closest('[data-project-sheet]')
+    if (!node || !(scroller instanceof HTMLElement)) return
     if (reducedMotion()) {
       setPhase(count - 1)
       return
@@ -65,7 +65,7 @@ function useFlowPhase(count: number) {
       const view = scroller.getBoundingClientRect()
       const rect = node.getBoundingClientRect()
       const start = view.bottom - 48
-      const end = view.top + 140
+      const end = view.top + 160
       if (rect.top > start) {
         setPhase(-1)
         return
@@ -90,183 +90,53 @@ function Reveal({ children, className = '' }: { children: ReactNode; className?:
   )
 }
 
-function SectionTitle({ index, children }: { index?: string; children: ReactNode }) {
+function Kicker({ children }: { children: ReactNode }) {
   return (
-    <div className="max-w-[16em]">
-      {index ? (
-        <p className="m-0 text-[12px] tracking-[0.2em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
-          {index}
-        </p>
-      ) : null}
-      <h2 className="m-0 mt-3 text-[clamp(28px,3.4vw,44px)] leading-[1.28] font-medium break-keep text-[#1A1916]" style={{ fontFamily: song }}>
-        {children}
-      </h2>
-      <span className="anker-line mt-4 block h-px w-16 bg-[#1A1916]" />
-    </div>
+    <p className="m-0 text-[12px] tracking-[0.18em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
+      {children}
+    </p>
   )
 }
 
-function Track({ label, steps, quiet = false }: { label: string; steps: readonly string[]; quiet?: boolean }) {
+function SectionTitle({ children }: { children: string }) {
+  const { ref, shown } = useInView<HTMLDivElement>()
+  const lines = children.split('\n')
   return (
-    <div className={`border px-4 py-5 sm:px-5 ${quiet ? 'border-[#1A1916]/15' : 'border-[#1A1916]'}`}>
-      <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
-        {label}
-      </p>
-      <ol className="mt-4 grid list-none gap-2 p-0">
-        {steps.map((step, index) => (
-          <li key={step} className="grid grid-cols-[auto_1fr] items-start gap-3">
-            <span className="pt-0.5 text-[12px] text-[#1A1916]/45" style={{ fontFamily: mono }}>
-              {index === 0 ? '·' : '↓'}
-            </span>
-            <span className="text-[15px] leading-7">{step}</span>
-          </li>
-        ))}
-      </ol>
-    </div>
-  )
-}
-
-function FeatureDiagram({ id, active }: { id: string; active: boolean }) {
-  const feature = ankerFeatures.find((item) => item.id === id)
-  if (!feature) return null
-  const frame = `anker-diagram border bg-[#F5F3EE] p-4 sm:p-5 ${active ? 'is-current' : ''}`
-
-  if (feature.id === 'rollback') {
-    return (
-      <div className={frame}>
-        <p className="m-0 text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
-          局部回退
-        </p>
-        <div className="mt-4 grid items-center gap-3 sm:grid-cols-[1fr_auto_1fr]">
-          <p className="m-0 border border-[#1A1916]/15 px-3 py-3 text-[15px]">{feature.diagram.before}</p>
-          <span className="text-[12px] tracking-[0.14em]" style={{ fontFamily: mono }}>
-            更正为
+    <div ref={ref} className={`anker-reveal max-w-[18em] ${shown ? 'is-in' : ''}`}>
+      <h2 className="m-0 text-[clamp(28px,3.6vw,46px)] leading-[1.28] font-medium text-[#1A1916]" style={{ fontFamily: song }}>
+        {lines.map((line, index) => (
+          <span key={line}>
+            {index > 0 ? <br /> : null}
+            {line}
           </span>
-          <p className="m-0 border border-[#1A1916] px-3 py-3 text-[15px]">{feature.diagram.after}</p>
-        </div>
-        <p className="mt-3 mb-0 text-[14px] leading-7 text-[#1A1916]/75">{feature.diagram.drop}</p>
-        <ul className="mt-4 grid list-none gap-2 p-0 sm:grid-cols-3">
-          {feature.diagram.keep.map((item) => (
-            <li key={item} className="border border-[#1A1916]/15 px-3 py-2 text-[13px] leading-6">
-              保留 · {item}
-            </li>
-          ))}
-        </ul>
-      </div>
-    )
-  }
-
-  if (feature.id === 'step') {
-    return (
-      <div className={frame}>
-        <p className="m-0 text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
-          单步闭环
-        </p>
-        <ol className="mt-4 grid list-none gap-3 p-0 md:grid-cols-3">
-          {feature.states.map((state, index) => (
-            <li key={state.name} className="border border-[#1A1916]/15 px-3 py-3">
-              <p className="m-0 text-[12px] tracking-[0.14em]" style={{ fontFamily: mono }}>
-                0{index + 1} {state.name}
-              </p>
-              <p className="mt-2 mb-0 text-[14px] leading-7">{state.note}</p>
-            </li>
-          ))}
-        </ol>
-      </div>
-    )
-  }
-
-  return null
-}
-
-function BranchPanel({
-  title,
-  triggers,
-  details,
-  detailLabel,
-}: {
-  title: string
-  triggers: readonly string[]
-  details: readonly string[]
-  detailLabel: string
-}) {
-  const { ref, shown } = useInView<HTMLElement>(0.35)
-  const [open, setOpen] = useState(false)
-
-  useEffect(() => {
-    if (!shown) return
-    if (reducedMotion()) {
-      setOpen(true)
-      return
-    }
-    const timer = window.setTimeout(() => setOpen(true), 360)
-    return () => window.clearTimeout(timer)
-  }, [shown])
-
-  return (
-    <article ref={ref} className="border border-[#1A1916]/15 px-4 py-5 sm:px-5">
-      <h3 className="m-0 text-[18px] leading-8 font-medium" style={{ fontFamily: song }}>
-        {title}
-      </h3>
-      <p className="mt-4 mb-2 text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
-        触发条件
-      </p>
-      <ul className="m-0 grid list-none gap-2 p-0">
-        {triggers.map((word) => (
-          <li key={word} className={`anker-word text-[15px] leading-7 ${shown ? 'is-on' : ''}`}>
-            {word}
-          </li>
         ))}
-      </ul>
-      <div className={`anker-detail mt-5 ${open ? 'is-open' : ''}`}>
-        <p className="m-0 text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
-          {detailLabel}
-        </p>
-        <ul className="mt-2 mb-0 grid list-none gap-2 p-0">
-          {details.map((item) => (
-            <li key={item} className="border-t border-[#1A1916]/15 pt-2 text-[14px] leading-7">
-              {item}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </article>
+      </h2>
+      <span className="mt-4 block h-px w-16 bg-[#1A1916]" />
+    </div>
   )
 }
+
+const Chain = forwardRef<HTMLOListElement, { steps: readonly string[]; phase?: number; wide?: boolean }>(function Chain({ steps, phase, wide = false }, ref) {
+  return (
+    <ol ref={ref} className={`grid list-none gap-2 p-0 md:grid-cols-2 ${wide ? 'xl:grid-cols-6' : 'xl:grid-cols-3'}`}>
+      {steps.map((step, index) => {
+        const lit = phase === undefined || index <= phase
+        const waiting = phase !== undefined && index > phase
+        return (
+          <li key={step} className={`anker-step border px-3 py-3 text-[14px] leading-7 ${lit ? 'is-lit' : ''} ${waiting ? 'is-wait' : ''}`}>
+            <span className="mr-2 text-[12px]" style={{ fontFamily: mono }}>
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            {step}
+          </li>
+        )
+      })}
+    </ol>
+  )
+})
 
 export default function AnkerCase({ onClose }: { onClose: () => void }) {
-  const { ref: flowRef, phase } = useFlowPhase(ankerFlow.marks.length)
-  const featureRefs = useRef<Array<HTMLElement | null>>([])
-  const [activeFeature, setActiveFeature] = useState(0)
-
-  useEffect(() => {
-    const nodes = featureRefs.current.filter((node): node is HTMLElement => node instanceof HTMLElement)
-    const scroller = sheetOf(nodes[0] ?? null)
-    if (!nodes.length || !scroller) return
-    if (reducedMotion()) return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
-        if (!visible) return
-        const index = nodes.indexOf(visible.target as HTMLElement)
-        if (index >= 0) setActiveFeature(index)
-      },
-      { root: scroller, threshold: [0.35, 0.6] },
-    )
-    nodes.forEach((node) => observer.observe(node))
-    return () => observer.disconnect()
-  }, [])
-
-  const openFeature = (index: number) => {
-    const node = featureRefs.current[index]
-    const scroller = sheetOf(node ?? null)
-    if (!node || !scroller) return
-    const top = node.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - 72
-    scroller.scrollTo({ top, behavior: reducedMotion() ? 'auto' : 'smooth' })
-    setActiveFeature(index)
-  }
+  const { ref: flowRef, phase } = useFlowPhase(ankerOverview.steps.length)
 
   return (
     <article className="anker-case text-[#1A1916]" style={{ fontFamily: sans, background: '#F5F3EE' }}>
@@ -277,76 +147,82 @@ export default function AnkerCase({ onClose }: { onClose: () => void }) {
       </div>
 
       <header className="mx-auto w-full max-w-[1120px] px-5 pt-8 pb-16 sm:px-8">
-        <div className="grid items-end gap-10 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
           <div>
-            <p className="m-0 text-[12px] tracking-[0.2em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
-              02 / {ankerMeta.name}
+            <Kicker>01 / {ankerHero.tag}</Kicker>
+            <p className="mt-4 mb-0 text-[20px] leading-8" style={{ fontFamily: song }}>
+              {ankerHero.name}
             </p>
-            <p className="mt-3 mb-0 max-w-[16em] text-[18px] leading-8" style={{ fontFamily: song }}>
-              {ankerMeta.subtitle}
-            </p>
-            <h1 className="mt-5 text-[clamp(26px,3.5vw,52px)] leading-[0.98] font-medium" style={{ fontFamily: song }}>
-              {ankerHero.lines.map((line) => (
-                <span key={line} className="block tracking-[0.03em] whitespace-nowrap">
-                  {line}
-                </span>
-              ))}
+            <h1 className="mt-4 text-[clamp(30px,3.1vw,40px)] leading-[1.25] font-medium" style={{ fontFamily: song }}>
+              <span className="block">{ankerHero.title[0]}</span>
+              <span className="block">{ankerHero.title[1]}</span>
             </h1>
-          </div>
-          <div>
-            {ankerHero.paragraphs.map((paragraph) => (
-              <p key={paragraph} className="mt-4 mb-0 text-[16px] leading-8 text-[#1A1916]/85 first:mt-0">
-                {paragraph}
-              </p>
-            ))}
-            <p className="mt-6 mb-0 text-[14px] leading-7 text-[#1A1916]/75">{ankerMeta.summary}</p>
-            <dl className="mt-6 grid gap-4 border-t border-[#1A1916]/15 pt-4 sm:grid-cols-2">
-              <div>
-                <dt className="text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
-                  我的角色
-                </dt>
-                <dd className="mt-2 mb-0 text-[15px] leading-7">
-                  {ankerMeta.role}
-                  <span className="mt-1 block text-[14px] text-[#1A1916]/70">{ankerMeta.roleNote}</span>
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
-                  项目类型
-                </dt>
-                <dd className="mt-2 mb-0 text-[15px] leading-7">{ankerMeta.type}</dd>
-              </div>
+            <p className="mt-6 max-w-[38rem] text-[16px] leading-8 text-[#1A1916]/80">{ankerHero.subtitle}</p>
+            <dl className="mt-6 border-t border-[#1A1916]/15 pt-4">
+              <dt className="text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
+                我的职责
+              </dt>
+              <dd className="mt-2 mb-0 text-[16px] leading-7">
+                {ankerHero.role}
+                <span className="mt-1 block text-[14px] text-[#1A1916]/70">{ankerHero.roleNote}</span>
+              </dd>
             </dl>
+            <ul className="mt-6 grid list-none gap-3 p-0">
+              {ankerLinks.map((link) => (
+                <li key={link.href}>
+                  <a
+                    href={link.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block border border-[#1A1916]/15 px-4 py-4 transition-colors hover:border-[#1A1916]"
+                  >
+                    <span className="text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                      {link.label}
+                    </span>
+                    <span className="mt-2 block text-[14px] leading-7">{link.note}</span>
+                    <span className="mt-2 block text-[12px] leading-5 break-all underline underline-offset-4" style={{ fontFamily: mono }}>
+                      {link.href}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
+          <aside className="border border-[#1A1916]/15">
+            <p className="m-0 border-b border-[#1A1916]/15 px-4 py-3 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+              {ankerHero.boardLabel}
+            </p>
+            <ol className="m-0 list-none p-0">
+              {ankerHero.stats.map((stat) => (
+                <li key={stat.value} className="grid grid-cols-[4.6rem_1fr] gap-3 border-t border-[#1A1916]/15 px-4 py-4 first:border-t-0">
+                  <span className="text-[clamp(28px,3vw,40px)] leading-none" style={{ fontFamily: mono }}>
+                    {stat.value}
+                  </span>
+                  <span>
+                    <span className="block text-[15px] leading-7">{stat.label}</span>
+                    <span className="mt-1 block text-[13px] leading-6 text-[#1A1916]/70">{stat.note}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </aside>
         </div>
-
-        <p className="mt-12 mb-3 text-[12px] tracking-[0.18em]" style={{ fontFamily: mono }}>
-          {ankerHero.scopeLabel}
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {ankerHero.stats.map((stat) => (
-            <article key={stat.label} className="anker-stat bg-[#F5F3EE] px-4 py-5">
-              <p className="m-0 text-[clamp(32px,4vw,48px)] leading-none" style={{ fontFamily: mono }}>
-                {stat.value}
-              </p>
-              <p className="mt-4 mb-0 text-[14px] tracking-[0.08em]" style={{ fontFamily: mono }}>
-                {stat.label}
-              </p>
-              <p className="mt-2 mb-0 text-[14px] leading-7 text-[#1A1916]/75">{stat.note}</p>
-            </article>
-          ))}
-        </div>
-        <p className="mt-4 mb-0 text-[12px] leading-6 tracking-[0.08em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
-          {ankerHero.footnoteEn}
-          <span className="mt-1 block tracking-normal">{ankerHero.footnoteZh}</span>
-        </p>
+        <p className="mt-8 mb-0 max-w-[46rem] border-t border-[#1A1916] pt-4 text-[14px] leading-7 text-[#1A1916]/70">{ankerHero.footnote}</p>
       </header>
 
       <section className="border-t border-[#1A1916]/15">
         <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
-          <Reveal>
+          <Kicker>
+            {ankerProblem.index} / {ankerProblem.kicker}
+          </Kicker>
+          <div className="mt-4">
             <SectionTitle>{ankerProblem.title}</SectionTitle>
-            <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          </div>
+          <Reveal>
+            <p className="mt-8 text-[18px] leading-8" style={{ fontFamily: song }}>
+              {ankerProblem.lead}
+            </p>
+            <div className="mt-4 grid gap-6 lg:grid-cols-2">
               {ankerProblem.paragraphs.map((paragraph) => (
                 <p key={paragraph} className="m-0 text-[16px] leading-8">
                   {paragraph}
@@ -354,179 +230,360 @@ export default function AnkerCase({ onClose }: { onClose: () => void }) {
               ))}
             </div>
           </Reveal>
-          <div className="mt-10 grid gap-4 lg:grid-cols-2">
-            <Track label={ankerProblem.usual.label} steps={ankerProblem.usual.steps} quiet />
-            <Track label={ankerProblem.proposed.label} steps={ankerProblem.proposed.steps} />
-          </div>
-        </div>
-      </section>
-
-      <section className="border-t border-[#1A1916]/15">
-        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
-          <Reveal>
-            <SectionTitle>{ankerJudgment.title}</SectionTitle>
-          </Reveal>
-          <div className="mt-8 grid gap-4 lg:grid-cols-3">
-            {ankerJudgment.cards.map((card) => (
-              <Reveal key={card.index}>
-                <article className="h-full border border-[#1A1916]/15 px-4 py-5">
-                  <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
-                    {card.index}
-                  </p>
-                  <h3 className="mt-3 mb-0 text-[22px] leading-8 font-medium" style={{ fontFamily: song }}>
-                    {card.title}
-                  </h3>
-                  <p className="mt-3 mb-0 text-[15px] leading-8 text-[#1A1916]/80">{card.body}</p>
-                </article>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-t border-[#1A1916]/15">
-        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
-          <SectionTitle>{ankerFlow.title}</SectionTitle>
-          <div ref={flowRef} className="mt-8 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-            <ol className="m-0 grid list-none gap-2 p-0">
-              {ankerFlow.steps.map((step) => {
-                const lit = step.phase !== null && phase >= step.phase
-                const waiting = step.phase !== null && phase < step.phase
-                return (
-                  <li key={step.id} className={`anker-step border px-4 py-3 text-[15px] leading-7 ${lit ? 'is-lit' : ''} ${waiting ? 'is-wait' : ''}`}>
-                    {step.text}
+          <div className="mt-10 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="border border-[#1A1916]/15 px-4 py-5">
+              <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                {ankerProblem.chainLabel}
+              </p>
+              <ol className="mt-4 grid list-none gap-3 p-0">
+                {ankerProblem.chain.map((step, index) => (
+                  <li key={step} className="grid grid-cols-[1.5rem_1fr] gap-2 text-[15px] leading-7">
+                    <span style={{ fontFamily: mono }}>{index === 0 ? '·' : '↓'}</span>
+                    <span>{step}</span>
                   </li>
-                )
-              })}
-            </ol>
-            <ol className="m-0 grid list-none gap-px bg-[#1A1916]/15 p-0">
-              {ankerFlow.layers.map((layer) => (
-                <li key={layer.index} className="bg-[#F5F3EE] px-4 py-4">
-                  <p className="m-0 text-[12px] tracking-[0.14em]" style={{ fontFamily: mono }}>
-                    {layer.index} {layer.name}
-                  </p>
-                  <p className="mt-2 mb-0 text-[14px] leading-7 text-[#1A1916]/75">{layer.note}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-          <ol className="mt-4 mb-0 flex list-none flex-wrap gap-x-3 gap-y-1 p-0 text-[12px] tracking-[0.14em]" style={{ fontFamily: mono }}>
-            {ankerFlow.marks.map((mark, index) => (
-              <li key={mark} className={index <= phase ? 'text-[#1A1916]' : 'text-[#1A1916]/35'}>
-                {index > 0 ? <span className="mr-3">→</span> : null}
-                {mark}
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      <div className="sticky top-0 z-20 border-y border-[#1A1916]/15 bg-[#F5F3EE]">
-        <div className="mx-auto flex w-full max-w-[1120px] gap-2 overflow-x-auto px-5 py-3 sm:px-8">
-          {ankerFeatures.map((feature, index) => (
-            <button
-              key={feature.id}
-              type="button"
-              onClick={() => openFeature(index)}
-              className={`shrink-0 border px-3 py-2 text-left text-[13px] leading-6 ${index === activeFeature ? 'border-[#1A1916]' : 'border-[#1A1916]/15 text-[#1A1916]/60'}`}
-            >
-              <span style={{ fontFamily: mono }}>{feature.index}</span> {feature.title}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {ankerFeatures.map((feature, index) => (
-        <section
-          key={feature.id}
-          ref={(node) => {
-            featureRefs.current[index] = node
-          }}
-          className="border-b border-[#1A1916]/15"
-        >
-          <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
-            <SectionTitle index={`${feature.index} /`}>
-              {feature.title}
-            </SectionTitle>
-            <p className="mt-6 max-w-[44rem] text-[16px] leading-8">{feature.scene}</p>
-            {feature.id === 'handoff' ? null : (
-              <div className="mt-8">
-                <FeatureDiagram id={feature.id} active={activeFeature === index} />
-              </div>
-            )}
-            {feature.id === 'handoff' ? (
-              <div className="mt-8 grid gap-4 lg:grid-cols-2">
-                <BranchPanel title={feature.block.title} triggers={feature.block.triggers} details={feature.block.actions} detailLabel="系统动作" />
-                <BranchPanel title={feature.handoff.title} triggers={feature.handoff.triggers} details={feature.handoff.packet} detailLabel="人工接管包" />
-              </div>
-            ) : null}
-            {'columns' in feature ? (
-              <div className="mt-8 grid gap-4 lg:grid-cols-3">
-                {feature.columns.map((column) => (
-                  <article key={column.title} className="border border-[#1A1916]/15 px-4 py-5">
-                    <h3 className="m-0 text-[16px] leading-7 font-medium">{column.title}</h3>
-                    <p className="mt-3 mb-0 text-[15px] leading-8 text-[#1A1916]/80">{column.body}</p>
+                ))}
+              </ol>
+            </div>
+            <div>
+              <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                {ankerProblem.impactLabel}
+              </p>
+              <div className="mt-4 grid gap-3">
+                {ankerProblem.impacts.map((impact) => (
+                  <article key={impact.title} className="border border-[#1A1916]/15 px-4 py-4">
+                    <h3 className="m-0 text-[16px] leading-7 font-medium">{impact.title}</h3>
+                    <p className="mt-2 mb-0 text-[15px] leading-7 text-[#1A1916]/80">{impact.body}</p>
                   </article>
                 ))}
               </div>
-            ) : null}
-            {'rules' in feature ? (
-              <ul className="mt-8 grid list-none gap-3 p-0">
-                {feature.rules.map((rule) => (
-                  <li key={rule} className="border-t border-[#1A1916]/15 pt-3 text-[15px] leading-7">
-                    {rule}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            <p className="mt-8 max-w-[36rem] border-t border-[#1A1916] pt-4 text-[20px] leading-9" style={{ fontFamily: song }}>
-              {feature.close}
-            </p>
+            </div>
           </div>
-        </section>
-      ))}
+        </div>
+      </section>
 
       <section className="border-t border-[#1A1916]/15">
         <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
-          <SectionTitle>{ankerValue.title}</SectionTitle>
-          <p className="mt-6 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
-            {ankerValue.tag}
-          </p>
-          <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            {ankerValue.items.map((item) => (
-              <article key={item.title} className="border border-[#1A1916]/15 px-4 py-5">
-                <p className="m-0 text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
-                  预期
+          <Kicker>
+            {ankerGoals.index} / {ankerGoals.kicker}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{ankerGoals.title}</SectionTitle>
+          </div>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            {ankerGoals.goals.map((goal) => (
+              <article key={goal.index} className="border border-[#1A1916]/15 px-4 py-5">
+                <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                  {goal.index}｜{goal.title}
                 </p>
-                <h3 className="mt-3 mb-0 text-[20px] leading-8 font-medium" style={{ fontFamily: song }}>
+                <p className="mt-3 mb-0 text-[15px] leading-8">{goal.body}</p>
+              </article>
+            ))}
+          </div>
+          <p className="mt-8 max-w-[40rem] border-t border-[#1A1916] pt-4 text-[20px] leading-9" style={{ fontFamily: song }}>
+            {ankerGoals.close}
+          </p>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {ankerOverview.index} / {ankerOverview.kicker}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{ankerOverview.title}</SectionTitle>
+          </div>
+          <div className="mt-8">
+            <Chain ref={flowRef} steps={ankerOverview.steps} phase={phase} wide />
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {ankerOverview.outcomes.map((outcome) => (
+              <article key={outcome.code} className="border border-[#1A1916]/15 px-4 py-4">
+                <p className="m-0 text-[13px] tracking-[0.14em]" style={{ fontFamily: mono }}>
+                  {outcome.code}
+                </p>
+                <p className="mt-2 mb-0 text-[15px] leading-7">{outcome.body}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {ankerFact.index} / {ankerFact.code}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{ankerFact.title}</SectionTitle>
+          </div>
+          <p className="mt-6 max-w-[40rem] text-[16px] leading-8">
+            <span className="mr-2 text-[12px] tracking-[0.14em]" style={{ fontFamily: mono }}>
+              {ankerFact.sceneLabel}
+            </span>
+            {ankerFact.scene}
+          </p>
+          <div className="mt-8 grid gap-3 lg:grid-cols-3">
+            {ankerFact.columns.map((column) => (
+              <article key={column.index} className="border border-[#1A1916]/15 px-4 py-5">
+                <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                  {column.index}. {column.title}
+                </p>
+                <p className="mt-3 mb-0 text-[15px] leading-8">{column.body}</p>
+              </article>
+            ))}
+          </div>
+          <div className="mt-8">
+            <Chain steps={ankerFact.chain} />
+          </div>
+          <p className="mt-4 mb-0 max-w-[40rem] text-[14px] leading-7 text-[#1A1916]/70">{ankerFact.note}</p>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {ankerStep.index} / {ankerStep.code}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{ankerStep.title}</SectionTitle>
+          </div>
+          <p className="mt-6 max-w-[40rem] text-[16px] leading-8">
+            <span className="mr-2 text-[12px] tracking-[0.14em]" style={{ fontFamily: mono }}>
+              {ankerStep.sceneLabel}
+            </span>
+            {ankerStep.scene}
+          </p>
+          <div className="mt-8 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <ol className="grid list-none gap-3 p-0">
+              {ankerStep.states.map((state, index) => (
+                <li key={state.code} className="border border-[#1A1916]/15 px-4 py-4">
+                  <p className="m-0 text-[13px] tracking-[0.14em]" style={{ fontFamily: mono }}>
+                    0{index + 1} {state.code}
+                  </p>
+                  <p className="mt-2 mb-0 text-[15px] leading-7">{state.body}</p>
+                </li>
+              ))}
+            </ol>
+            <div className="border border-[#1A1916]/15 px-4 py-4">
+              <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                {ankerStep.fieldsLabel}
+              </p>
+              <ul className="mt-3 mb-0 grid list-none gap-2 p-0">
+                {ankerStep.fields.map((field) => (
+                  <li key={field} className="border-t border-[#1A1916]/15 pt-2 text-[15px] leading-7">
+                    {field}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <p className="mt-8 max-w-[40rem] border-t border-[#1A1916] pt-4 text-[18px] leading-8" style={{ fontFamily: song }}>
+            {ankerStep.close}
+          </p>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {ankerRisk.index} / {ankerRisk.code}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{ankerRisk.title}</SectionTitle>
+          </div>
+          <div className="mt-8 grid gap-4 lg:grid-cols-2">
+            <article className="border border-[#1A1916] px-4 py-5">
+              <h3 className="m-0 text-[20px] leading-8 font-medium" style={{ fontFamily: song }}>
+                {ankerRisk.block.title}
+              </h3>
+              <p className="mt-4 mb-2 text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
+                {ankerRisk.block.triggerLabel}
+              </p>
+              <p className="m-0 text-[16px] leading-8">{ankerRisk.block.triggers.join('｜')}</p>
+              <p className="mt-4 mb-2 text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
+                {ankerRisk.block.actionLabel}
+              </p>
+              <ul className="m-0 grid list-none gap-2 p-0">
+                {ankerRisk.block.actions.map((action) => (
+                  <li key={action} className="border-t border-[#1A1916]/15 pt-2 text-[15px] leading-7">
+                    {action}
+                  </li>
+                ))}
+              </ul>
+            </article>
+            <article className="border border-[#1A1916]/15 px-4 py-5">
+              <h3 className="m-0 text-[20px] leading-8 font-medium" style={{ fontFamily: song }}>
+                {ankerRisk.handoff.title}
+              </h3>
+              <p className="mt-4 mb-2 text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
+                {ankerRisk.handoff.triggerLabel}
+              </p>
+              <ul className="m-0 grid list-none gap-2 p-0">
+                {ankerRisk.handoff.triggers.map((trigger) => (
+                  <li key={trigger} className="text-[15px] leading-7">
+                    {trigger}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-4 mb-2 text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
+                {ankerRisk.handoff.packetLabel}
+              </p>
+              <ul className="m-0 grid list-none gap-2 p-0 sm:grid-cols-2">
+                {ankerRisk.handoff.packet.map((item) => (
+                  <li key={item} className="border-t border-[#1A1916]/15 pt-2 text-[15px] leading-7">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          </div>
+          <p className="mt-8 max-w-[40rem] border-t border-[#1A1916] pt-4 text-[20px] leading-9" style={{ fontFamily: song }}>
+            {ankerRisk.close}
+          </p>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {ankerArchitecture.index} / {ankerArchitecture.kicker}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{ankerArchitecture.title}</SectionTitle>
+          </div>
+          <ol className="mt-8 grid list-none gap-px bg-[#1A1916]/15 p-0">
+            {ankerArchitecture.layers.map((layer) => (
+              <li key={layer.index} className="grid gap-2 bg-[#F5F3EE] px-4 py-5 sm:grid-cols-[16rem_1fr] sm:items-baseline">
+                <p className="m-0 text-[14px] tracking-[0.08em]" style={{ fontFamily: mono }}>
+                  {layer.index}｜{layer.name}
+                </p>
+                <p className="m-0 text-[15px] leading-7">{layer.body}</p>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {ankerArchitecture.split.map((side) => (
+              <article key={side.title} className="border border-[#1A1916]/15 px-4 py-4">
+                <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                  {side.title}
+                </p>
+                <p className="mt-3 mb-0 text-[16px] leading-8">{side.items.join('｜')}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {ankerAcceptance.index} / {ankerAcceptance.kicker}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{ankerAcceptance.title}</SectionTitle>
+          </div>
+          <div className="mt-8 grid gap-px bg-[#1A1916]/15 sm:grid-cols-2 xl:grid-cols-4">
+            {ankerAcceptance.board.map((item) => (
+              <article key={item.value} className="bg-[#F5F3EE] px-4 py-5">
+                <p className="m-0 text-[clamp(28px,3vw,40px)] leading-none" style={{ fontFamily: mono }}>
+                  {item.value}
+                </p>
+                <p className="mt-4 mb-0 text-[15px] leading-7">{item.label}</p>
+                <p className="mt-2 mb-0 text-[13px] leading-6 text-[#1A1916]/70">{item.note}</p>
+              </article>
+            ))}
+          </div>
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            {ankerAcceptance.paragraphs.map((paragraph) => (
+              <p key={paragraph} className="m-0 text-[16px] leading-8">
+                {paragraph}
+              </p>
+            ))}
+          </div>
+          <div className="mt-8 border border-[#1A1916]/15">
+            <div className="grid border-b border-[#1A1916]/15 sm:grid-cols-[12rem_1fr]">
+              {ankerAcceptance.columns.map((column) => (
+                <p key={column} className="m-0 px-4 py-3 text-[12px] tracking-[0.14em]" style={{ fontFamily: mono }}>
+                  {column}
+                </p>
+              ))}
+            </div>
+            {ankerAcceptance.rows.map((row) => (
+              <div key={row.item} className="grid border-t border-[#1A1916]/15 sm:grid-cols-[12rem_1fr]">
+                <p className="m-0 px-4 py-3 text-[15px] leading-7">{row.item}</p>
+                <p className="m-0 px-4 py-3 text-[15px] leading-7 text-[#1A1916]/80">{row.check}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-8 max-w-[40rem] border-t border-[#1A1916] pt-4 text-[20px] leading-9" style={{ fontFamily: song }}>
+            {ankerAcceptance.close}
+          </p>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {ankerValue.index} / {ankerValue.kicker}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{ankerValue.title}</SectionTitle>
+          </div>
+          <div className="mt-8 grid gap-3 lg:grid-cols-3">
+            {ankerValue.cards.map((card) => (
+              <article key={card.title} className="border border-[#1A1916]/15 px-4 py-5">
+                <h3 className="m-0 text-[20px] leading-8 font-medium" style={{ fontFamily: song }}>
+                  {card.title}
+                </h3>
+                {card.paragraphs.map((paragraph) => (
+                  <p key={paragraph} className="mt-3 mb-0 text-[15px] leading-8">
+                    {paragraph}
+                  </p>
+                ))}
+              </article>
+            ))}
+          </div>
+          <ol className="mt-8 grid list-none gap-px bg-[#1A1916]/15 p-0 sm:grid-cols-2 xl:grid-cols-5">
+            {ankerValue.summary.map((item) => (
+              <li key={item.text} className="bg-[#F5F3EE] px-4 py-5">
+                <p className="m-0 text-[clamp(28px,3vw,40px)] leading-none" style={{ fontFamily: mono }}>
+                  {item.value}
+                </p>
+                <p className="mt-3 mb-0 text-[14px] leading-7">{item.text}</p>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-8 max-w-[42rem] border-t border-[#1A1916] pt-4 text-[20px] leading-9" style={{ fontFamily: song }}>
+            {ankerValue.close}
+          </p>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {ankerWork.index} / {ankerWork.kicker}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{ankerWork.title}</SectionTitle>
+          </div>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            {ankerWork.items.map((item, index) => (
+              <article key={item.title} className="border border-[#1A1916]/15 px-4 py-5">
+                <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                  0{index + 1}
+                </p>
+                <h3 className="mt-3 mb-0 text-[22px] leading-8 font-medium" style={{ fontFamily: song }}>
                   {item.title}
                 </h3>
                 <p className="mt-3 mb-0 text-[15px] leading-8">{item.body}</p>
               </article>
             ))}
           </div>
-          <article className="mt-8 border border-[#1A1916]/20 bg-[#EFEDE8] px-4 py-5 sm:px-5">
-            <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
-              {ankerValue.boundary.title}
-            </p>
-            <p className="mt-2 mb-0 text-[18px] leading-8" style={{ fontFamily: song }}>
-              {ankerValue.boundary.state}
-            </p>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <div>
-                <p className="m-0 text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
-                  {ankerValue.boundary.definedLabel}
-                </p>
-                <p className="mt-2 mb-0 text-[15px] leading-7">{ankerValue.boundary.defined}</p>
-              </div>
-              <div>
-                <p className="m-0 text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
-                  {ankerValue.boundary.pendingLabel}
-                </p>
-                <p className="mt-2 mb-0 text-[15px] leading-7">{ankerValue.boundary.pending}</p>
-              </div>
-            </div>
-          </article>
+          <p className="mt-8 max-w-[42rem] border-t border-[#1A1916] pt-5 text-[20px] leading-9" style={{ fontFamily: song }}>
+            {ankerWork.close}
+          </p>
         </div>
       </section>
     </article>
