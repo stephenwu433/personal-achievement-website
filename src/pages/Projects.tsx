@@ -10,6 +10,7 @@ if (!CustomEase.get('type-in')) CustomEase.create('type-in', 'M0,0 C0.22,0.84 0.
 import { CTASection } from '@/components/ui/cta-with-rectangle'
 import AnkerCase from '@/src/projects/AnkerCase'
 import MeijianCase from '@/src/projects/MeijianCase'
+import { ankerLinks } from '@/src/projects/ankerCase.data'
 import { meijianLinks } from '@/src/projects/meijianCase.data'
 import SiteHeader from '@/src/components/SiteHeader'
 import { profile } from '@/src/content'
@@ -980,13 +981,7 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
     window.setTimeout(onClose, 500)
   }
 
-  if (piece.id === 'anker') {
-    return (
-      <div data-project-sheet className="fixed inset-0 z-[80] overflow-x-hidden overflow-y-auto bg-[#F5F3EE]">
-        <AnkerCase onClose={onClose} />
-      </div>
-    )
-  }
+  const openingLinks = piece.id === 'meijian' ? meijianLinks : piece.id === 'anker' ? ankerLinks : undefined
 
   return (
     <div data-project-sheet className="fixed inset-0 z-[80] overflow-x-hidden overflow-y-auto bg-[#f7f5f2]">
@@ -1000,7 +995,7 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
               description={record.line}
               action={{ text: '返回', href: '/projects', onClick: requestClose }}
               flow={flows[piece.id]}
-              links={piece.id === 'meijian' ? meijianLinks : undefined}
+              links={openingLinks}
               className="[&>div]:px-0 [&>div]:py-8 md:[&>div]:py-10 [&_h2]:!text-4xl [&_h2]:!leading-tight [&_h2]:!font-medium [&_h2]:break-keep"
             />
           ) : (
@@ -1015,7 +1010,7 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
             </div>
           )}
         </div>
-        {piece.id === 'meijian' ? <MeijianCase embedded /> : record ? <ProjectRecord record={record} /> : null}
+        {piece.id === 'meijian' ? <MeijianCase embedded /> : piece.id === 'anker' ? <AnkerCase embedded /> : record ? <ProjectRecord record={record} /> : null}
       </div>
     </div>
   )

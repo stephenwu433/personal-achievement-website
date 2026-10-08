@@ -135,18 +135,20 @@ const Chain = forwardRef<HTMLOListElement, { steps: readonly string[]; phase?: n
   )
 })
 
-export default function AnkerCase({ onClose }: { onClose: () => void }) {
+export default function AnkerCase({ onClose, embedded = false }: { onClose?: () => void; embedded?: boolean }) {
   const { ref: flowRef, phase } = useFlowPhase(ankerOverview.steps.length)
 
   return (
     <article className="anker-case text-[#1A1916]" style={{ fontFamily: sans, background: '#F5F3EE' }}>
-      <div className="mx-auto w-full max-w-[1120px] px-5 pt-8 sm:px-8">
-        <button type="button" onClick={onClose} className="text-[12px] tracking-[0.18em] underline underline-offset-4" style={{ fontFamily: mono }}>
-          返回
-        </button>
-      </div>
+      {embedded ? null : (
+        <div className="mx-auto w-full max-w-[1120px] px-5 pt-8 sm:px-8">
+          <button type="button" onClick={onClose} className="text-[12px] tracking-[0.18em] underline underline-offset-4" style={{ fontFamily: mono }}>
+            返回
+          </button>
+        </div>
+      )}
 
-      <header className="mx-auto w-full max-w-[1120px] px-5 pt-8 pb-16 sm:px-8">
+      <header className={`mx-auto w-full max-w-[1120px] px-5 pb-16 sm:px-8 ${embedded ? 'pt-16' : 'pt-8'}`}>
         <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
           <div>
             <Kicker>01 / {ankerHero.tag}</Kicker>
@@ -167,26 +169,28 @@ export default function AnkerCase({ onClose }: { onClose: () => void }) {
                 <span className="mt-1 block text-[14px] text-[#1A1916]/70">{ankerHero.roleNote}</span>
               </dd>
             </dl>
-            <ul className="mt-6 grid list-none gap-3 p-0">
-              {ankerLinks.map((link) => (
-                <li key={link.href}>
-                  <a
-                    href={link.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block border border-[#1A1916]/15 px-4 py-4 transition-colors hover:border-[#1A1916]"
-                  >
-                    <span className="text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
-                      {link.label}
-                    </span>
-                    <span className="mt-2 block text-[14px] leading-7">{link.note}</span>
-                    <span className="mt-2 block text-[12px] leading-5 break-all underline underline-offset-4" style={{ fontFamily: mono }}>
-                      {link.href}
-                    </span>
-                  </a>
-                </li>
-              ))}
-            </ul>
+            {embedded ? null : (
+              <ul className="mt-6 grid list-none gap-3 p-0">
+                {ankerLinks.map((link) => (
+                  <li key={link.href}>
+                    <a
+                      href={link.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block border border-[#1A1916]/15 px-4 py-4 transition-colors hover:border-[#1A1916]"
+                    >
+                      <span className="text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                        {link.label}
+                      </span>
+                      <span className="mt-2 block text-[14px] leading-7">{link.note}</span>
+                      <span className="mt-2 block text-[12px] leading-5 break-all underline underline-offset-4" style={{ fontFamily: mono }}>
+                        {link.href}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
           <aside className="border border-[#1A1916]/15">
             <p className="m-0 border-b border-[#1A1916]/15 px-4 py-3 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
