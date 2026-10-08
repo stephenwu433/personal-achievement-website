@@ -11,6 +11,19 @@ export type HeroStat = {
   count?: { to: number; decimals: number; suffix: string }
 }
 
+export const meijianLinks = [
+  {
+    label: '公开演示',
+    href: 'https://meijian-narrative-intelligence.streamlit.app/',
+    note: '打开后是冻结语料与 Checkpoint 的回放演示，不在页面里实时调用企业模型或密钥。',
+  },
+  {
+    label: '代码仓库',
+    href: 'https://github.com/stylewth/Meijian-Narrative-Intelligence',
+    note: '梅见品牌认知演化智能体的公开代码，可在 GitHub 查看这套决策流程的实现。',
+  },
+] as const
+
 export const meijianHero = {
   title: '梅见品牌认知演化智能体',
   subtitle: '从市场证据到可持续占领的品牌认知',

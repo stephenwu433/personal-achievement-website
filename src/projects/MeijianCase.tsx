@@ -5,6 +5,7 @@ import {
   meijianEvolution,
   meijianHero,
   meijianJudgment,
+  meijianLinks,
   meijianPath,
   meijianPilot,
   meijianProblem,
@@ -149,6 +150,26 @@ export default function MeijianCase({ onClose }: { onClose: () => void }) {
             {meijianHero.subtitle}
           </p>
           <p className="mt-6 max-w-[40rem] text-[16px] leading-8 text-[#1A1916]/80">{meijianHero.definition}</p>
+          <ul className="mt-8 grid list-none gap-3 p-0 sm:grid-cols-2">
+            {meijianLinks.map((link) => (
+              <li key={link.href}>
+                <a
+                  href={link.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex h-full flex-col border border-[#1A1916]/15 px-4 py-4 text-left transition-colors hover:border-[#6B1F2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6B1F2A]"
+                >
+                  <span className="text-[12px] tracking-[0.18em] text-[#6B1F2A]" style={{ fontFamily: mono }}>
+                    {link.label}
+                  </span>
+                  <span className="mt-2 text-[15px] leading-7 text-[#1A1916]">{link.note}</span>
+                  <span className="mt-3 break-all text-[13px] leading-6 text-[#6B1F2A] underline underline-offset-4" style={{ fontFamily: mono }}>
+                    {link.href}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
         </Reveal>
         <div className="mt-12 grid gap-px bg-[#1A1916]/15 sm:grid-cols-2 lg:grid-cols-3">
           {meijianHero.stats.map((stat) => (
