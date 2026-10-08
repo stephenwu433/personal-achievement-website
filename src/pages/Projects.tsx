@@ -14,6 +14,7 @@ import LorealCase from '@/src/projects/LorealCase'
 import MeijianCase from '@/src/projects/MeijianCase'
 import PlanFlowCase from '@/src/projects/PlanFlowCase'
 import SofaCase from '@/src/projects/SofaCase'
+import MuseCase from '@/src/projects/MuseCase'
 import { ankerLinks } from '@/src/projects/ankerCase.data'
 import { hrLinks } from '@/src/projects/hrCase.data'
 import { meijianLinks } from '@/src/projects/meijianCase.data'
@@ -910,10 +911,10 @@ const records: Record<string, ProjectRecord> = {
     takeaway: '我按进口商和批发商的物流、压缩方式、采购量和转售疑问来组织脚本，再把询盘引导放进同一条内容结构。',
   },
   muse: {
-    name: 'Muse Select',
-    tag: 'AI FASHION COMMUNITY / CONCEPT TO CAMPAIGN',
-    line: '面向愿意把 AI 用进穿搭、视觉生成、衣橱整理和趋势研究的人，设计一个时尚创作者社区的招募与内容表达。',
-    status: '概念验证',
+    name: 'Muse Select AI 穿搭内容实验',
+    tag: 'MUSESELECT / AI FASHION CONTENT LAB',
+    line: '把“今天穿什么”拆成可以点击、保存和讨论的 AI 穿搭图文。',
+    status: '增长项目',
     scene: ['许多人已经在用 AI 做时尚相关创作，但他们分散在不同能力层级和创作方式中，缺少一个低门槛、能展示实际作品的参与入口。'],
     judgment: ['不把社区定义成“只招设计师”的圈层。', '重点是找到真正把 AI 用进时尚表达的人，让不同经验的人都能以作品和方法加入。'],
     mechanism: ['定义创作者参与范围：穿搭、视觉生成、衣橱、趋势、选品。', '设计低门槛招募入口与作品提交方式。', '用内容模板降低表达成本。', '将创作案例沉淀为可浏览的主题内容。', '根据互动反馈调整招募语言和展示方式。'],
@@ -1016,7 +1017,7 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
             </div>
           )}
         </div>
-        {piece.id === 'meijian' ? <MeijianCase embedded /> : piece.id === 'anker' ? <AnkerCase embedded /> : piece.id === 'loreal' ? <LorealCase embedded /> : piece.id === 'hr' ? <HrCase embedded /> : piece.id === 'planflow' ? <PlanFlowCase embedded /> : piece.id === 'sofa' ? <SofaCase embedded /> : record ? <ProjectRecord record={record} /> : null}
+        {piece.id === 'meijian' ? <MeijianCase embedded /> : piece.id === 'anker' ? <AnkerCase embedded /> : piece.id === 'loreal' ? <LorealCase embedded /> : piece.id === 'hr' ? <HrCase embedded /> : piece.id === 'planflow' ? <PlanFlowCase embedded /> : piece.id === 'sofa' ? <SofaCase embedded /> : piece.id === 'muse' ? <MuseCase embedded /> : record ? <ProjectRecord record={record} /> : null}
       </div>
     </div>
   )
