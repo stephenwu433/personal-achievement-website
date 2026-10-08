@@ -4,6 +4,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
 gsap.registerPlugin(ScrollTrigger)
+import { CTASection } from '@/components/ui/cta-with-rectangle'
 import SiteHeader from '@/src/components/SiteHeader'
 import { profile } from '@/src/content'
 
@@ -720,6 +721,7 @@ function ProjectStage() {
         </div>
         {opened ? (
           <PieceDetail
+            key={opened.id}
             piece={opened}
             origin={origin}
             onClose={() => {
@@ -922,13 +924,8 @@ const records: Record<string, ProjectRecord> = {
 function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect | null; onClose: () => void }) {
   const imgRef = useRef<HTMLImageElement>(null)
   const closing = useRef(false)
-  const [veil, setVeil] = useState(0)
+  const [veil, setVeil] = useState(1)
   const record = records[piece.id]
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setVeil(1))
-    return () => cancelAnimationFrame(id)
-  }, [])
 
   useLayoutEffect(() => {
     const img = imgRef.current
@@ -966,50 +963,52 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
     window.setTimeout(onClose, 500)
   }
 
-  const fade = {
-    fontFamily: serif,
-    opacity: veil,
-    transform: `translateY(${(1 - veil) * 12}px)`,
-    transition: 'opacity 0.45s ease, transform 0.45s ease',
-  }
-
   return (
     <div className="fixed inset-0 z-[80] overflow-y-auto bg-[#f7f5f2]">
-      <div className="relative mx-auto max-w-6xl px-5 py-16">
-        <div className="grid items-center gap-8 md:grid-cols-[1.3fr_0.7fr]">
+      <div className="relative mx-auto max-w-6xl px-5 py-16" style={{ opacity: veil, transition: 'opacity 0.45s ease' }}>
+        <div className="grid items-center gap-8 md:grid-cols-[1.15fr_0.85fr]">
           <img ref={imgRef} src={piece.image} alt="" className="relative w-full object-cover" />
-          <div style={fade}>
-            <p className="text-xs tracking-[0.22em] text-black/45">{piece.index}</p>
-            <h2 className="mt-3 text-5xl">{piece.title}</h2>
-            <button type="button" onClick={requestClose} className="mt-8 text-sm tracking-[0.18em] underline underline-offset-4">
-              返回
-            </button>
-          </div>
+          {record ? (
+            <CTASection
+              badge={{ text: `项目状态 · ${record.status}` }}
+              title={record.name}
+              description={record.line}
+              action={{ text: '返回', href: '/projects', onClick: requestClose }}
+              className="[&>div]:px-0 [&>div]:py-8 md:[&>div]:py-10 [&_h2]:!text-4xl [&_h2]:!leading-tight [&_h2]:break-keep"
+            />
+          ) : (
+            <div>
+              <p className="text-xs tracking-[0.22em] text-black/45">{piece.index}</p>
+              <h2 className="mt-3 text-5xl" style={{ fontFamily: serif }}>
+                {piece.title}
+              </h2>
+              <button type="button" onClick={requestClose} className="mt-8 text-sm tracking-[0.18em] underline underline-offset-4">
+                返回
+              </button>
+            </div>
+          )}
         </div>
-        {record ? <ProjectRecord record={record} style={fade} /> : null}
+        {record ? <ProjectRecord record={record} /> : null}
       </div>
     </div>
   )
 }
 
-function ProjectRecord({ record, style }: { record: ProjectRecord; style: { fontFamily: string; opacity: number; transform: string; transition: string } }) {
+function ProjectRecord({ record }: { record: ProjectRecord }) {
   return (
-    <div className="mt-16 border-t border-black/15 pt-10 break-keep" style={style}>
-      <div className="flex flex-wrap items-center gap-3">
-        <p className="m-0 text-[12px] tracking-[0.16em] text-black/45">{record.tag}</p>
-        <p className="m-0 border border-black px-2 py-1 text-[12px] leading-none">项目状态 · {record.status}</p>
-      </div>
-      <h3 className="mt-4 text-3xl leading-snug">{record.name}</h3>
-      <p className="mt-4 max-w-[42rem] text-[15px] leading-8">{record.line}</p>
+    <div className="mt-4 border-t border-black/15 pt-10 break-keep" style={{ fontFamily: serif }}>
+      <p className="m-0 text-[12px] tracking-[0.16em] text-black/45 opacity-0 animate-fade-in-up" style={{ animationDelay: '760ms' }}>
+        {record.tag}
+      </p>
 
-      <RecordBlock label="问题场景">
+      <RecordBlock label="问题场景" delay={880}>
         {record.scene.map((paragraph) => (
           <p key={paragraph} className="m-0 max-w-[42rem] text-[15px] leading-8">
             {paragraph}
           </p>
         ))}
       </RecordBlock>
-      <RecordBlock label="我的判断">
+      <RecordBlock label="我的判断" delay={1000}>
         <div className="max-w-[42rem] space-y-3">
           {record.judgment.map((paragraph) => (
             <p key={paragraph} className="m-0 text-[15px] leading-8">
@@ -1018,7 +1017,7 @@ function ProjectRecord({ record, style }: { record: ProjectRecord; style: { font
           ))}
         </div>
       </RecordBlock>
-      <RecordBlock label="产品机制">
+      <RecordBlock label="产品机制" delay={1120}>
         <ol className="m-0 max-w-[42rem] list-none space-y-3 p-0">
           {record.mechanism.map((step, index) => (
             <li key={step} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 text-[15px] leading-7">
@@ -1028,7 +1027,7 @@ function ProjectRecord({ record, style }: { record: ProjectRecord; style: { font
           ))}
         </ol>
       </RecordBlock>
-      <RecordBlock label="交付与证据">
+      <RecordBlock label="交付与证据" delay={1240}>
         <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2">
           {record.evidence.map((card) => (
             <li key={card.title} className="border border-black/10 bg-white px-4 py-4">
@@ -1048,7 +1047,7 @@ function ProjectRecord({ record, style }: { record: ProjectRecord; style: { font
           ))}
         </ul>
       </RecordBlock>
-      <RecordBlock label="当前状态">
+      <RecordBlock label="当前状态" delay={1360}>
         <div className="max-w-[42rem] space-y-3">
           {record.state.map((paragraph) => (
             <p key={paragraph} className="m-0 text-[15px] leading-8">
@@ -1057,7 +1056,7 @@ function ProjectRecord({ record, style }: { record: ProjectRecord; style: { font
           ))}
         </div>
       </RecordBlock>
-      <div className="mt-10 border-t border-black pt-5">
+      <div className="mt-10 border-t border-black pt-5 opacity-0 animate-fade-in-up" style={{ animationDelay: '1480ms' }}>
         <p className="m-0 text-[12px] tracking-[0.16em] text-black/45">我从这个项目带走了什么</p>
         <p className="mt-3 mb-0 max-w-[42rem] text-[20px] leading-9">{record.takeaway}</p>
       </div>
@@ -1065,9 +1064,9 @@ function ProjectRecord({ record, style }: { record: ProjectRecord; style: { font
   )
 }
 
-function RecordBlock({ label, children }: { label: string; children: ReactNode }) {
+function RecordBlock({ label, children, delay }: { label: string; children: ReactNode; delay: number }) {
   return (
-    <section className="mt-9">
+    <section className="mt-9 opacity-0 animate-fade-in-up" style={{ animationDelay: `${delay}ms` }}>
       <h3 className="m-0 text-[12px] tracking-[0.18em] text-black/45">{label}</h3>
       <div className="mt-3">{children}</div>
     </section>
@@ -1093,7 +1092,7 @@ function ProjectReading() {
           </article>
         ))}
       </main>
-      {opened ? <PieceDetail piece={opened} origin={null} onClose={() => setOpenId(null)} /> : null}
+      {opened ? <PieceDetail key={opened.id} piece={opened} origin={null} onClose={() => setOpenId(null)} /> : null}
     </div>
   )
 }
