@@ -12,9 +12,11 @@ import AnkerCase from '@/src/projects/AnkerCase'
 import HrCase from '@/src/projects/HrCase'
 import LorealCase from '@/src/projects/LorealCase'
 import MeijianCase from '@/src/projects/MeijianCase'
+import PlanFlowCase from '@/src/projects/PlanFlowCase'
 import { ankerLinks } from '@/src/projects/ankerCase.data'
 import { hrLinks } from '@/src/projects/hrCase.data'
 import { meijianLinks } from '@/src/projects/meijianCase.data'
+import { planflowLinks } from '@/src/projects/planflowCase.data'
 import SiteHeader from '@/src/components/SiteHeader'
 import { profile } from '@/src/content'
 
@@ -924,9 +926,9 @@ const records: Record<string, ProjectRecord> = {
     takeaway: '我把参与入口放在作品和方法上：穿搭、视觉生成、衣橱、趋势和选品都能提交，招募不收成设计师圈层。',
   },
   planflow: {
-    name: 'PlanFlow 团队排期系统',
-    tag: 'TEAM PLANNING / RUNNABLE PRODUCT',
-    line: '把分散的任务、负责人、依赖关系和验收节点放进同一个可追踪的团队协作流程。',
+    name: 'PlanFlow',
+    tag: 'AI PROJECT ORCHESTRATION',
+    line: '面向 5 人左右小型项目团队，把目标、AI 排期、任务和日报收进同一条时间线。',
     status: '可运行原型',
     scene: ['多人协作时，任务状态、依赖关系和责任边界容易分散在聊天记录与不同表格里，导致等待、遗漏和返工难以追踪。'],
     judgment: ['排期工具的价值不只是“列任务”。', '关键在于每个任务是否有负责人、前置依赖、验收条件和明确状态。'],
@@ -984,7 +986,7 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
     window.setTimeout(onClose, 500)
   }
 
-  const openingLinks = piece.id === 'meijian' ? meijianLinks : piece.id === 'anker' ? ankerLinks : piece.id === 'hr' ? hrLinks : undefined
+  const openingLinks = piece.id === 'meijian' ? meijianLinks : piece.id === 'anker' ? ankerLinks : piece.id === 'hr' ? hrLinks : piece.id === 'planflow' ? planflowLinks : undefined
 
   return (
     <div data-project-sheet className="fixed inset-0 z-[80] overflow-x-hidden overflow-y-auto bg-[#f7f5f2]">
@@ -1013,7 +1015,7 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
             </div>
           )}
         </div>
-        {piece.id === 'meijian' ? <MeijianCase embedded /> : piece.id === 'anker' ? <AnkerCase embedded /> : piece.id === 'loreal' ? <LorealCase embedded /> : piece.id === 'hr' ? <HrCase embedded /> : record ? <ProjectRecord record={record} /> : null}
+        {piece.id === 'meijian' ? <MeijianCase embedded /> : piece.id === 'anker' ? <AnkerCase embedded /> : piece.id === 'loreal' ? <LorealCase embedded /> : piece.id === 'hr' ? <HrCase embedded /> : piece.id === 'planflow' ? <PlanFlowCase embedded /> : record ? <ProjectRecord record={record} /> : null}
       </div>
     </div>
   )

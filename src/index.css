@@ -558,6 +558,29 @@ span.meijian-line.is-in {
   transform: scaleX(1);
 }
 
+.planflow-reveal {
+  opacity: 0;
+  transform: translateY(48px);
+  transition:
+    opacity 0.95s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.95s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.planflow-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+.planflow-line {
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.planflow-reveal.is-in .planflow-line {
+  transform: scaleX(1);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hr-reveal,
   .hr-reveal.is-in,
@@ -566,7 +589,11 @@ span.meijian-line.is-in {
   .loreal-reveal,
   .loreal-reveal.is-in,
   .loreal-line,
-  .loreal-reveal.is-in .loreal-line {
+  .loreal-reveal.is-in .loreal-line,
+  .planflow-reveal,
+  .planflow-reveal.is-in,
+  .planflow-line,
+  .planflow-reveal.is-in .planflow-line {
     opacity: 1;
     transform: none;
     transition: none;
