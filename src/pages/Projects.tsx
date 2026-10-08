@@ -1,9 +1,12 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
+import { useGSAP } from '@gsap/react'
+import { CustomEase } from 'gsap/CustomEase'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
-gsap.registerPlugin(ScrollTrigger)
+gsap.registerPlugin(useGSAP, CustomEase, ScrollTrigger)
+if (!CustomEase.get('type-in')) CustomEase.create('type-in', 'M0,0 C0.22,0.84 0.18,1 1,1')
 import { CTASection } from '@/components/ui/cta-with-rectangle'
 import SiteHeader from '@/src/components/SiteHeader'
 import { profile } from '@/src/content'
@@ -975,7 +978,7 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
   }
 
   return (
-    <div className="fixed inset-0 z-[80] overflow-y-auto bg-[#f7f5f2]">
+    <div data-project-sheet className="fixed inset-0 z-[80] overflow-y-auto bg-[#f7f5f2]">
       <div className="relative mx-auto max-w-6xl px-5 py-16" style={{ opacity: veil, transition: 'opacity 0.45s ease' }}>
         <div className="grid items-center gap-8 md:grid-cols-[1.15fr_0.85fr]">
           <img ref={imgRef} src={piece.image} alt="" className="relative w-full object-cover" />
@@ -1007,50 +1010,94 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
 }
 
 function ProjectRecord({ record }: { record: ProjectRecord }) {
-  return (
-    <div className="mt-4 border-t border-black/15 pt-10 break-keep" style={{ fontFamily: song, fontWeight: 500 }}>
-      <p className="m-0 text-[12px] tracking-[0.16em] text-black/45 opacity-0 animate-fade-in-up" style={{ animationDelay: '760ms' }}>
-        {record.tag}
-      </p>
+  const rootRef = useRef<HTMLDivElement>(null)
 
-      <RecordBlock label="问题场景" delay={880}>
-        {record.scene.map((paragraph) => (
-          <p key={paragraph} className="m-0 max-w-[42rem] text-[15px] leading-8">
-            {paragraph}
-          </p>
-        ))}
-      </RecordBlock>
-      <RecordBlock label="我的判断" delay={1000}>
-        <div className="max-w-[42rem] space-y-3">
-          {record.judgment.map((paragraph) => (
-            <p key={paragraph} className="m-0 text-[15px] leading-8">
+  useGSAP(
+    () => {
+      const root = rootRef.current
+      if (!root) return
+      const scroller = root.closest('[data-project-sheet]')
+      if (!(scroller instanceof HTMLElement) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+      const ease = 'type-in'
+      gsap.utils.toArray<HTMLElement>('[data-reveal-block]', root).forEach((block) => {
+        const title = block.querySelector('[data-title]')
+        const lines = block.querySelectorAll('[data-rise]')
+        const frames = block.querySelectorAll('[data-frame]')
+        const timeline = gsap.timeline({
+          scrollTrigger: {
+            trigger: block,
+            scroller,
+            start: 'top 82%',
+            once: true,
+          },
+        })
+        if (title) timeline.from(title, { yPercent: 110, duration: 0.85, ease }, 0.1)
+        if (lines.length) timeline.from(lines, { y: 20, autoAlpha: 0, duration: 0.75, stagger: 0.16, ease }, 0.18)
+        if (frames.length) timeline.from(frames, { y: 24, autoAlpha: 0, duration: 0.8, stagger: 0.12, ease }, 0.4)
+      })
+      ScrollTrigger.refresh()
+    },
+    { scope: rootRef },
+  )
+
+  return (
+    <div ref={rootRef} className="mt-4 break-keep" style={{ fontFamily: song, fontWeight: 500 }}>
+      <section data-reveal-block className="border-t border-black/15 pt-10">
+        <p data-rise className="m-0 text-[12px] tracking-[0.16em] text-black/45">
+          {record.tag}
+        </p>
+      </section>
+
+      <section data-reveal-block className="pt-10">
+        <p data-rise className="m-0 text-[12px] tracking-[0.18em] text-black/45">问题场景</p>
+        <div className="mt-3 overflow-hidden">
+          {record.scene.map((paragraph) => (
+            <p key={paragraph} data-title className="m-0 max-w-[42rem] text-[18px] leading-[1.85]">
               {paragraph}
             </p>
           ))}
         </div>
-      </RecordBlock>
-      <RecordBlock label="产品机制" delay={1120}>
-        <ol className="m-0 max-w-[42rem] list-none space-y-3 p-0">
+      </section>
+
+      <section data-reveal-block className="pt-10">
+        <p data-rise className="m-0 text-[12px] tracking-[0.18em] text-black/45">我的判断</p>
+        <div className="mt-4 max-w-[42rem] overflow-hidden">
+          <div data-title className="text-[18px] leading-[1.85]">
+            {record.judgment.map((paragraph) => (
+              <p key={paragraph} className="m-0">
+                {paragraph}
+              </p>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section data-reveal-block className="pt-10">
+        <p data-rise className="m-0 text-[12px] tracking-[0.18em] text-black/45">产品机制</p>
+        <ol className="mt-4 max-w-[42rem] list-none space-y-3 p-0">
           {record.mechanism.map((step, index) => (
-            <li key={step} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 text-[15px] leading-7">
-              <span className="text-black/45">{String(index + 1).padStart(2, '0')}</span>
+            <li key={step} data-rise className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 text-[15px] leading-[1.7]">
+              <span className="text-black/40">{String(index + 1).padStart(2, '0')}</span>
               <span>{step}</span>
             </li>
           ))}
         </ol>
-      </RecordBlock>
-      <RecordBlock label="交付与证据" delay={1240}>
-        <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2">
+      </section>
+
+      <section data-reveal-block className="pt-10">
+        <p data-rise className="m-0 text-[12px] tracking-[0.18em] text-black/45">交付与证据</p>
+        <ul className="mt-6 grid list-none gap-4 p-0 sm:grid-cols-2">
           {record.evidence.map((card) => (
-            <li key={card.title} className="border border-black/10 bg-white px-4 py-4">
+            <li key={card.title} data-frame className="border border-black/15 bg-white/45 px-5 py-5">
               <div className="flex items-start justify-between gap-3">
-                <p className="m-0 text-[12px] tracking-[0.12em] text-black/45">{card.kind}</p>
+                <p className="m-0 text-[12px] tracking-[0.12em] text-black/40">{card.kind}</p>
                 <p className="m-0 shrink-0 text-[12px]">{card.source}</p>
               </div>
-              <h4 className="mt-3 mb-2 text-[16px] leading-snug">{card.title}</h4>
+              <h3 className="mt-3 mb-2 text-[16px] leading-[1.45] font-medium">{card.title}</h3>
               <div className="space-y-1">
                 {card.lines.map((line) => (
-                  <p key={line} className="m-0 text-[14px] leading-7 text-black/70">
+                  <p key={line} className="m-0 text-[14px] leading-[1.7] text-black/60">
                     {line}
                   </p>
                 ))}
@@ -1058,30 +1105,30 @@ function ProjectRecord({ record }: { record: ProjectRecord }) {
             </li>
           ))}
         </ul>
-      </RecordBlock>
-      <RecordBlock label="当前状态" delay={1360}>
-        <div className="max-w-[42rem] space-y-3">
-          {record.state.map((paragraph) => (
-            <p key={paragraph} className="m-0 text-[15px] leading-8">
-              {paragraph}
-            </p>
-          ))}
-        </div>
-      </RecordBlock>
-      <div className="mt-10 border-t border-black pt-5 opacity-0 animate-fade-in-up" style={{ animationDelay: '1480ms' }}>
-        <p className="m-0 text-[12px] tracking-[0.16em] text-black/45">我从这个项目带走了什么</p>
-        <p className="mt-3 mb-0 max-w-[42rem] text-[20px] leading-9">{record.takeaway}</p>
-      </div>
-    </div>
-  )
-}
+      </section>
 
-function RecordBlock({ label, children, delay }: { label: string; children: ReactNode; delay: number }) {
-  return (
-    <section className="mt-9 opacity-0 animate-fade-in-up" style={{ animationDelay: `${delay}ms` }}>
-      <h3 className="m-0 text-[12px] tracking-[0.18em] text-black/45">{label}</h3>
-      <div className="mt-3">{children}</div>
-    </section>
+      <section data-reveal-block className="pt-10">
+        <p data-rise className="m-0 text-[12px] tracking-[0.18em] text-black/45">当前状态</p>
+        <div className="mt-3 max-w-[42rem] overflow-hidden">
+          <div data-title className="text-[18px] leading-[1.85]">
+            {record.state.map((paragraph) => (
+              <p key={paragraph} className="m-0">
+                {paragraph}
+              </p>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section data-reveal-block className="mt-10 border-t border-black pt-5 pb-16">
+        <p data-rise className="m-0 text-[12px] tracking-[0.16em] text-black/45">我从这个项目带走了什么</p>
+        <div className="mt-3 overflow-hidden">
+          <p data-title className="mb-0 max-w-[42rem] text-[20px] leading-9">
+            {record.takeaway}
+          </p>
+        </div>
+      </section>
+    </div>
   )
 }
 
