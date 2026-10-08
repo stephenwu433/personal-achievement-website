@@ -382,3 +382,45 @@
     animation: none;
   }
 }
+
+.meijian-reveal {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.meijian-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+.meijian-line {
+  transform: scaleY(0);
+  transition: transform 0.7s ease;
+}
+
+.meijian-line.is-in,
+.meijian-reveal.is-in .meijian-line {
+  transform: scaleY(1);
+}
+
+span.meijian-line {
+  transform: scaleX(0);
+}
+
+.meijian-reveal.is-in span.meijian-line,
+span.meijian-line.is-in {
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meijian-reveal,
+  .meijian-reveal.is-in,
+  .meijian-line,
+  .meijian-line.is-in,
+  span.meijian-line {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
