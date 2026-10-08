@@ -22,7 +22,7 @@ function reducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-function useInView<T extends HTMLElement>(threshold = 0.22) {
+function useInView<T extends HTMLElement>(threshold = 0.02) {
   const ref = useRef<T>(null)
   const [shown, setShown] = useState(false)
 
@@ -40,7 +40,7 @@ function useInView<T extends HTMLElement>(threshold = 0.22) {
         setShown(true)
         observer.disconnect()
       },
-      { root: scroller instanceof HTMLElement ? scroller : null, threshold },
+      { root: scroller instanceof HTMLElement ? scroller : null, threshold, rootMargin: '0px 0px -8% 0px' },
     )
     observer.observe(node)
     return () => observer.disconnect()
@@ -49,10 +49,55 @@ function useInView<T extends HTMLElement>(threshold = 0.22) {
   return { ref, shown }
 }
 
-function Reveal({ children, className = '' }: { children: ReactNode; className?: string }) {
+function CountFigure({ display, active, delay = 0 }: { display: string; active: boolean; delay?: number }) {
+  const match = /^([+-]?)(\d+(?:\.\d+)?)(.*)$/.exec(display)
+  const format = (value: number) => {
+    if (!match) return display
+    const [, sign, digits, suffix] = match
+    const decimals = digits.includes('.') ? digits.split('.')[1].length : 0
+    const numeric = Number(digits)
+    const pad = !decimals && digits.length > String(numeric).length ? digits.length : 0
+    const shown = decimals ? value.toFixed(decimals) : pad ? String(Math.round(value)).padStart(pad, '0') : String(Math.round(value))
+    return `${sign}${shown}${suffix}`
+  }
+  const [text, setText] = useState(match && !reducedMotion() ? format(0) : display)
+
+  useEffect(() => {
+    if (!match || reducedMotion()) {
+      setText(display)
+      return
+    }
+    if (!active) {
+      setText(format(0))
+      return
+    }
+    const to = Number(match[2])
+    let frame = 0
+    setText(format(0))
+    const timer = window.setTimeout(() => {
+      const started = performance.now()
+      const tick = (now: number) => {
+        const progress = Math.min(1, (now - started) / 880)
+        const eased = 1 - (1 - progress) ** 3
+        setText(format(to * eased))
+        if (progress < 1) frame = requestAnimationFrame(tick)
+        else setText(display)
+      }
+      frame = requestAnimationFrame(tick)
+    }, delay)
+    return () => {
+      window.clearTimeout(timer)
+      cancelAnimationFrame(frame)
+    }
+  }, [active, delay, display])
+
+  return <>{text}</>
+}
+
+function Reveal({ children, className = '', delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
   const { ref, shown } = useInView<HTMLDivElement>()
   return (
-    <div ref={ref} className={`hr-reveal ${shown ? 'is-in' : ''} ${className}`}>
+    <div ref={ref} className={`hr-reveal ${shown ? 'is-in' : ''} ${className}`} style={{ transitionDelay: `${delay}ms` }}>
       {children}
     </div>
   )
@@ -67,31 +112,79 @@ function Kicker({ children }: { children: ReactNode }) {
 }
 
 function SectionTitle({ children }: { children: string }) {
-  const { ref, shown } = useInView<HTMLDivElement>()
+  const { ref, shown } = useInView<HTMLDivElement>(0.2)
   return (
-    <div ref={ref} className={`hr-reveal max-w-[18em] ${shown ? 'is-in' : ''}`}>
-      <h2 className="m-0 text-[clamp(28px,3.6vw,46px)] leading-[1.28] font-medium text-[#1A1916]" style={{ fontFamily: song }}>
+    <div ref={ref} className={`hr-reveal ${shown ? 'is-in' : ''}`}>
+      <h2 className="m-0 max-w-[18em] text-[clamp(18px,3.6vw,46px)] leading-[1.28] font-medium text-[#1A1916]" style={{ fontFamily: song }}>
         {children.split('\n').map((line) => (
           <span key={line} className="block">
             {line}
           </span>
         ))}
       </h2>
-      <span className="mt-4 block h-px w-16" style={{ background: ink }} />
+      <span className="hr-line mt-4 block h-px w-16" style={{ background: ink }} />
     </div>
   )
 }
 
-function Stat({ value, label, note }: { value: string; label: string; note?: string }) {
+function Stat({ value, label, note, delay = 0 }: { value: string; label: string; note?: string; delay?: number }) {
+  const { ref, shown } = useInView<HTMLElement>(0.2)
   return (
-    <article className="border border-[#1A1916]/15 bg-[#F5F3EE] px-4 py-5">
+    <article ref={ref} className={`hr-reveal border border-[#1A1916]/15 bg-[#F5F3EE] px-4 py-5 ${shown ? 'is-in' : ''}`} style={{ transitionDelay: `${delay}ms` }}>
       <p className="m-0 text-[clamp(32px,4vw,52px)] leading-none" style={{ fontFamily: mono, color: ink }}>
-        {value}
+        <CountFigure display={value} active={shown} delay={delay} />
       </p>
       <p className="mt-4 mb-0 text-[14px] leading-6" style={{ fontFamily: mono }}>
         {label}
       </p>
       {note ? <p className="mt-2 mb-0 text-[13px] leading-6 text-[#1A1916]/70">{note}</p> : null}
+    </article>
+  )
+}
+
+function ResultsBoard() {
+  const { ref, shown } = useInView<HTMLDivElement>(0.05)
+  return (
+    <div ref={ref} className={`hr-reveal mt-8 border border-[#1A1916]/15 ${shown ? 'is-in' : ''}`}>
+      <div className="hidden border-b border-[#1A1916]/15 md:grid md:grid-cols-[1.3fr_repeat(3,1fr)]">
+        {hrResults.columns.map((column) => (
+          <p key={column} className="m-0 px-3 py-3 text-[12px] leading-5 tracking-[0.06em]" style={{ fontFamily: mono }}>
+            {column}
+          </p>
+        ))}
+      </div>
+      {hrResults.rows.map((row, rowIndex) => (
+        <div key={row.metric} className="grid border-t border-[#1A1916]/15 md:grid-cols-[1.3fr_repeat(3,1fr)]">
+          <p className="m-0 px-3 py-3 text-[14px] leading-6">{row.metric}</p>
+          {row.values.map((value, index) => (
+            <p key={`${row.metric}-${index}`} className="m-0 px-3 py-3 text-[16px] leading-6" style={{ fontFamily: mono, color: index === 2 ? ink : '#1A1916' }}>
+              <span className="mr-2 text-[11px] tracking-[0.08em] text-[#1A1916]/45 md:hidden">{hrResults.columns[index + 1]}</span>
+              <CountFigure display={value} active={shown} delay={rowIndex * 50} />
+            </p>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ContrastCard({ contrast, delay }: { contrast: (typeof hrResults.contrasts)[number]; delay: number }) {
+  const { ref, shown } = useInView<HTMLElement>(0.2)
+  return (
+    <article ref={ref} className={`hr-reveal border border-[#1A1916]/15 px-4 py-5 ${shown ? 'is-in' : ''}`} style={{ transitionDelay: `${delay}ms` }}>
+      <p className="m-0 text-[12px] tracking-[0.12em]" style={{ fontFamily: mono }}>
+        {contrast.title}
+      </p>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        {contrast.items.map((item, index) => (
+          <div key={item.label}>
+            <p className="m-0 text-[clamp(32px,4vw,48px)] leading-none" style={{ fontFamily: mono, color: ink }}>
+              <CountFigure display={item.value} active={shown} delay={delay + index * 80} />
+            </p>
+            <p className="mt-2 mb-0 text-[14px] leading-6">{item.label}</p>
+          </div>
+        ))}
+      </div>
     </article>
   )
 }
@@ -148,16 +241,18 @@ export default function HrCase({ onClose, embedded = false }: { onClose?: () => 
           </ul>
         )}
         <div className="mt-10 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {hrHero.stats.map((stat) => (
-            <Stat key={stat.label} value={stat.value} label={stat.label} note={stat.note} />
+          {hrHero.stats.map((stat, index) => (
+            <Stat key={stat.label} value={stat.value} label={stat.label} note={stat.note} delay={index * 70} />
           ))}
         </div>
-        <p className="mt-6 mb-0 max-w-[48rem] border-t pt-4 text-[14px] leading-7 text-[#1A1916]/75" style={{ borderColor: ink }}>
-          <span className="mr-2 text-[12px] tracking-[0.14em]" style={{ fontFamily: mono }}>
-            实验设置
-          </span>
-          {hrHero.setup}
-        </p>
+        <Reveal className="mt-6" delay={80}>
+          <p className="mb-0 max-w-[48rem] border-t pt-4 text-[14px] leading-7 text-[#1A1916]/75" style={{ borderColor: ink }}>
+            <span className="mr-2 text-[12px] tracking-[0.14em]" style={{ fontFamily: mono }}>
+              实验设置
+            </span>
+            {hrHero.setup}
+          </p>
+        </Reveal>
       </header>
 
       <section className="border-t border-[#1A1916]/15">
@@ -169,18 +264,20 @@ export default function HrCase({ onClose, embedded = false }: { onClose?: () => 
             <SectionTitle>{hrProblem.title}</SectionTitle>
           </div>
           <div className="mt-8 grid gap-6 lg:grid-cols-3">
-            {hrProblem.paragraphs.map((paragraph) => (
-              <Reveal key={paragraph}>
+            {hrProblem.paragraphs.map((paragraph, index) => (
+              <Reveal key={paragraph} delay={index * 80}>
                 <p className="m-0 text-[15px] leading-8">{paragraph}</p>
               </Reveal>
             ))}
           </div>
           <div className="mt-10 grid gap-3 md:grid-cols-3">
-            {hrProblem.figures.map((figure) => (
-              <Stat key={figure.value} value={figure.value} label={figure.label} />
+            {hrProblem.figures.map((figure, index) => (
+              <Stat key={figure.value} value={figure.value} label={figure.label} delay={index * 80} />
             ))}
           </div>
-          <p className="mt-4 mb-0 text-[13px] leading-7 text-[#1A1916]/65">{hrProblem.note}</p>
+          <Reveal className="mt-4">
+            <p className="mb-0 text-[13px] leading-7 text-[#1A1916]/65">{hrProblem.note}</p>
+          </Reveal>
         </div>
       </section>
 
@@ -192,7 +289,7 @@ export default function HrCase({ onClose, embedded = false }: { onClose?: () => 
           <div className="mt-4">
             <SectionTitle>{hrPosition.title}</SectionTitle>
           </div>
-          <div className="mt-8 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+          <Reveal className="mt-8 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
             <ol className="m-0 grid list-none gap-2 p-0">
               {hrPosition.flow.map((step, index) => (
                 <li key={step} className="border border-[#1A1916]/15 px-4 py-3 text-[15px] leading-7">
@@ -229,10 +326,12 @@ export default function HrCase({ onClose, embedded = false }: { onClose?: () => 
                 </ul>
               </article>
             </div>
-          </div>
-          <p className="mt-8 max-w-[40rem] border-t pt-4 text-[20px] leading-9" style={{ fontFamily: song, borderColor: ink }}>
-            {hrPosition.close}
-          </p>
+          </Reveal>
+          <Reveal className="mt-8">
+            <p className="max-w-[40rem] border-t pt-4 text-[20px] leading-9" style={{ fontFamily: song, borderColor: ink }}>
+              {hrPosition.close}
+            </p>
+          </Reveal>
         </div>
       </section>
 
@@ -245,13 +344,15 @@ export default function HrCase({ onClose, embedded = false }: { onClose?: () => 
             <SectionTitle>{hrPrinciples.title}</SectionTitle>
           </div>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            {hrPrinciples.cards.map((card) => (
-              <article key={card.index} className="border border-[#1A1916]/15 px-4 py-5">
-                <p className="m-0 text-[12px] tracking-[0.14em]" style={{ fontFamily: mono, color: ink }}>
-                  {card.index} / {card.title}
-                </p>
-                <p className="mt-3 mb-0 text-[15px] leading-8">{card.body}</p>
-              </article>
+            {hrPrinciples.cards.map((card, index) => (
+              <Reveal key={card.index} delay={index * 80}>
+                <article className="h-full border border-[#1A1916]/15 px-4 py-5">
+                  <p className="m-0 text-[12px] tracking-[0.14em]" style={{ fontFamily: mono, color: ink }}>
+                    {card.index} / {card.title}
+                  </p>
+                  <p className="mt-3 mb-0 text-[15px] leading-8">{card.body}</p>
+                </article>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -266,8 +367,9 @@ export default function HrCase({ onClose, embedded = false }: { onClose?: () => 
             <SectionTitle>{hrSystem.title}</SectionTitle>
           </div>
           <div className="mt-8 grid gap-3 lg:grid-cols-3">
-            {hrSystem.layers.map((layer) => (
-              <article key={layer.name} className="border border-[#1A1916]/15 px-4 py-5">
+            {hrSystem.layers.map((layer, index) => (
+              <Reveal key={layer.name} delay={index * 80}>
+              <article className="h-full border border-[#1A1916]/15 px-4 py-5">
                 <h3 className="m-0 text-[22px] leading-8 font-medium" style={{ fontFamily: song }}>
                   {layer.name}
                 </h3>
@@ -279,15 +381,18 @@ export default function HrCase({ onClose, embedded = false }: { onClose?: () => 
                   ))}
                 </ul>
               </article>
+              </Reveal>
             ))}
           </div>
-          <ul className="mt-4 grid list-none gap-2 p-0 sm:grid-cols-2 lg:grid-cols-3">
+          <Reveal className="mt-4">
+          <ul className="grid list-none gap-2 p-0 sm:grid-cols-2 lg:grid-cols-3">
             {hrSystem.stack.map((item) => (
               <li key={item} className="border border-[#1A1916]/15 px-3 py-3 text-[14px] leading-6" style={{ fontFamily: mono }}>
                 {item}
               </li>
             ))}
           </ul>
+          </Reveal>
         </div>
       </section>
 
@@ -300,27 +405,31 @@ export default function HrCase({ onClose, embedded = false }: { onClose?: () => 
             <SectionTitle>{hrEval.title}</SectionTitle>
           </div>
           <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {hrEval.figures.map((figure) => (
-              <Stat key={figure.label} value={figure.value} label={figure.label} note={'note' in figure ? figure.note : undefined} />
+            {hrEval.figures.map((figure, index) => (
+              <Stat key={figure.label} value={figure.value} label={figure.label} note={'note' in figure ? figure.note : undefined} delay={index * 60} />
             ))}
           </div>
           <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {hrEval.rubric.map((item) => (
-              <article key={item.code} className="border border-[#1A1916]/15 px-3 py-4">
+            {hrEval.rubric.map((item, index) => (
+              <Reveal key={item.code} delay={index * 50}>
+              <article className="h-full border border-[#1A1916]/15 px-3 py-4">
                 <p className="m-0 text-[13px] tracking-[0.12em]" style={{ fontFamily: mono, color: ink }}>
                   {item.code}
                 </p>
                 <p className="mt-2 mb-0 text-[14px] leading-6">{item.name}</p>
               </article>
+              </Reveal>
             ))}
           </div>
-          <ul className="mt-6 grid list-none gap-2 p-0">
+          <Reveal className="mt-6">
+          <ul className="grid list-none gap-2 p-0">
             {hrEval.notes.map((note) => (
               <li key={note} className="border-t border-[#1A1916]/15 pt-2 text-[14px] leading-7 text-[#1A1916]/80">
                 {note}
               </li>
             ))}
           </ul>
+          </Reveal>
         </div>
       </section>
 
@@ -332,46 +441,13 @@ export default function HrCase({ onClose, embedded = false }: { onClose?: () => 
           <div className="mt-4">
             <SectionTitle>{hrResults.title}</SectionTitle>
           </div>
-          <div className="mt-8 border border-[#1A1916]/15">
-            <div className="hidden border-b border-[#1A1916]/15 md:grid md:grid-cols-[1.3fr_repeat(3,1fr)]">
-              {hrResults.columns.map((column) => (
-                <p key={column} className="m-0 px-3 py-3 text-[12px] leading-5 tracking-[0.06em]" style={{ fontFamily: mono }}>
-                  {column}
-                </p>
-              ))}
-            </div>
-            {hrResults.rows.map((row) => (
-              <div key={row.metric} className="grid border-t border-[#1A1916]/15 md:grid-cols-[1.3fr_repeat(3,1fr)]">
-                <p className="m-0 px-3 py-3 text-[14px] leading-6">{row.metric}</p>
-                {row.values.map((value, index) => (
-                  <p key={value} className="m-0 px-3 py-3 text-[16px] leading-6" style={{ fontFamily: mono, color: index === 2 ? ink : '#1A1916' }}>
-                    <span className="mr-2 text-[11px] tracking-[0.08em] text-[#1A1916]/45 md:hidden">{hrResults.columns[index + 1]}</span>
-                    {value}
-                  </p>
-                ))}
-              </div>
-            ))}
-          </div>
+          <ResultsBoard />
           <div className="mt-6 grid gap-3 lg:grid-cols-2">
-            {hrResults.contrasts.map((contrast) => (
-              <article key={contrast.title} className="border border-[#1A1916]/15 px-4 py-5">
-                <p className="m-0 text-[12px] tracking-[0.12em]" style={{ fontFamily: mono }}>
-                  {contrast.title}
-                </p>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  {contrast.items.map((item) => (
-                    <div key={item.label}>
-                      <p className="m-0 text-[clamp(32px,4vw,48px)] leading-none" style={{ fontFamily: mono, color: ink }}>
-                        {item.value}
-                      </p>
-                      <p className="mt-2 mb-0 text-[14px] leading-6">{item.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </article>
+            {hrResults.contrasts.map((contrast, index) => (
+              <ContrastCard key={contrast.title} contrast={contrast} delay={index * 80} />
             ))}
           </div>
-          <div className="mt-6 grid gap-3 md:grid-cols-2">
+          <Reveal className="mt-6 grid gap-3 md:grid-cols-2">
             {hrResults.definitions.map((item) => (
               <p key={item.name} className="m-0 border-t border-[#1A1916]/15 pt-3 text-[14px] leading-7">
                 <span className="mr-2" style={{ fontFamily: mono, color: ink }}>
@@ -380,8 +456,10 @@ export default function HrCase({ onClose, embedded = false }: { onClose?: () => 
                 {item.body}
               </p>
             ))}
-          </div>
-          <p className="mt-4 mb-0 text-[13px] leading-7 text-[#1A1916]/70">所有实验组使用：{hrResults.same}</p>
+          </Reveal>
+          <Reveal className="mt-4">
+            <p className="mb-0 text-[13px] leading-7 text-[#1A1916]/70">所有实验组使用：{hrResults.same}</p>
+          </Reveal>
         </div>
       </section>
 
@@ -394,13 +472,16 @@ export default function HrCase({ onClose, embedded = false }: { onClose?: () => 
             <SectionTitle>{hrCaseStudy.title}</SectionTitle>
           </div>
           <div className="mt-8 grid gap-3 lg:grid-cols-2">
-            <article className="border border-[#1A1916]/15 px-4 py-5">
+            <Reveal>
+            <article className="h-full border border-[#1A1916]/15 px-4 py-5">
               <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
                 关键词筛选
               </p>
               <p className="mt-3 mb-0 text-[16px] leading-8">{hrCaseStudy.keyword}</p>
             </article>
-            <article className="border border-[#1A1916] px-4 py-5">
+            </Reveal>
+            <Reveal delay={90}>
+            <article className="h-full border border-[#1A1916] px-4 py-5">
               <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono, color: ink }}>
                 完整系统的证据链
               </p>
@@ -413,10 +494,13 @@ export default function HrCase({ onClose, embedded = false }: { onClose?: () => 
               </ul>
               <p className="mt-3 mb-0 text-[15px] leading-7">{hrCaseStudy.bridge}</p>
             </article>
+            </Reveal>
           </div>
-          <p className="mt-8 max-w-[42rem] border-t pt-4 text-[18px] leading-8" style={{ fontFamily: song, borderColor: ink }}>
-            {hrCaseStudy.close}
-          </p>
+          <Reveal className="mt-8">
+            <p className="max-w-[42rem] border-t pt-4 text-[18px] leading-8" style={{ fontFamily: song, borderColor: ink }}>
+              {hrCaseStudy.close}
+            </p>
+          </Reveal>
         </div>
       </section>
 
@@ -429,8 +513,9 @@ export default function HrCase({ onClose, embedded = false }: { onClose?: () => 
             <SectionTitle>{hrInnovation.title}</SectionTitle>
           </div>
           <div className="mt-8 grid gap-3 lg:grid-cols-3">
-            {hrInnovation.cards.map((card) => (
-              <article key={card.index} className="border border-[#1A1916]/15 px-4 py-5">
+            {hrInnovation.cards.map((card, index) => (
+              <Reveal key={card.index} delay={index * 80}>
+              <article className="h-full border border-[#1A1916]/15 px-4 py-5">
                 <p className="m-0 text-[12px] tracking-[0.14em]" style={{ fontFamily: mono, color: ink }}>
                   {card.index} / {card.title}
                 </p>
@@ -439,6 +524,7 @@ export default function HrCase({ onClose, embedded = false }: { onClose?: () => 
                 </h3>
                 <p className="mt-3 mb-0 text-[15px] leading-8">{card.body}</p>
               </article>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -454,7 +540,8 @@ export default function HrCase({ onClose, embedded = false }: { onClose?: () => 
           </div>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             {hrWork.items.map((item, index) => (
-              <article key={item.title} className="border border-[#1A1916]/15 px-4 py-5">
+              <Reveal key={item.title} delay={index * 80}>
+              <article className="h-full border border-[#1A1916]/15 px-4 py-5">
                 <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono, color: ink }}>
                   0{index + 1}
                 </p>
@@ -463,11 +550,14 @@ export default function HrCase({ onClose, embedded = false }: { onClose?: () => 
                 </h3>
                 <p className="mt-3 mb-0 text-[15px] leading-8">{item.body}</p>
               </article>
+              </Reveal>
             ))}
           </div>
-          <p className="mt-8 max-w-[42rem] border-t pt-5 text-[20px] leading-9" style={{ fontFamily: song, borderColor: ink }}>
-            {hrWork.close}
-          </p>
+          <Reveal className="mt-8">
+            <p className="max-w-[42rem] border-t pt-5 text-[20px] leading-9" style={{ fontFamily: song, borderColor: ink }}>
+              {hrWork.close}
+            </p>
+          </Reveal>
         </div>
       </section>
     </article>

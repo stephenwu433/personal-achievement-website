@@ -53,7 +53,7 @@ export const hrProblem = {
 export const hrPosition = {
   index: '03',
   kicker: '产品定位与边界',
-  title: '把“企业任务—招聘标准—候选人证据—人工复核”连成一条链。',
+  title: '把“企业任务—招聘标准—\n候选人证据—人工复核”连成一条链。',
   flow: [
     '企业业务任务 + 固定岗位来源',
     'AI 提取岗位要求与来源差异',
@@ -218,7 +218,7 @@ export const hrInnovation = {
 export const hrWork = {
   index: '10',
   kicker: '我的职责与项目沉淀',
-  title: '我负责把“招聘匹配”收敛为可检验的产品问题。',
+  title: '我负责把“招聘匹配”\n收敛为可检验的产品问题。',
   items: [
     { title: '问题定义', body: '将“招聘 AI 更聪明”收敛为：企业任务能否形成统一标准，原筛选未选中者中能否找回值得复核的人。' },
     { title: '产品机制', body: '设计标准冻结、证据关联、证据不足分型、漏筛复核和人工审批机制。' },
