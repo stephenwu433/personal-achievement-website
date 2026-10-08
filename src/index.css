@@ -424,3 +424,85 @@ span.meijian-line.is-in {
     transition: none;
   }
 }
+
+.anker-stat {
+  border: 1px solid rgba(26, 25, 22, 0.15);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.anker-stat:hover {
+  transform: translateY(-2px);
+  border-color: #1a1916;
+}
+
+.anker-step {
+  border-color: rgba(26, 25, 22, 0.15);
+  color: #1a1916;
+  transition: border-color 0.35s ease, color 0.35s ease, background-color 0.35s ease;
+}
+
+.anker-step.is-wait {
+  color: rgba(26, 25, 22, 0.45);
+}
+
+.anker-step.is-lit {
+  border-color: #1a1916;
+  color: #1a1916;
+  background: #efede8;
+}
+
+.anker-diagram {
+  border-color: rgba(26, 25, 22, 0.15);
+  transition: border-color 0.35s ease;
+}
+
+.anker-diagram.is-current {
+  border-color: #1a1916;
+}
+
+.anker-word {
+  opacity: 0.22;
+  transition: opacity 0.35s ease;
+}
+
+.anker-word.is-on {
+  opacity: 1;
+}
+
+.anker-detail {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.anker-detail.is-open {
+  opacity: 1;
+  transform: none;
+}
+
+.anker-reveal {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.anker-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anker-stat,
+  .anker-stat:hover,
+  .anker-step,
+  .anker-diagram,
+  .anker-word,
+  .anker-detail,
+  .anker-detail.is-open,
+  .anker-reveal,
+  .anker-reveal.is-in {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

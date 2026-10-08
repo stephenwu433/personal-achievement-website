@@ -8,6 +8,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 gsap.registerPlugin(useGSAP, CustomEase, ScrollTrigger)
 if (!CustomEase.get('type-in')) CustomEase.create('type-in', 'M0,0 C0.22,0.84 0.18,1 1,1')
 import { CTASection } from '@/components/ui/cta-with-rectangle'
+import AnkerCase from '@/src/projects/AnkerCase'
 import MeijianCase from '@/src/projects/MeijianCase'
 import { meijianLinks } from '@/src/projects/meijianCase.data'
 import SiteHeader from '@/src/components/SiteHeader'
@@ -977,6 +978,14 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
     img.style.transformOrigin = 'top left'
     img.style.transform = `translate(${origin.left - next.left}px, ${origin.top - next.top}px) scale(${scale})`
     window.setTimeout(onClose, 500)
+  }
+
+  if (piece.id === 'anker') {
+    return (
+      <div data-project-sheet className="fixed inset-0 z-[80] overflow-x-hidden overflow-y-auto bg-[#F5F3EE]">
+        <AnkerCase onClose={onClose} />
+      </div>
+    )
   }
 
   return (
