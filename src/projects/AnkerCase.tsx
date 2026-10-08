@@ -145,11 +145,10 @@ function SectionTitle({ children }: { children: string }) {
   const { ref, shown } = useInView<HTMLDivElement>(0.2)
   const lines = children.split('\n')
   return (
-    <div ref={ref} className={`anker-reveal max-w-[18em] ${shown ? 'is-in' : ''}`}>
-      <h2 className="m-0 text-[clamp(28px,3.6vw,46px)] leading-[1.28] font-medium text-[#1A1916]" style={{ fontFamily: song }}>
+    <div ref={ref} className={`anker-reveal ${shown ? 'is-in' : ''}`}>
+      <h2 className="m-0 max-w-[18em] text-[clamp(18px,3.6vw,46px)] leading-[1.28] font-medium text-[#1A1916]" style={{ fontFamily: song }}>
         {lines.map((line, index) => (
-          <span key={line}>
-            {index > 0 ? <br /> : null}
+          <span key={`${index}-${line}`} className="block">
             {line}
           </span>
         ))}
@@ -240,7 +239,7 @@ export default function AnkerCase({ onClose, embedded = false }: { onClose?: () 
             <p className="mt-4 mb-0 text-[20px] leading-8" style={{ fontFamily: song }}>
               {ankerHero.name}
             </p>
-            <h1 className="mt-4 text-[clamp(30px,3.1vw,40px)] leading-[1.25] font-medium" style={{ fontFamily: song }}>
+            <h1 className="mt-4 text-[clamp(24px,3.1vw,40px)] leading-[1.25] font-medium" style={{ fontFamily: song }}>
               <span className="block">{ankerHero.title[0]}</span>
               <span className="block">{ankerHero.title[1]}</span>
             </h1>

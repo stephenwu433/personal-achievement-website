@@ -119,9 +119,15 @@ function Kicker({ children }: { children: ReactNode }) {
 function SectionTitle({ children }: { children: ReactNode }) {
   const { ref, shown } = useInView<HTMLDivElement>()
   return (
-    <div ref={ref} className={`meijian-reveal max-w-[18em] ${shown ? 'is-in' : ''}`}>
-      <h2 className="m-0 text-[clamp(28px,3.4vw,44px)] leading-[1.25] font-medium text-[#1A1916]" style={{ fontFamily: song }}>
-        {children}
+    <div ref={ref} className={`meijian-reveal ${shown ? 'is-in' : ''}`}>
+      <h2 className="m-0 max-w-[18em] text-[clamp(18px,3.4vw,44px)] leading-[1.28] font-medium text-[#1A1916]" style={{ fontFamily: song }}>
+        {typeof children === 'string'
+          ? children.split('\n').map((line, index) => (
+              <span key={`${index}-${line}`} className="block">
+                {line}
+              </span>
+            ))
+          : children}
       </h2>
       <span className={`mt-4 block h-px w-16 origin-left bg-[#6B1F2A] ${shown ? 'meijian-line is-in' : 'meijian-line'}`} />
     </div>

@@ -36,7 +36,7 @@ export const ankerHero = {
 export const ankerProblem = {
   index: '02',
   kicker: '业务问题 / Why',
-  title: '一次“改口”，为什么会让售后 AI 走错？',
+  title: '一次“改口”，\n为什么会让售后 AI 走错？',
   lead: '复杂售后不是一次性问答。',
   paragraphs: [
     '用户经常先给出一个模糊描述，例如“充不进电”；随后才补充设备型号、接口类型、配件情况，或者在执行某一步操作后提供新的观察结果。',
@@ -55,7 +55,7 @@ export const ankerProblem = {
 export const ankerGoals = {
   index: '03',
   kicker: '产品目标 / What to solve',
-  title: '把售后对话，变成可追溯的排障过程',
+  title: '把售后对话，\n变成可追溯的排障过程',
   goals: [
     { index: '01', title: '事实可追溯', body: '用户的型号、接口、配件、操作结果，不能只停留在聊天记录中。' },
     { index: '02', title: '判断可回退', body: '关键事实更正后，只撤回受影响的步骤，保留仍然有效的信息。' },
@@ -68,7 +68,7 @@ export const ankerGoals = {
 export const ankerOverview = {
   index: '04',
   kicker: '方案全景 / Solution Overview',
-  title: '从用户输入，到四类处理结局',
+  title: '从用户输入，\n到四类处理结局',
   steps: ['用户输入', 'AI 提取事实与反馈', '规则与知识校验', '单步排障', '结果更新', '解决 / 局部回退 / 风险中断 / 人工接管'],
   outcomes: [
     { code: 'RESOLVE', body: '满足结案条件，完成排障。' },
@@ -81,7 +81,7 @@ export const ankerOverview = {
 export const ankerFact = {
   index: '05',
   code: '01 / FACT DEPENDENCY',
-  title: '用户更正事实后，系统只回退错误的那一段。',
+  title: '用户更正事实后，\n系统只回退错误的那一段。',
   sceneLabel: '原型验证场景',
   scene: '用户先说自己使用 C1 接口，随后更正为 C2 接口。',
   columns: [
@@ -96,7 +96,7 @@ export const ankerFact = {
 export const ankerStep = {
   index: '06',
   code: '02 / ONE-STEP LOOP',
-  title: '一次只推进一步，让每个结论都有来源和反馈。',
+  title: '一次只推进一步，\n让每个结论都有来源和反馈。',
   sceneLabel: '原型验证场景',
   scene: '用户只知道“充不进电”，现有信息不足以判断具体故障。',
   states: [
@@ -133,7 +133,7 @@ export const ankerRisk = {
 export const ankerArchitecture = {
   index: '08',
   kicker: '产品架构 / Architecture',
-  title: '五层架构，把“会对话”拆成“可治理的系统”',
+  title: '五层架构，\n把“会对话”拆成“可治理的系统”',
   layers: [
     { index: '01', name: 'Interaction Layer', body: '消费者端与客服工作台；承接故障描述、多轮反馈和人工接管。' },
     { index: '02', name: 'Service Integration Layer', body: '连接售后业务系统、知识库与服务接口。' },

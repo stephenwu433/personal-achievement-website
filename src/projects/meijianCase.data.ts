@@ -79,7 +79,7 @@ export const meijianHero = {
 }
 
 export const meijianProblem = {
-  title: '从“知道梅见”到“吃中国饭时会选梅见”',
+  title: '从“知道梅见”\n到“吃中国饭时会选梅见”',
   paragraphs: [
     '梅见已经具备青梅酒与中式佐餐认知。',
     '但消费者在具体吃饭场景中，仍未形成稳定的选择理由：为什么选、选哪款、买多少。',
@@ -100,7 +100,7 @@ export const meijianJudgment = {
 }
 
 export const meijianSystem = {
-  title: '一个编排器、四个 Agent、一个人工决策节点',
+  title: '一个编排器、四个 Agent、\n一个人工决策节点',
   steps: [
     '消费者语料 + 品牌与竞品公开事实',
     '确定性编排器',
@@ -114,7 +114,7 @@ export const meijianSystem = {
 }
 
 export const meijianEvolution = {
-  title: '五个候选，没有直接选“最高分”',
+  title: '五个候选，\n没有直接选“最高分”',
   candidates: ['梅见口味图鉴', '梅见溯源', '双容量双剧本', '官方兑饮比例', '火锅局自主饮酒'],
   checks: ['证据检验', '反模板检查', '竞品替换攻击', '人工确认'],
   kept: [
@@ -128,7 +128,7 @@ export const meijianEvolution = {
 }
 
 export const meijianPath = {
-  title: '从一顿具体的饭，建立稳定的选择记忆',
+  title: '从一顿具体的饭，\n建立稳定的选择记忆',
   stages: [
     { phase: '第一阶段', name: '两个人日常便饭', role: '优先场景' },
     { phase: '第二阶段', name: '三五人重口味小聚', role: '扩展场景' },
@@ -139,7 +139,7 @@ export const meijianPath = {
 }
 
 export const meijianBoundary = {
-  title: '项目已经验证什么，仍需要验证什么',
+  title: '项目已经验证什么，\n仍需要验证什么',
   knownTitle: '当前已获得的证据',
   known: [
     { kind: 'human-validation' as const, text: '67.86%：不揭示品牌时，受访者将方向联想到梅见' },
