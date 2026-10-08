@@ -26,6 +26,17 @@ const pieces: Piece[] = [
 ]
 
 const serif = '"Iowan Old Style", Palatino, "Palatino Linotype", "Songti SC", "Noto Serif SC", serif'
+const song = '"Noto Serif SC", "Source Han Serif SC", "STZhongsong", "华文中宋", "Songti SC", "SimSun", serif'
+
+const flows: Record<string, { a: string; b: string; c: string }> = {
+  meijian: { a: '#e7b7c4', b: '#8f3d4e', c: '#9eb7a4' },
+  anker: { a: '#9eb6d8', b: '#2f5f9a', c: '#d5dde6' },
+  loreal: { a: '#e7d7c4', b: '#c6a15a', c: '#9aaf96' },
+  hr: { a: '#3f7a5e', b: '#c4a574', c: '#d9c7a4' },
+  sofa: { a: '#6ea0d4', b: '#c4624a', c: '#d9c7a6' },
+  muse: { a: '#1c1e24', b: '#3154c4', c: '#cfd3dc' },
+  planflow: { a: '#3f6790', b: '#d07068', c: '#e4ddd4' },
+}
 
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -974,7 +985,8 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
               title={record.name}
               description={record.line}
               action={{ text: '返回', href: '/projects', onClick: requestClose }}
-              className="[&>div]:px-0 [&>div]:py-8 md:[&>div]:py-10 [&_h2]:!text-4xl [&_h2]:!leading-tight [&_h2]:break-keep"
+              flow={flows[piece.id]}
+              className="[&>div]:px-0 [&>div]:py-8 md:[&>div]:py-10 [&_h2]:!text-4xl [&_h2]:!leading-tight [&_h2]:!font-medium [&_h2]:break-keep"
             />
           ) : (
             <div>
@@ -996,7 +1008,7 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
 
 function ProjectRecord({ record }: { record: ProjectRecord }) {
   return (
-    <div className="mt-4 border-t border-black/15 pt-10 break-keep" style={{ fontFamily: serif }}>
+    <div className="mt-4 border-t border-black/15 pt-10 break-keep" style={{ fontFamily: song, fontWeight: 500 }}>
       <p className="m-0 text-[12px] tracking-[0.16em] text-black/45 opacity-0 animate-fade-in-up" style={{ animationDelay: '760ms' }}>
         {record.tag}
       </p>

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -16,6 +17,11 @@ interface CTAProps {
   }
   withGlow?: boolean
   className?: string
+  flow?: {
+    a: string
+    b: string
+    c: string
+  }
 }
 
 export function CTASection({
@@ -25,25 +31,42 @@ export function CTASection({
   action,
   withGlow = true,
   className,
+  flow = { a: "#9eb6d8", b: "#2f5f9a", c: "#d5dde6" },
 }: CTAProps) {
+  const flowStyle = {
+    "--flow-a": flow.a,
+    "--flow-b": flow.b,
+    "--flow-c": flow.c,
+  } as CSSProperties
+
   return (
     <section className={cn("overflow-hidden pt-0 md:pt-0", className)}>
-      <div className="relative mx-auto flex max-w-container flex-col items-center gap-6 px-8 py-12 text-center sm:gap-8 md:py-24">
+      <div
+        className="relative mx-auto flex max-w-container flex-col items-center gap-6 px-8 py-12 text-center sm:gap-8 md:py-24"
+        style={{ fontFamily: '"Noto Serif SC", "Source Han Serif SC", "STZhongsong", "华文中宋", "Songti SC", "SimSun", serif', fontWeight: 500 }}
+      >
+        {withGlow && (
+          <div className="project-flow pointer-events-none absolute inset-0 z-0 opacity-0 animate-scale-in delay-700" style={flowStyle}>
+            <span />
+            <span />
+            <span />
+          </div>
+        )}
         {badge && (
           <Badge
             variant="outline"
-            className="opacity-0 animate-fade-in-up delay-100"
+            className="relative z-10 bg-white/40 opacity-0 animate-fade-in-up delay-100"
           >
             <span className="text-muted-foreground">{badge.text}</span>
           </Badge>
         )}
 
-        <h2 className="text-3xl font-semibold opacity-0 animate-fade-in-up delay-200 sm:text-5xl">
+        <h2 className="relative z-10 text-3xl font-medium text-[#1c1915] opacity-0 animate-fade-in-up delay-200 sm:text-5xl">
           {title}
         </h2>
 
         {description && (
-          <p className="text-muted-foreground opacity-0 animate-fade-in-up delay-300">
+          <p className="relative z-10 text-[#3f3a34] opacity-0 animate-fade-in-up delay-300">
             {description}
           </p>
         )}
@@ -51,7 +74,7 @@ export function CTASection({
         <Button
           variant={action.variant || "default"}
           size="lg"
-          className="opacity-0 animate-fade-in-up delay-500"
+          className="relative z-10 border border-black/25 bg-white/70 font-medium text-[#1c1915] shadow-none opacity-0 animate-fade-in-up delay-500 hover:bg-white"
           asChild
         >
           <a
@@ -65,10 +88,6 @@ export function CTASection({
             {action.text}
           </a>
         </Button>
-
-        {withGlow && (
-          <div className="fade-top-lg pointer-events-none absolute inset-0 rounded-2xl opacity-0 shadow-glow animate-scale-in delay-700" />
-        )}
       </div>
     </section>
   )
