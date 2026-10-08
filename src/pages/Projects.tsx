@@ -13,6 +13,7 @@ import HrCase from '@/src/projects/HrCase'
 import LorealCase from '@/src/projects/LorealCase'
 import MeijianCase from '@/src/projects/MeijianCase'
 import PlanFlowCase from '@/src/projects/PlanFlowCase'
+import SofaCase from '@/src/projects/SofaCase'
 import { ankerLinks } from '@/src/projects/ankerCase.data'
 import { hrLinks } from '@/src/projects/hrCase.data'
 import { meijianLinks } from '@/src/projects/meijianCase.data'
@@ -892,9 +893,9 @@ const records: Record<string, ProjectRecord> = {
     takeaway: '我把筛选收成证据标注：能力表现对照 Rubric，材料不足就标 INSUFFICIENT，结论要能被招聘者核对。',
   },
   sofa: {
-    name: '海外压缩沙发内容增长',
-    tag: 'B2B CONTENT GROWTH / OVERSEAS',
-    line: '围绕海外 B2B 买家的空间、物流和选品顾虑，设计短视频脚本与询盘引导结构。',
+    name: '压缩沙发海外 TikTok 内容增长',
+    tag: 'COMPRESSED SOFA / TIKTOK B2B GROWTH',
+    line: '把装柜、运费、回弹、试单和工厂能力，写成可拍摄、可承接询盘的 ToB 内容。',
     status: '增长项目',
     scene: ['海外压缩沙发的购买者关心的不只是产品外观，还会判断运输成本、目标市场、压缩方式、采购量和转售可能性。'],
     judgment: ['内容不能按照消费者“选家具”的逻辑写。', '需要站在进口商、批发商、跨境卖家和连锁采购方的决策角度，先解决他们对选品与利润的疑问。'],
@@ -1015,7 +1016,7 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
             </div>
           )}
         </div>
-        {piece.id === 'meijian' ? <MeijianCase embedded /> : piece.id === 'anker' ? <AnkerCase embedded /> : piece.id === 'loreal' ? <LorealCase embedded /> : piece.id === 'hr' ? <HrCase embedded /> : piece.id === 'planflow' ? <PlanFlowCase embedded /> : record ? <ProjectRecord record={record} /> : null}
+        {piece.id === 'meijian' ? <MeijianCase embedded /> : piece.id === 'anker' ? <AnkerCase embedded /> : piece.id === 'loreal' ? <LorealCase embedded /> : piece.id === 'hr' ? <HrCase embedded /> : piece.id === 'planflow' ? <PlanFlowCase embedded /> : piece.id === 'sofa' ? <SofaCase embedded /> : record ? <ProjectRecord record={record} /> : null}
       </div>
     </div>
   )

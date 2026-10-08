@@ -581,6 +581,52 @@ span.meijian-line.is-in {
   transform: scaleX(1);
 }
 
+.sofa-reveal {
+  opacity: 0;
+  transform: translateY(48px);
+  transition:
+    opacity 0.95s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.95s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sofa-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+.sofa-stat {
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.sofa-stat:hover {
+  border-color: rgba(28, 28, 26, 0.55);
+  background: #efece6;
+}
+
+.sofa-file {
+  transition: transform 0.25s ease, border-color 0.25s ease;
+}
+
+.sofa-file:hover {
+  transform: translateY(-3px);
+  border-color: rgba(28, 28, 26, 0.55);
+}
+
+@keyframes sofa-draw {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.sofa-draw {
+  animation: sofa-draw 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hr-reveal,
   .hr-reveal.is-in,
@@ -593,10 +639,16 @@ span.meijian-line.is-in {
   .planflow-reveal,
   .planflow-reveal.is-in,
   .planflow-line,
-  .planflow-reveal.is-in .planflow-line {
+  .planflow-reveal.is-in .planflow-line,
+  .sofa-reveal,
+  .sofa-reveal.is-in,
+  .sofa-file,
+  .sofa-file:hover,
+  .sofa-draw {
     opacity: 1;
     transform: none;
     transition: none;
+    animation: none;
   }
 }
 
