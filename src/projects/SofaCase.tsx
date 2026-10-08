@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import TikTokEvidenceFolder from './TikTokEvidenceFolder'
 import { sofaDecisions, sofaEvidence, sofaHero, sofaScripts, sofaSignals, sofaSystem, sofaWork } from './sofaCase.data'
+import { readDocxText } from './readDocx'
 
 const ink = '#1C1C1A'
 const paper = '#F5F3EE'
@@ -67,6 +68,66 @@ function CountFigure({ value, className = '', style }: { value: string; classNam
     <p ref={ref} className={className} style={style}>
       {text}
     </p>
+  )
+}
+
+function ScriptReader() {
+  const file = sofaScripts.file
+  const [open, setOpen] = useState(false)
+  const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'missing'>('idle')
+  const [text, setText] = useState('')
+
+  async function openScript() {
+    if (open) {
+      setOpen(false)
+      return
+    }
+    setOpen(true)
+    if (status === 'ready' || status === 'loading') return
+    setStatus('loading')
+    try {
+      setText(await readDocxText(file.href))
+      setStatus('ready')
+    } catch {
+      setStatus('missing')
+    }
+  }
+
+  return (
+    <div className="mt-8 max-w-xl">
+      <button
+        type="button"
+        onClick={openScript}
+        className="sofa-file block w-full border px-5 py-5 text-left"
+        style={{ borderColor: line }}
+      >
+        <p className="text-[11px] tracking-[0.18em]" style={{ color: muted }}>
+          {file.kind}
+        </p>
+        <p className="mt-3 text-[18px]" style={{ fontFamily: '"Songti SC", "Noto Serif SC", serif' }}>
+          {file.title}
+        </p>
+        <p className="mt-2 text-[13px]" style={{ color: muted }}>
+          {file.note}
+        </p>
+        <p className="mt-5 text-[13px] tracking-[0.12em]">{open ? '收起 ↑' : '打开阅读 →'}</p>
+      </button>
+      {open ? (
+        <div className="mt-4 max-h-[70vh] overflow-y-auto border px-5 py-5" style={{ borderColor: line, background: paper }}>
+          {status === 'loading' ? <p className="text-[15px] leading-7">正在打开脚本…</p> : null}
+          {status === 'missing' ? (
+            <p className="text-[15px] leading-7" style={{ color: 'rgba(28,28,26,0.78)' }}>
+              这份迭代版脚本还在本地电脑上，网站目录里没有对应的 Word 文件，所以正文暂时打不开。文件放进项目后，点这里就能直接阅读。
+            </p>
+          ) : null}
+          {status === 'ready' ? (
+            <pre className="font-sans text-[15px] leading-7 whitespace-pre-wrap" style={{ color: ink }}>
+              {text}
+            </pre>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   )
 }
 
@@ -219,28 +280,7 @@ export default function SofaCase({ embedded = false }: { embedded?: boolean }) {
               {sofaScripts.body}
             </p>
           </Reveal>
-          <div className="mt-8 grid gap-4 lg:grid-cols-2">
-            {sofaScripts.files.map((file) => (
-              <a
-                key={file.href}
-                href={file.href}
-                download={file.filename}
-                className="sofa-file block border px-5 py-5"
-                style={{ borderColor: line }}
-              >
-                <p className="text-[11px] tracking-[0.18em]" style={{ color: muted }}>
-                  {file.kind}
-                </p>
-                <p className="mt-3 text-[18px]" style={{ fontFamily: '"Songti SC", "Noto Serif SC", serif' }}>
-                  {file.title}
-                </p>
-                <p className="mt-2 text-[13px]" style={{ color: muted }}>
-                  {file.note}
-                </p>
-                <p className="mt-5 text-[13px] tracking-[0.12em]">DOWNLOAD →</p>
-              </a>
-            ))}
-          </div>
+          <ScriptReader />
         </section>
 
         <section className="mt-20 border-t pt-8" style={{ borderColor: line }}>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import PurplePocket from './PurplePocket'
 import { sofaEvidence } from './sofaCase.data'
 
 const shots = sofaEvidence.shots
@@ -64,71 +65,28 @@ export default function TikTokEvidenceFolder() {
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          aria-label="打开账号资料"
-          onMouseEnter={() => setHover(true)}
-          onMouseLeave={() => setHover(false)}
-          onFocus={() => setHover(true)}
-          onBlur={() => setHover(false)}
-          className="sofa-folder relative mx-auto block h-[250px] w-full max-w-[360px]"
-          style={{
-            perspective: '900px',
-            transform: hover && !reduced ? 'translateY(-6px)' : undefined,
-            transition: reduced ? 'none' : 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-          }}
-          onClick={() => {
-            if (reduced) {
-              setOpen(true)
-              return
-            }
-            setOpening(true)
-            window.setTimeout(() => setOpen(true), 420)
-          }}
-        >
-          <span className="absolute top-3 right-8 left-8 h-[168px] rounded-xl border border-[#D1D1D1] bg-[#E6E6E6]" />
-          {shots.map((shot, index) => {
-            const lift = reduced ? 0 : opening ? 36 + index * 8 : hover ? 10 + index * 2 : 0
-            const place = [
-              { left: '18%', rotate: -6 },
-              { left: '30%', rotate: -2 },
-              { left: '42%', rotate: 2 },
-              { left: '54%', rotate: 6 },
-            ][index]
-            return (
-              <img
-                key={shot.src}
-                src={shot.src}
-                alt=""
-                loading="lazy"
-                className="absolute top-6 h-[92px] w-[42%] rounded-md border border-black/10 object-cover object-top shadow-md"
-                style={{
-                  left: place.left,
-                  transform: `translateY(${-lift}px) rotate(${place.rotate}deg)`,
-                  transition: reduced ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                  zIndex: 4 + index,
-                }}
-              />
-            )
-          })}
-          <span
-            className="absolute inset-x-0 bottom-0 z-20 flex h-[168px] flex-col items-center justify-center rounded-[22px] border border-[#D1D1D1] bg-[#F2F2F2] shadow-[0_10px_24px_rgba(28,28,26,0.08)]"
-            style={{
-              transformOrigin: 'center bottom',
-              transform: opening && !reduced ? 'rotateX(-42deg)' : undefined,
-              transition: reduced ? 'none' : 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
+        <span onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+          <PurplePocket
+            ariaLabel="打开账号资料"
+            caption="CLICK TO OPEN · 04 SCREEN RECORDS"
+            hover={hover}
+            opening={opening}
+            reduced={reduced}
+            cards={shots.map((shot, index) => ({
+              src: shot.src,
+              alt: shot.title,
+              tint: ['#8EB7F5', '#F3B4C8', '#C7B0F4', '#F2C56B'][index] ?? '#C7B0F4',
+            }))}
+            onClick={() => {
+              if (reduced) {
+                setOpen(true)
+                return
+              }
+              setOpening(true)
+              window.setTimeout(() => setOpen(true), 420)
             }}
-          >
-            <span className="mb-3 flex gap-8">
-              <span className="size-2 rounded-full bg-neutral-600/40" />
-              <span className="size-2 rounded-full bg-neutral-600/40" />
-            </span>
-            <span className="mb-4 h-1 w-8 rounded-full bg-neutral-600/40" />
-            <span className="text-[11px] tracking-[0.16em] text-[#1C1C1A]">TIKTOK ACCOUNT ARCHIVE</span>
-            <span className="mt-1 text-[11px] tracking-[0.16em] text-[#77746E]">04 SCREEN RECORDS</span>
-            <span className="mt-2 text-[11px] tracking-[0.16em] text-[#77746E]">CLICK TO OPEN</span>
-          </span>
-        </button>
+          />
+        </span>
       )}
 
       {current && preview !== null ? (

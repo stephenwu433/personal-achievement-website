@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { museArchive, visualTopics } from './museCase.data'
 import { coverSources, loadMuseAssets, type MuseAsset } from './museArchive'
+import PurplePocket from './PurplePocket'
 
 const assets = loadMuseAssets()
 const covers = coverSources(assets)
@@ -73,73 +74,21 @@ export default function MuseVisualArchive() {
           <p className="mt-5 max-w-xl text-[15px] leading-7">{museArchive.lead}</p>
         </div>
         {open ? null : (
-        <button
-          type="button"
-          aria-label="打开视觉档案"
-          onMouseEnter={() => setHover(true)}
-          onMouseLeave={() => setHover(false)}
-          onFocus={() => setHover(true)}
-          onBlur={() => setHover(false)}
-          onClick={openArchive}
-          className="relative mx-auto block h-[230px] w-full max-w-[420px] lg:mx-0 lg:max-w-none"
-          style={{
-            perspective: '900px',
-            transform: hover && !reduced ? 'translateY(-6px)' : undefined,
-            transition: reduced ? 'none' : 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-          }}
-        >
-          <span className="absolute top-4 right-6 left-6 h-[150px] rounded-xl border border-[#D9D3C8] bg-[#E7E2D8]" />
-          {covers.map((cover, index) => {
-            const lift = reduced ? 0 : opening ? 28 + index * 6 : hover ? 8 + index * 2 : 0
-            const place = [
-              { left: '8%', rotate: -7 },
-              { left: '20%', rotate: -3 },
-              { left: '32%', rotate: 0 },
-              { left: '44%', rotate: 3 },
-              { left: '56%', rotate: 6 },
-            ][index]
-            return (
-              <span
-                key={cover.path}
-                className="absolute top-7 h-[78px] w-[34%] overflow-hidden rounded-md border border-black/10 bg-[#F7F4EE] shadow-sm"
-                style={{
-                  left: place.left,
-                  zIndex: 4 + index,
-                  transform: `translateY(${-lift}px) rotate(${place.rotate}deg)`,
-                  transition: reduced ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                }}
-              >
-                {failed[cover.path] ? null : (
-                  <img
-                    src={cover.src}
-                    alt={cover.alt}
-                    loading="lazy"
-                    className="h-full w-full object-cover object-top"
-                    onError={() => setFailed((current) => ({ ...current, [cover.path]: true }))}
-                  />
-                )}
-                <span className="absolute top-1 left-1 bg-[#F5F2EC]/90 px-1 text-[9px] tracking-[0.12em] text-[#181715]">{String(index + 1).padStart(2, '0')}</span>
-              </span>
-            )
-          })}
-          <span
-            className="absolute inset-x-0 bottom-0 z-20 flex h-[148px] origin-bottom flex-col items-center justify-center rounded-[22px] border border-[#D4CFC6] bg-[#F3EFE8] shadow-[0_10px_22px_rgba(24,23,21,0.08)]"
-            style={{
-              transform: opening && !reduced ? 'rotateX(-42deg)' : undefined,
-              transition: reduced ? 'none' : 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
-            }}
-          >
-            <span className="mb-2 flex gap-7">
-              <span className="size-1.5 rounded-full bg-[#AAA59E]" />
-              <span className="size-1.5 rounded-full bg-[#AAA59E]" />
-            </span>
-            <span className="mb-3 h-0.5 w-7 rounded-full bg-[#AAA59E]" />
-            <span className="text-[11px] tracking-[0.18em] text-[#181715]">MUSESELECT</span>
-            <span className="text-[11px] tracking-[0.16em] text-[#181715]">VISUAL ARCHIVE</span>
-            <span className="mt-2 text-[10px] tracking-[0.14em] text-[#AAA59E]">10 TOPICS · 62 ASSETS</span>
-            <span className="mt-1 text-[10px] tracking-[0.14em] text-[#9B293C]">CLICK TO OPEN</span>
+          <span onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+            <PurplePocket
+              ariaLabel="打开视觉档案"
+              caption="CLICK TO OPEN · 10 TOPICS"
+              hover={hover}
+              opening={opening}
+              reduced={reduced}
+              onClick={openArchive}
+              cards={covers.map((cover, index) => ({
+                src: failed[cover.path] ? undefined : cover.src,
+                alt: cover.alt,
+                tint: ['#8EB7F5', '#F3B4C8', '#C7B0F4', '#F7D48A', '#F2C56B'][index] ?? '#C7B0F4',
+              }))}
+            />
           </span>
-        </button>
         )}
       </div>
       {open ? (

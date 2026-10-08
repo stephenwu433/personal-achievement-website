@@ -85,22 +85,12 @@ export const sofaScripts = {
   kicker: 'SCRIPT EVIDENCE',
   title: '可执行的 ToB 脚本资产',
   body: '将经销商与批发商关注的运费、回弹、试单、混柜、工厂能力与装柜方案，拆成可直接拍摄的中英双语口播脚本，并在每条内容中保留明确的咨询收口。',
-  files: [
-    {
-      kind: 'DOCX',
-      title: '10 条 Hi Boss ToB 口播脚本',
-      note: 'English voiceover + Chinese translation',
-      href: '/projects/compressed-sofa/script-evidence/compressed-sofa-hiboss-scripts-v1.docx',
-      filename: 'compressed-sofa-hiboss-scripts-v1.docx',
-    },
-    {
-      kind: 'DOCX',
-      title: '10 条 Hi Boss ToB 口播脚本（迭代版）',
-      note: 'B2B hook + product proof + inquiry CTA',
-      href: '/projects/compressed-sofa/script-evidence/compressed-sofa-hiboss-scripts-v2.docx',
-      filename: 'compressed-sofa-hiboss-scripts-v2.docx',
-    },
-  ],
+  file: {
+    kind: '脚本',
+    title: '10 条 Hi Boss ToB 口播脚本（迭代版）',
+    note: 'B2B hook + product proof + inquiry CTA',
+    href: '/projects/compressed-sofa/script-evidence/compressed-sofa-hiboss-scripts-v2.docx',
+  },
 }
 
 export const sofaWork = {
