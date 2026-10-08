@@ -9,6 +9,7 @@ gsap.registerPlugin(useGSAP, CustomEase, ScrollTrigger)
 if (!CustomEase.get('type-in')) CustomEase.create('type-in', 'M0,0 C0.22,0.84 0.18,1 1,1')
 import { CTASection } from '@/components/ui/cta-with-rectangle'
 import MeijianCase from '@/src/projects/MeijianCase'
+import { meijianLinks } from '@/src/projects/meijianCase.data'
 import SiteHeader from '@/src/components/SiteHeader'
 import { profile } from '@/src/content'
 
@@ -978,16 +979,8 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
     window.setTimeout(onClose, 500)
   }
 
-  if (piece.id === 'meijian') {
-    return (
-      <div data-project-sheet className="fixed inset-0 z-[80] overflow-x-hidden overflow-y-auto bg-[#F5F3EE]">
-        <MeijianCase onClose={onClose} />
-      </div>
-    )
-  }
-
   return (
-    <div data-project-sheet className="fixed inset-0 z-[80] overflow-y-auto bg-[#f7f5f2]">
+    <div data-project-sheet className="fixed inset-0 z-[80] overflow-x-hidden overflow-y-auto bg-[#f7f5f2]">
       <div className="relative mx-auto max-w-6xl px-5 py-16" style={{ opacity: veil, transition: 'opacity 0.45s ease' }}>
         <div className="grid items-center gap-8 md:grid-cols-[1.15fr_0.85fr]">
           <img ref={imgRef} src={piece.image} alt="" className="relative w-full object-cover" />
@@ -998,6 +991,7 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
               description={record.line}
               action={{ text: '返回', href: '/projects', onClick: requestClose }}
               flow={flows[piece.id]}
+              links={piece.id === 'meijian' ? meijianLinks : undefined}
               className="[&>div]:px-0 [&>div]:py-8 md:[&>div]:py-10 [&_h2]:!text-4xl [&_h2]:!leading-tight [&_h2]:!font-medium [&_h2]:break-keep"
             />
           ) : (
@@ -1012,7 +1006,7 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
             </div>
           )}
         </div>
-        {record ? <ProjectRecord record={record} /> : null}
+        {piece.id === 'meijian' ? <MeijianCase embedded /> : record ? <ProjectRecord record={record} /> : null}
       </div>
     </div>
   )

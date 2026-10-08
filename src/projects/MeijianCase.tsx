@@ -5,7 +5,6 @@ import {
   meijianEvolution,
   meijianHero,
   meijianJudgment,
-  meijianLinks,
   meijianPath,
   meijianPilot,
   meijianProblem,
@@ -129,16 +128,18 @@ function SectionTitle({ children }: { children: ReactNode }) {
   )
 }
 
-export default function MeijianCase({ onClose }: { onClose: () => void }) {
+export default function MeijianCase({ onClose, embedded = false }: { onClose?: () => void; embedded?: boolean }) {
   return (
     <article className="meijian-case text-[#1A1916]" style={{ fontFamily: sans, background: '#F5F3EE' }}>
-      <div className="mx-auto w-full max-w-[1120px] px-5 pt-8 sm:px-8">
-        <button type="button" onClick={onClose} className="text-[12px] tracking-[0.18em] underline underline-offset-4" style={{ fontFamily: mono }}>
-          返回
-        </button>
-      </div>
+      {embedded ? null : (
+        <div className="mx-auto w-full max-w-[1120px] px-5 pt-8 sm:px-8">
+          <button type="button" onClick={onClose} className="text-[12px] tracking-[0.18em] underline underline-offset-4" style={{ fontFamily: mono }}>
+            返回
+          </button>
+        </div>
+      )}
 
-      <header className="mx-auto w-full max-w-[1120px] px-5 pt-10 pb-16 sm:px-8">
+      <header className={`mx-auto w-full max-w-[1120px] px-5 pb-16 sm:px-8 ${embedded ? 'pt-16' : 'pt-10'}`}>
         <Reveal>
           <Kicker>01 / 品牌决策产品</Kicker>
           <h1 className="mt-4 max-w-[12em] text-[clamp(36px,5vw,64px)] leading-[1.15] font-medium break-keep" style={{ fontFamily: song }}>
@@ -150,26 +151,6 @@ export default function MeijianCase({ onClose }: { onClose: () => void }) {
             {meijianHero.subtitle}
           </p>
           <p className="mt-6 max-w-[40rem] text-[16px] leading-8 text-[#1A1916]/80">{meijianHero.definition}</p>
-          <ul className="mt-8 grid list-none gap-3 p-0 sm:grid-cols-2">
-            {meijianLinks.map((link) => (
-              <li key={link.href}>
-                <a
-                  href={link.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex h-full flex-col border border-[#1A1916]/15 px-4 py-4 text-left transition-colors hover:border-[#6B1F2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6B1F2A]"
-                >
-                  <span className="text-[12px] tracking-[0.18em] text-[#6B1F2A]" style={{ fontFamily: mono }}>
-                    {link.label}
-                  </span>
-                  <span className="mt-2 text-[15px] leading-7 text-[#1A1916]">{link.note}</span>
-                  <span className="mt-3 break-all text-[13px] leading-6 text-[#6B1F2A] underline underline-offset-4" style={{ fontFamily: mono }}>
-                    {link.href}
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ul>
         </Reveal>
         <div className="mt-12 grid gap-px bg-[#1A1916]/15 sm:grid-cols-2 lg:grid-cols-3">
           {meijianHero.stats.map((stat) => (

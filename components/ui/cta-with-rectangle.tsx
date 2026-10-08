@@ -22,6 +22,11 @@ interface CTAProps {
     b: string
     c: string
   }
+  links?: readonly {
+    label: string
+    href: string
+    note: string
+  }[]
 }
 
 export function CTASection({
@@ -32,6 +37,7 @@ export function CTASection({
   withGlow = true,
   className,
   flow = { a: "#9eb6d8", b: "#2f5f9a", c: "#d5dde6" },
+  links,
 }: CTAProps) {
   const flowStyle = {
     "--flow-a": flow.a,
@@ -70,6 +76,26 @@ export function CTASection({
             {description}
           </p>
         )}
+
+        {links?.length ? (
+          <div className="relative z-10 flex w-full max-w-md flex-col gap-3 opacity-0 animate-fade-in-up delay-500">
+            {links.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                target="_blank"
+                rel="noreferrer"
+                className="block rounded-md border border-black/15 bg-white/80 px-4 py-3 text-left text-[#1c1915] hover:bg-white"
+              >
+                <span className="block text-[12px] tracking-[0.16em] text-[#6B1F2A]">{link.label}</span>
+                <span className="mt-1 block text-[14px] leading-6 font-normal" style={{ fontFamily: '"Noto Sans SC", "Geist Variable", sans-serif', fontWeight: 400 }}>
+                  {link.note}
+                </span>
+                <span className="mt-2 block break-all text-[12px] leading-5 underline underline-offset-4">{link.href}</span>
+              </a>
+            ))}
+          </div>
+        ) : null}
 
         <Button
           variant={action.variant || "default"}
