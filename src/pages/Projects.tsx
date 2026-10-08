@@ -9,8 +9,10 @@ gsap.registerPlugin(useGSAP, CustomEase, ScrollTrigger)
 if (!CustomEase.get('type-in')) CustomEase.create('type-in', 'M0,0 C0.22,0.84 0.18,1 1,1')
 import { CTASection } from '@/components/ui/cta-with-rectangle'
 import AnkerCase from '@/src/projects/AnkerCase'
+import HrCase from '@/src/projects/HrCase'
 import MeijianCase from '@/src/projects/MeijianCase'
 import { ankerLinks } from '@/src/projects/ankerCase.data'
+import { hrLinks } from '@/src/projects/hrCase.data'
 import { meijianLinks } from '@/src/projects/meijianCase.data'
 import SiteHeader from '@/src/components/SiteHeader'
 import { profile } from '@/src/content'
@@ -870,10 +872,10 @@ const records: Record<string, ProjectRecord> = {
     takeaway: '我把服务的第一步放在分流：先核对信息够不够、要不要追问、有没有风险，再决定自动回答、辅助或升级。',
   },
   hr: {
-    name: 'AI 招聘筛选系统',
-    tag: 'AI SCREENING / EVALUATION-FIRST',
-    line: '把“AI 看简历”变成可解释的候选人证据标注与人工评估辅助流程。',
-    status: '概念验证',
+    name: '岗证匹配',
+    tag: 'TASK-DRIVEN RECRUITMENT EVIDENCE REVIEW',
+    line: '把企业业务任务收成经用人经理确认的招聘标准，再从简历原文找回值得 HR 再看一眼的人。',
+    status: '可运行原型',
     scene: ['招聘筛选容易被简历表述、模型幻觉或模糊评分影响。若没有统一证据标准，AI 推荐结果无法解释，也无法被招聘者复核。'],
     judgment: ['先定义岗位能力证据和人工 Gold 标准，再讨论模型效果。', '模型输出需要与证据绑定；材料不足时必须允许“不确定”，不能强行给结论。'],
     mechanism: ['将候选人材料拆成可核对证据。', '使用 BARS Rubric 标注能力表现。', '对信息不足样本输出 INSUFFICIENT。', '分离校准集、Challenge 集与 Holdout 集。', '比较基础模型、明确 Rubric 模型与完整机制的差异。'],
@@ -981,7 +983,7 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
     window.setTimeout(onClose, 500)
   }
 
-  const openingLinks = piece.id === 'meijian' ? meijianLinks : piece.id === 'anker' ? ankerLinks : undefined
+  const openingLinks = piece.id === 'meijian' ? meijianLinks : piece.id === 'anker' ? ankerLinks : piece.id === 'hr' ? hrLinks : undefined
 
   return (
     <div data-project-sheet className="fixed inset-0 z-[80] overflow-x-hidden overflow-y-auto bg-[#f7f5f2]">
@@ -1010,7 +1012,7 @@ function PieceDetail({ piece, origin, onClose }: { piece: Piece; origin: DOMRect
             </div>
           )}
         </div>
-        {piece.id === 'meijian' ? <MeijianCase embedded /> : piece.id === 'anker' ? <AnkerCase embedded /> : record ? <ProjectRecord record={record} /> : null}
+        {piece.id === 'meijian' ? <MeijianCase embedded /> : piece.id === 'anker' ? <AnkerCase embedded /> : piece.id === 'hr' ? <HrCase embedded /> : record ? <ProjectRecord record={record} /> : null}
       </div>
     </div>
   )
