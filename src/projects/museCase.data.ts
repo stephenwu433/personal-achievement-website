@@ -20,7 +20,7 @@ export const museSignals = {
   kicker: 'PROJECT SIGNALS',
   title: '内容实验结果',
   stats: [
-    { value: '3 篇', label: '图文内容发布' },
+    { value: '10 篇', label: '图文内容发布' },
     { value: '2万+', label: '累计浏览量' },
     { value: '500+', label: '单篇最高点赞' },
     { value: '10 个', label: '内容主题方向' },

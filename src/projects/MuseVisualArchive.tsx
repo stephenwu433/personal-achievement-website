@@ -1,10 +1,37 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { museArchive, visualTopics } from './museCase.data'
 import { coverSources, loadMuseAssets, type MuseAsset } from './museArchive'
 import PurplePocket from './PurplePocket'
 
 const assets = loadMuseAssets()
 const covers = coverSources(assets)
+
+function useSheetShown<T extends HTMLElement>(threshold = 0.2) {
+  const ref = useRef<T>(null)
+  const [shown, setShown] = useState(false)
+
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setShown(true)
+      return
+    }
+    const scroller = node.closest('[data-project-sheet]')
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return
+        setShown(true)
+        observer.disconnect()
+      },
+      { root: scroller instanceof HTMLElement ? scroller : null, threshold, rootMargin: '0px 0px -8% 0px' },
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [threshold])
+
+  return { ref, shown }
+}
 
 export default function MuseVisualArchive() {
   const [open, setOpen] = useState(false)
@@ -13,7 +40,7 @@ export default function MuseVisualArchive() {
   const [topic, setTopic] = useState<string>('all')
   const [preview, setPreview] = useState<number | null>(null)
   const [reduced, setReduced] = useState(false)
-  const [failed, setFailed] = useState<Record<string, boolean>>({})
+  const [failed] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -46,6 +73,8 @@ export default function MuseVisualArchive() {
   }, [preview, visible.length])
 
   const current = preview === null ? null : visible[preview]
+  const { ref: introRef, shown: introShown } = useSheetShown<HTMLDivElement>(0.2)
+  const { ref: pocketRef, shown: pocketShown } = useSheetShown<HTMLDivElement>(0.2)
 
   function openArchive() {
     if (reduced) {
@@ -66,14 +95,16 @@ export default function MuseVisualArchive() {
   return (
     <div>
       <div className={`grid items-center gap-8 ${open ? '' : 'lg:grid-cols-[minmax(0,1.05fr)_minmax(240px,0.78fr)]'}`}>
-        <div>
+        <div ref={introRef} className={`muse-reveal ${introShown ? 'is-in' : ''}`}>
           <p className="text-[11px] tracking-[0.22em] text-[#AAA59E]">{museArchive.kicker}</p>
           <h2 className="mt-4 max-w-[16em] text-[clamp(18px,3.6vw,46px)] leading-[1.22] font-medium" style={{ fontFamily: '"Songti SC", "Noto Serif SC", serif', color: '#181715' }}>
             {museArchive.title}
           </h2>
+          <span className="muse-line mt-4 block h-px w-16 bg-[#181715]" />
           <p className="mt-5 max-w-xl text-[15px] leading-7">{museArchive.lead}</p>
         </div>
         {open ? null : (
+          <div ref={pocketRef} className={`muse-reveal ${pocketShown ? 'is-in' : ''}`} style={{ transitionDelay: '120ms' }}>
           <span onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
             <PurplePocket
               ariaLabel="打开视觉档案"
@@ -89,6 +120,7 @@ export default function MuseVisualArchive() {
               }))}
             />
           </span>
+          </div>
         )}
       </div>
       {open ? (
