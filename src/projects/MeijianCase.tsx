@@ -156,7 +156,10 @@ export default function MeijianCase({ onClose, embedded = false }: { onClose?: (
           <p className="mt-4 text-[18px] leading-8" style={{ fontFamily: song }}>
             {meijianHero.subtitle}
           </p>
-          <p className="mt-6 max-w-[40rem] text-[16px] leading-8 text-[#1A1916]/80">{meijianHero.definition}</p>
+          <p className="mt-6 text-[12px] tracking-[0.22em] text-[#6B1F2A]" style={{ fontFamily: mono }}>
+            项目背景
+          </p>
+          <p className="mt-3 max-w-[40rem] text-[16px] leading-8 text-[#1A1916]/80">{meijianHero.background}</p>
         </Reveal>
         <div className="mt-12 grid gap-px bg-[#1A1916]/15 sm:grid-cols-2 lg:grid-cols-3">
           {meijianHero.stats.map((stat) => (
