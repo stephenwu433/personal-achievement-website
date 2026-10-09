@@ -14,6 +14,11 @@ const modules = import.meta.glob('/public/projects/muse-select/visual-archive/**
   import: 'default',
 }) as Record<string, string>
 
+function publicSrc(path: string, imported: string) {
+  if (path.startsWith('/public/')) return encodeURI(path.slice('/public'.length))
+  return imported
+}
+
 function topicIdFromPath(path: string) {
   const rel = path.split('/visual-archive/')[1]
   if (!rel) return null
@@ -30,7 +35,7 @@ export function loadMuseAssets(): MuseAsset[] {
     const file = decodeURIComponent(rel.split('/').slice(1).join('/'))
     if (!file) continue
     const list = grouped.get(topicId) ?? []
-    list.push({ src, file })
+    list.push({ src: publicSrc(path, src), file })
     grouped.set(topicId, list)
   }
 
