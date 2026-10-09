@@ -42,7 +42,7 @@ export const sections: SiteSection[] = [
     href: '/skills',
     label: '个人能力',
     english: 'Skills',
-    summary: '一张能力拼贴：从场景洞察到落地迭代，点开看项目证据。',
+    summary: '按语言、工具和方向分组的能力。',
   },
 ]
 
