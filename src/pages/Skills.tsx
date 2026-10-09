@@ -49,7 +49,7 @@ export default function Skills() {
           {projectCells.map((cell) => (
             <div
               key={cell.id}
-              className={`absolute flex p-3 ${cell.place}`}
+              className="absolute flex items-start justify-end"
               style={{
                 left: `${cell.x}%`,
                 top: `${cell.y}%`,

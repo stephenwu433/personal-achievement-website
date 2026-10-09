@@ -96,11 +96,11 @@ export const homeGallery: GalleryItem[] = [
 
 /** 个人能力拼贴上的五个格子。点击后的展开页之后再接。 */
 export const projectCells = [
-  { id: 'diagrams', label: '洞察业务场景', x: 0, y: 0, width: 33, height: 35.5, place: 'items-start justify-start' },
-  { id: 'charts', label: '定义产品问题', x: 33, y: 0, width: 33.5, height: 35.5, place: 'items-start justify-center' },
-  { id: 'desk', label: '设计智能流程', x: 66.5, y: 0, width: 33.5, height: 35.5, place: 'items-start justify-end' },
-  { id: 'globe', label: '验证增长结果', x: 66.5, y: 35.5, width: 33.5, height: 29.5, place: 'items-center justify-end' },
-  { id: 'map', label: '推进落地迭代', x: 66.5, y: 65, width: 33.5, height: 35, place: 'items-end justify-end' },
+  { id: 'diagrams', label: '洞察业务场景', x: 0, y: 0, width: 33, height: 35.5 },
+  { id: 'charts', label: '定义产品问题', x: 33, y: 0, width: 33.5, height: 35.5 },
+  { id: 'desk', label: '设计智能流程', x: 66.5, y: 0, width: 33.5, height: 35.5 },
+  { id: 'globe', label: '验证增长结果', x: 66.5, y: 35.5, width: 33.5, height: 29.5 },
+  { id: 'map', label: '推进落地迭代', x: 66.5, y: 65, width: 33.5, height: 35 },
 ]
 
 export const projects = [
