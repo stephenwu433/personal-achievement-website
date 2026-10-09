@@ -94,13 +94,13 @@ export const homeGallery: GalleryItem[] = [
   },
 ]
 
-/** 项目列表上的五个小格子。大格子是人物，不作为项目入口。项目名称之后再补。 */
+/** 个人能力拼贴上的五个格子。点击后的展开页之后再接。 */
 export const projectCells = [
-  { id: 'diagrams', x: 0, y: 0, width: 33, height: 35.5 },
-  { id: 'charts', x: 33, y: 0, width: 33.5, height: 35.5 },
-  { id: 'desk', x: 66.5, y: 0, width: 33.5, height: 35.5 },
-  { id: 'globe', x: 66.5, y: 35.5, width: 33.5, height: 29.5 },
-  { id: 'map', x: 66.5, y: 65, width: 33.5, height: 35 },
+  { id: 'diagrams', label: '洞察业务场景', x: 0, y: 0, width: 33, height: 35.5, place: 'items-start justify-start' },
+  { id: 'charts', label: '定义产品问题', x: 33, y: 0, width: 33.5, height: 35.5, place: 'items-start justify-center' },
+  { id: 'desk', label: '设计智能流程', x: 66.5, y: 0, width: 33.5, height: 35.5, place: 'items-start justify-end' },
+  { id: 'globe', label: '验证增长结果', x: 66.5, y: 35.5, width: 33.5, height: 29.5, place: 'items-center justify-end' },
+  { id: 'map', label: '推进落地迭代', x: 66.5, y: 65, width: 33.5, height: 35, place: 'items-end justify-end' },
 ]
 
 export const projects = [

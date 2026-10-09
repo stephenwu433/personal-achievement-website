@@ -46,10 +46,10 @@ export default function Skills() {
               onPlaying={() => setVideoReady(true)}
             />
           )}
-          {projectCells.map((cell, index) => (
+          {projectCells.map((cell) => (
             <div
               key={cell.id}
-              className="absolute flex items-start justify-end"
+              className={`absolute flex p-3 ${cell.place}`}
               style={{
                 left: `${cell.x}%`,
                 top: `${cell.y}%`,
@@ -57,7 +57,7 @@ export default function Skills() {
                 height: `${cell.height}%`,
               }}
             >
-              <LiquidMetalButton tone="sunset" width={208} label="" ariaLabel={`第 ${index + 1} 个格子`} />
+              <LiquidMetalButton tone="sunset" width={168} label={cell.label} />
             </div>
           ))}
         </div>
