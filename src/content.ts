@@ -94,13 +94,13 @@ export const homeGallery: GalleryItem[] = [
   },
 ]
 
-/** 个人能力拼贴上的五个格子。点击后的展开页之后再接。 */
+/** 个人能力拼贴上的五个格子。点进去进入对应能力的滚动页。 */
 export const projectCells = [
-  { id: 'diagrams', label: '商业洞察', x: 0, y: 0, width: 33, height: 35.5 },
-  { id: 'charts', label: '产品策略', x: 33, y: 0, width: 33.5, height: 35.5 },
-  { id: 'desk', label: 'AI 产品设计', x: 66.5, y: 0, width: 33.5, height: 35.5 },
-  { id: 'globe', label: '增长运营', x: 66.5, y: 35.5, width: 33.5, height: 29.5 },
-  { id: 'map', label: '项目推进', x: 66.5, y: 65, width: 33.5, height: 35 },
+  { id: 'insight', label: '商业洞察', x: 0, y: 0, width: 33, height: 35.5 },
+  { id: 'strategy', label: '产品策略', x: 33, y: 0, width: 33.5, height: 35.5 },
+  { id: 'ai', label: 'AI 产品设计', x: 66.5, y: 0, width: 33.5, height: 35.5 },
+  { id: 'growth', label: '增长运营', x: 66.5, y: 35.5, width: 33.5, height: 29.5 },
+  { id: 'delivery', label: '项目推进', x: 66.5, y: 65, width: 33.5, height: 35 },
 ]
 
 export const projects = [

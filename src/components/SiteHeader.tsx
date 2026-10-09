@@ -1,6 +1,7 @@
 import { Briefcase, FolderKanban, Layers, User } from 'lucide-react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { profile, sections, type SiteSection } from '@/src/content'
+import { openCapability } from '@/src/pages/openCapability'
 
 const icons: Record<SiteSection['id'], typeof User> = {
   about: User,
@@ -16,11 +17,12 @@ type SiteHeaderProps = {
 
 export default function SiteHeader({ overlay = false, onPhoto = false }: SiteHeaderProps) {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const bare = pathname === '/skills'
 
   return (
     <header
-      className={
+      className={`site-chrome ${
         onPhoto
           ? 'relative z-20 px-4 pt-4 pb-1 sm:px-6 sm:pt-5'
           : overlay
@@ -28,7 +30,7 @@ export default function SiteHeader({ overlay = false, onPhoto = false }: SiteHea
             : bare
               ? 'sticky top-0 z-30 bg-transparent px-4 py-3 sm:px-6'
               : 'sticky top-0 z-30 border-b border-border bg-background px-4 py-3 sm:px-6'
-      }
+      }`}
     >
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
         <div className="flex items-center justify-between">
@@ -48,12 +50,19 @@ export default function SiteHeader({ overlay = false, onPhoto = false }: SiteHea
           <nav aria-label="页面" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {sections.map((section) => {
               const Icon = icons[section.id]
-              const active = pathname === section.href
+              const active = section.href === '/skills' ? pathname.startsWith('/skills') : pathname === section.href
               return (
                 <Link
                   key={section.href}
                   to={section.href}
                   aria-current={active ? 'page' : undefined}
+                  onClick={(event) => {
+                    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
+                    if (pathname === section.href) return
+                    if (section.href !== '/skills' && !pathname.startsWith('/skills')) return
+                    event.preventDefault()
+                    openCapability(navigate, section.href)
+                  }}
                   className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
                     active
                       ? 'border-foreground/30 bg-foreground text-background'

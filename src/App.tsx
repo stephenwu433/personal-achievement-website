@@ -4,6 +4,7 @@ import About from '@/src/pages/About'
 import Home from '@/src/pages/Home'
 import Internships from '@/src/pages/Internships'
 import Projects from '@/src/pages/Projects'
+import Capability from '@/src/pages/Capability'
 import Skills from '@/src/pages/Skills'
 
 export default function App() {
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/internships" element={<Internships />} />
         <Route path="/projects" element={<Projects />} />
         <Route path="/skills" element={<Skills />} />
+        <Route path="/skills/:id" element={<Capability />} />
         <Route path="/demo" element={<CircularGalleryDemo />} />
       </Routes>
     </BrowserRouter>

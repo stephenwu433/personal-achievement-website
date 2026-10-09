@@ -793,6 +793,69 @@ span.meijian-line.is-in {
   }
 }
 
+.site-chrome {
+  view-transition-name: site-header;
+}
+
+::view-transition-old(root) {
+  animation: capability-exit 0.8s cubic-bezier(0.76, 0, 0.24, 1) both;
+}
+
+::view-transition-new(root) {
+  animation: capability-enter 0.95s cubic-bezier(0.76, 0, 0.24, 1) both;
+}
+
+::view-transition-group(site-header) {
+  z-index: 10000;
+  animation: none;
+}
+
+::view-transition-old(site-header),
+::view-transition-new(site-header) {
+  animation: none;
+}
+
+@keyframes capability-exit {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+}
+
+@keyframes capability-enter {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.cap-stage {
+  position: sticky;
+  top: var(--cap-header, 6.75rem);
+  height: calc(100dvh - var(--cap-header, 6.75rem));
+  overflow: hidden;
+}
+
+.cap-photo {
+  transform: scale(calc(1 + var(--cap-p, 0) * 0.045));
+  transform-origin: center center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cap-photo,
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .anker-stat,
   .anker-stat:hover,
