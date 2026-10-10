@@ -843,16 +843,171 @@ span.meijian-line.is-in {
 }
 
 .cap-photo {
-  transform: scale(calc(1 + var(--cap-p, 0) * 0.045));
+  transform: translate3d(0, calc(var(--cap-p, 0) * -16px), 0) scale(1.04);
   transform-origin: center center;
+}
+
+.cap-char {
+  display: inline-block;
+  animation: cap-char-in 0.7s cubic-bezier(0.76, 0, 0.24, 1) both;
+}
+
+@keyframes cap-char-in {
+  from {
+    opacity: 0;
+    transform: translateY(110%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.cap-project.is-in {
+  animation: cap-project-in 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.cap-project.is-out {
+  animation: cap-project-out 0.26s ease both;
+}
+
+@keyframes cap-project-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes cap-project-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
+.cap-view {
+  position: relative;
+  display: grid;
+  width: 5.75rem;
+  height: 5.75rem;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.cap-view-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px dashed var(--cap-paper, currentColor);
+  animation: cap-spin 18s linear infinite;
+}
+
+.cap-view-label {
+  position: relative;
+  z-index: 1;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.cap-view:hover,
+.cap-view:focus-visible {
+  background: var(--cap-paper);
+  color: var(--cap-ink);
+}
+
+.cap-view:hover .cap-view-ring,
+.cap-view:focus-visible .cap-view-ring {
+  border-color: var(--cap-ink);
+}
+
+@keyframes cap-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cap-figure {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
+.cap-metric {
+  display: block;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.cap-figure:hover .cap-metric,
+.cap-figure:focus-visible .cap-metric,
+.cap-figure.is-open .cap-metric {
+  max-height: 2.5rem;
+  opacity: 0.9;
+}
+
+.cap-related-photo {
+  transform: translate3d(var(--mx, 0px), var(--my, 0px), 0) scale(1.06);
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cap-related-wash {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.cap-related:hover .cap-related-wash,
+.cap-related:focus-visible .cap-related-wash,
+.cap-related:active .cap-related-wash {
+  opacity: 0.2;
+}
+
+.site-chrome a:focus-visible,
+.site-chrome button:focus-visible,
+.cap-page a:focus-visible,
+.cap-page button:focus-visible,
+.skills-hotspot button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .cap-related-photo {
+    transform: none;
+    transition: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .cap-photo,
+  .cap-char,
+  .cap-project,
+  .cap-view-ring,
+  .cap-related-photo,
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
     transform: none;
+    transition: none;
+  }
+
+  .cap-related:hover .cap-related-wash,
+  .cap-related:focus-visible .cap-related-wash {
+    opacity: 0;
   }
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { CustomEase } from 'gsap/CustomEase'
@@ -20,7 +20,7 @@ import { hrLinks } from '@/src/projects/hrCase.data'
 import { meijianLinks } from '@/src/projects/meijianCase.data'
 import { planflowLinks } from '@/src/projects/planflowCase.data'
 import SiteHeader from '@/src/components/SiteHeader'
-import { profile } from '@/src/content'
+import { profile, projectPieces } from '@/src/content'
 
 type Piece = {
   id: string
@@ -29,15 +29,7 @@ type Piece = {
   image: string
 }
 
-const pieces: Piece[] = [
-  { id: 'meijian', index: '01', title: '梅见', image: '/projects/meijian.png' },
-  { id: 'anker', index: '02', title: '安克创新', image: '/projects/anker.png' },
-  { id: 'loreal', index: '03', title: '欧莱雅', image: '/projects/loreal.png' },
-  { id: 'hr', index: '04', title: 'HR 招聘', image: '/projects/hr.png' },
-  { id: 'sofa', index: '05', title: '海外压缩沙发', image: '/projects/sofa.png' },
-  { id: 'muse', index: '06', title: 'Muse Select', image: '/projects/muse-select.png' },
-  { id: 'planflow', index: '07', title: 'PlanFlow', image: '/projects/planflow.png' },
-]
+const pieces: Piece[] = projectPieces.map((piece) => ({ ...piece }))
 
 const serif = '"Iowan Old Style", Palatino, "Palatino Linotype", "Songti SC", "Noto Serif SC", serif'
 const song = '"Noto Serif SC", "Source Han Serif SC", "STZhongsong", "华文中宋", "Songti SC", "SimSun", serif'
@@ -54,6 +46,26 @@ const flows: Record<string, { a: string; b: string; c: string }> = {
 
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function leaveProjectDetail(navigate: ReturnType<typeof useNavigate>, closeHere: () => void) {
+  const raw = sessionStorage.getItem('capability-return')
+  if (raw) {
+    try {
+      const data = JSON.parse(raw) as { id?: string; item?: number; scroll?: number }
+      if (data.id) {
+        if (window.history.length > 1) {
+          navigate(-1)
+          return
+        }
+        navigate(`/skills/${data.id}?item=${data.item ?? 0}`, { state: { restoreScroll: data.scroll ?? 0 } })
+        return
+      }
+    } catch {
+      sessionStorage.removeItem('capability-return')
+    }
+  }
+  closeHere()
 }
 
 export default function Projects() {
@@ -245,11 +257,21 @@ function ProjectStage() {
   const aboutRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+  const location = useLocation()
+  const [params, setParams] = useSearchParams()
+  const requestedWork = params.get('work')
   const [active, setActive] = useState(0)
   const [mode, setMode] = useState<'slider' | 'grid'>('slider')
   const [compact, setCompact] = useState(false)
-  const [openId, setOpenId] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(
+    pieces.some((piece) => piece.id === requestedWork) ? requestedWork : null,
+  )
   const [origin, setOrigin] = useState<DOMRect | null>(null)
+
+  useEffect(() => {
+    const id = params.get('work')
+    if (id && pieces.some((piece) => piece.id === id)) setOpenId(id)
+  }, [params])
   const [phase, setPhase] = useState<'opening' | 'ready'>('opening')
   const [titlePhase, setTitlePhase] = useState<'in' | 'out' | 'gone'>('in')
 
@@ -750,8 +772,14 @@ function ProjectStage() {
             piece={opened}
             origin={origin}
             onClose={() => {
-              setOpenId(null)
-              setOrigin(null)
+              leaveProjectDetail(navigate, () => {
+                setOpenId(null)
+                setOrigin(null)
+                if (params.get('work')) {
+                  params.delete('work')
+                  setParams(params, { replace: true })
+                }
+              })
             }}
           />
         ) : null}
@@ -1147,8 +1175,16 @@ function ProjectRecord({ record }: { record: ProjectRecord }) {
 }
 
 function ProjectReading() {
-  const [openId, setOpenId] = useState<string | null>(null)
+  const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const requested = params.get('work')
+  const [openId, setOpenId] = useState<string | null>(pieces.some((piece) => piece.id === requested) ? requested : null)
   const opened = pieces.find((piece) => piece.id === openId) ?? null
+
+  useEffect(() => {
+    const id = params.get('work')
+    if (id && pieces.some((piece) => piece.id === id)) setOpenId(id)
+  }, [params])
 
   return (
     <div className="min-h-dvh bg-[#f7f5f2] text-[#1a1a1a]">
@@ -1165,7 +1201,22 @@ function ProjectReading() {
           </article>
         ))}
       </main>
-      {opened ? <PieceDetail key={opened.id} piece={opened} origin={null} onClose={() => setOpenId(null)} /> : null}
+      {opened ? (
+        <PieceDetail
+          key={opened.id}
+          piece={opened}
+          origin={null}
+          onClose={() => {
+            leaveProjectDetail(navigate, () => {
+              setOpenId(null)
+              if (params.get('work')) {
+                params.delete('work')
+                setParams(params, { replace: true })
+              }
+            })
+          }}
+        />
+      ) : null}
     </div>
   )
 }

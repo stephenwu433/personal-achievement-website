@@ -103,12 +103,15 @@ export const projectCells = [
   { id: 'delivery', label: '项目推进', x: 66.5, y: 65, width: 33.5, height: 35 },
 ]
 
-export const projects = [
-  { title: '梅见', image: '/projects/meijian.png' },
-  { title: '安克创新', image: '/projects/anker.png' },
-  { title: '欧莱雅', image: '/projects/loreal.png' },
-  { title: 'HR 招聘', image: '/projects/hr.png' },
-  { title: '海外压缩沙发', image: '/projects/sofa.png' },
-  { title: 'Muse Select', image: '/projects/muse-select.png' },
-  { title: 'PlanFlow', image: '/projects/planflow.png' },
-]
+/** 项目列表里真实打开的案例。能力页只链接到这里有的 id。 */
+export const projectPieces = [
+  { id: 'meijian', index: '01', title: '梅见', image: '/projects/meijian.png' },
+  { id: 'anker', index: '02', title: '安克创新', image: '/projects/anker.png' },
+  { id: 'loreal', index: '03', title: '欧莱雅', image: '/projects/loreal.png' },
+  { id: 'hr', index: '04', title: 'HR 招聘', image: '/projects/hr.png' },
+  { id: 'sofa', index: '05', title: '海外压缩沙发', image: '/projects/sofa.png' },
+  { id: 'muse', index: '06', title: 'Muse Select', image: '/projects/muse-select.png' },
+  { id: 'planflow', index: '07', title: 'PlanFlow', image: '/projects/planflow.png' },
+] as const
+
+export const projects = projectPieces.map((piece) => ({ title: piece.title, image: piece.image }))
