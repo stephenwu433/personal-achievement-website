@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { SplitText } from 'gsap/SplitText'
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import SiteHeader from '@/src/components/SiteHeader'
 import {
@@ -16,7 +17,7 @@ import {
 import { openCapability } from '@/src/pages/openCapability'
 import SkillsIntro from '@/src/pages/SkillsIntro'
 
-gsap.registerPlugin(useGSAP, ScrollTrigger)
+gsap.registerPlugin(useGSAP, ScrollTrigger, SplitText)
 
 const serif = '"Noto Serif SC", "Songti SC", serif'
 
@@ -90,26 +91,43 @@ function ProjectSwitch({
   item,
   index,
   selected,
-  phase,
   onPick,
   hideTabs = false,
+  rootRef,
+  reduced = false,
 }: {
   item: CapabilityItem
   index: number
   selected: number
-  phase: 'in' | 'out'
   onPick: (index: number) => void
   hideTabs?: boolean
+  rootRef?: RefObject<HTMLDivElement | null>
+  reduced?: boolean
 }) {
   const [metricOpen, setMetricOpen] = useState(false)
   const project = item.projects[index]
+  useLayoutEffect(() => {
+    const root = rootRef?.current
+    if (!root) return
+    const parts = root.querySelectorAll<HTMLElement>('[data-cap-part]')
+    if (reduced) {
+      gsap.set(parts, { clearProps: 'transform,opacity,visibility' })
+      return
+    }
+    gsap.fromTo(
+      parts,
+      { y: 22, autoAlpha: 0 },
+      { y: 0, autoAlpha: 1, duration: 0.48, stagger: 0.05, ease: 'power3.out' },
+    )
+  }, [project, reduced, rootRef])
   if (!project) return <p className="mt-4 text-sm">项目证据待填。</p>
   const figure = splitFigure(project.figure)
   return (
-    <div key={`${project.name}-${project.figure}`} className={`cap-project is-${phase} mt-4`} aria-live="polite">
-      <p className="text-[13px] tracking-[0.08em]">{project.name}</p>
-      <p className="mt-2 text-[14px] leading-6">{project.text}</p>
+    <div ref={rootRef} key={`${project.name}-${project.figure}`} className="cap-project mt-4" aria-live="polite">
+      <p data-cap-part className="text-[13px] tracking-[0.08em]">{project.name}</p>
+      <p data-cap-part className="mt-2 text-[14px] leading-6">{project.text}</p>
       <button
+        data-cap-part
         type="button"
         className={`cap-figure mt-3 block text-left ${metricOpen ? 'is-open' : ''}`}
         aria-expanded={metricOpen}
@@ -126,7 +144,7 @@ function ProjectSwitch({
           </span>
         ) : null}
       </button>
-      {project.pieceId ? <ViewProject item={item} project={project} index={index} /> : null}
+      {project.pieceId ? <ViewProject item={item} project={project} index={index} reduced={reduced} /> : null}
       {hideTabs ? null : (
         <div className="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="项目">
           {item.projects.map((entry, entryIndex) => (
@@ -152,11 +170,28 @@ function ProjectSwitch({
   )
 }
 
-function ViewProject({ item, project, index }: { item: CapabilityItem; project: CapabilityProject; index: number }) {
+function ViewProject({
+  item,
+  project,
+  index,
+  reduced = false,
+}: {
+  item: CapabilityItem
+  project: CapabilityProject
+  index: number
+  reduced?: boolean
+}) {
   const navigate = useNavigate()
+  const ringRef = useRef<HTMLSpanElement>(null)
+  useGSAP(() => {
+    if (reduced || !ringRef.current) return
+    const tween = gsap.to(ringRef.current, { rotation: 360, duration: 18, repeat: -1, ease: 'none', transformOrigin: '50% 50%' })
+    return () => tween.kill()
+  }, { dependencies: [reduced] })
   if (!project.pieceId) return null
   return (
     <button
+      data-cap-part
       type="button"
       className="cap-view mt-4"
       style={{ '--cap-paper': item.paper, '--cap-ink': item.ink, color: item.text } as CSSProperties}
@@ -181,7 +216,7 @@ function ViewProject({ item, project, index }: { item: CapabilityItem; project: 
         event.currentTarget.style.color = item.text
       }}
     >
-      <span className="cap-view-ring" style={{ borderColor: item.paper }} />
+      <span ref={ringRef} className="cap-view-ring" style={{ borderColor: item.paper }} />
       <span className="cap-view-label">查看项目</span>
     </button>
   )
@@ -202,11 +237,12 @@ export default function Capability() {
   const initial = Math.min(count - 1, Math.max(0, Number(params.get('item') ?? '0') || 0))
   const [index, setIndex] = useState(initial)
   const [shown, setShown] = useState(initial)
-  const [phase, setPhase] = useState<'in' | 'out'>('in')
   const indexRef = useRef(index)
   indexRef.current = index
   const restoreState = useRef(location.state)
   restoreState.current = location.state
+  const projectRoot = useRef<HTMLDivElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
   const stacked = narrow || reduced
 
   useEffect(() => {
@@ -249,17 +285,38 @@ export default function Capability() {
   useEffect(() => {
     if (reduced) {
       setShown(index)
-      setPhase('in')
       return
     }
     if (index === shown) return
-    setPhase('out')
-    const timer = window.setTimeout(() => {
+    let cancelled = false
+    const parts = projectRoot.current?.querySelectorAll<HTMLElement>('[data-cap-part]')
+    if (!parts?.length) {
       setShown(index)
-      setPhase('in')
-    }, 260)
-    return () => window.clearTimeout(timer)
+      return
+    }
+    const tween = gsap.to(parts, {
+      y: -18,
+      autoAlpha: 0,
+      duration: 0.26,
+      stagger: 0.04,
+      ease: 'power2.in',
+      onComplete: () => {
+        if (!cancelled) setShown(index)
+      },
+    })
+    return () => {
+      cancelled = true
+      tween.kill()
+    }
   }, [index, reduced, shown])
+
+  useGSAP(() => {
+    const title = titleRef.current
+    if (!item || reduced || !title) return
+    const split = SplitText.create(title, { type: 'chars', mask: 'chars', aria: 'auto' })
+    gsap.from(split.chars, { yPercent: 110, duration: 0.7, ease: 'power3.out', stagger: 0.045 })
+    return () => split.revert()
+  }, { dependencies: [item?.id, reduced] })
 
   const writeItem = (next: number) => {
     if (new URLSearchParams(window.location.search).get('item') === String(next)) return
@@ -341,12 +398,8 @@ export default function Capability() {
               className={`${stacked ? 'relative z-10 min-h-0 flex-1 overflow-y-auto p-4' : `absolute z-10 max-h-[calc(100%-1.5rem)] overflow-y-auto p-4 sm:p-5 ${item.place}`}`}
               style={{ background: item.ink, color: item.text }}
             >
-              <h1 className="overflow-hidden text-[clamp(32px,4vw,48px)] leading-none font-medium" style={{ fontFamily: serif }}>
-                {item.label.split('').map((char, charIndex) => (
-                  <span key={`${char}-${charIndex}`} className="cap-char" style={{ animationDelay: `${charIndex * 45}ms` }}>
-                    {char === ' ' ? '\u00a0' : char}
-                  </span>
-                ))}
+              <h1 key={item.id} ref={titleRef} className="overflow-hidden text-[clamp(32px,4vw,48px)] leading-none font-medium" style={{ fontFamily: serif }}>
+                {item.label}
               </h1>
               {item.intro ? <p className="mt-3 text-[14px] leading-6">{item.intro}</p> : null}
               {reduced ? (
@@ -357,14 +410,14 @@ export default function Capability() {
                       item={item}
                       index={projectIndex}
                       selected={projectIndex}
-                      phase="in"
                       onPick={pick}
                       hideTabs
+                      reduced
                     />
                   ))}
                 </div>
               ) : (
-                <ProjectSwitch item={item} index={shown} selected={index} phase={phase} onPick={pick} />
+                <ProjectSwitch item={item} index={shown} selected={index} onPick={pick} rootRef={projectRoot} reduced={reduced} />
               )}
             </div>
           </div>
@@ -383,15 +436,17 @@ export default function Capability() {
               style={{ background: entry.ink }}
               onPointerMove={(event) => {
                 if (!fine || reduced) return
+                const photo = event.currentTarget.querySelector('.cap-related-photo')
+                if (!photo) return
                 const rect = event.currentTarget.getBoundingClientRect()
-                const x = ((event.clientX - rect.left) / rect.width - 0.5) * 16
-                const y = ((event.clientY - rect.top) / rect.height - 0.5) * 16
-                event.currentTarget.style.setProperty('--mx', `${x}px`)
-                event.currentTarget.style.setProperty('--my', `${y}px`)
+                const x = gsap.utils.mapRange(rect.left, rect.right, -12, 12, event.clientX)
+                const y = gsap.utils.mapRange(rect.top, rect.bottom, -12, 12, event.clientY)
+                gsap.to(photo, { x, y, scale: 1.04, duration: 0.4, ease: 'power2.out', overwrite: 'auto' })
               }}
               onPointerLeave={(event) => {
-                event.currentTarget.style.setProperty('--mx', '0px')
-                event.currentTarget.style.setProperty('--my', '0px')
+                const photo = event.currentTarget.querySelector('.cap-related-photo')
+                if (!photo) return
+                gsap.to(photo, { x: 0, y: 0, scale: 1, duration: 0.7, ease: 'elastic.out(1, 0.45)', overwrite: 'auto' })
               }}
             >
               <img src={entry.image} alt="" className="cap-related-photo absolute inset-0 size-full object-cover" style={{ objectPosition: entry.focus }} />

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import gsap from 'gsap'
 
 const SEEN_KEY = 'skills-intro-seen'
 
@@ -16,41 +17,47 @@ export default function SkillsIntro({ src }: { src: string }) {
 
   useEffect(() => {
     if (phase === 'off') return
-    let cancelled = false
-    const image = new Image()
+    let live = true
     let loaded = false
-    image.onload = () => {
+    let resume: (() => void) | null = null
+    const image = new Image()
+    const markLoaded = () => {
       loaded = true
+      resume?.()
     }
-    image.onerror = () => {
-      loaded = true
-    }
+    image.onload = markLoaded
+    image.onerror = markLoaded
     image.src = src
 
-    const steps = phase === 'short' ? [53, 78, 100] : [0, 24, 57, 100]
-    let index = 0
-    const tick = () => {
-      if (cancelled) return
-      const next = steps[Math.min(index, steps.length - 1)]
-      if (next === 100 && !loaded) {
-        window.setTimeout(tick, 80)
-        return
-      }
-      setPercent(next)
-      index += 1
-      if (next >= 100) {
+    const counter = { value: phase === 'short' ? 53 : 0 }
+    const steps = phase === 'short' ? [78, 100] : [24, 57, 100]
+    const tl = gsap.timeline({
+      onComplete: () => {
         sessionStorage.setItem(SEEN_KEY, '1')
         window.setTimeout(() => {
-          if (!cancelled) setPhase('off')
-        }, phase === 'short' ? 180 : 280)
-        return
-      }
-      window.setTimeout(tick, phase === 'short' ? 90 : 220)
+          if (live) setPhase('off')
+        }, phase === 'short' ? 160 : 240)
+      },
+    })
+    steps.forEach((target, index) => {
+      tl.to(counter, {
+        value: target,
+        duration: phase === 'short' ? 0.16 : 0.26,
+        ease: 'power1.inOut',
+        onStart: () => {
+          if (target === 100 && !loaded) tl.pause()
+        },
+        onUpdate: () => setPercent(Math.round(counter.value)),
+      })
+      if (index < steps.length - 1) tl.to({}, { duration: phase === 'short' ? 0.08 : 0.14 })
+    })
+    resume = () => {
+      if (tl.paused()) tl.resume()
     }
-    const start = window.setTimeout(tick, 40)
+    if (image.complete) markLoaded()
     return () => {
-      cancelled = true
-      window.clearTimeout(start)
+      live = false
+      tl.kill()
     }
   }, [phase, src])
 

@@ -797,6 +797,19 @@ span.meijian-line.is-in {
   view-transition-name: site-header;
 }
 
+::view-transition {
+  animation: capability-dim 0.8s cubic-bezier(0.76, 0, 0.24, 1) both alternate;
+}
+
+@keyframes capability-dim {
+  from {
+    background-color: rgba(0, 0, 0, 0);
+  }
+  to {
+    background-color: rgba(0, 0, 0, 0.4);
+  }
+}
+
 ::view-transition-old(root) {
   animation: capability-exit 0.8s cubic-bezier(0.76, 0, 0.24, 1) both;
 }
@@ -849,7 +862,6 @@ span.meijian-line.is-in {
 
 .cap-char {
   display: inline-block;
-  animation: cap-char-in 0.7s cubic-bezier(0.76, 0, 0.24, 1) both;
 }
 
 @keyframes cap-char-in {
@@ -911,7 +923,6 @@ span.meijian-line.is-in {
   inset: 0;
   border-radius: inherit;
   border: 1px dashed var(--cap-paper, currentColor);
-  animation: cap-spin 18s linear infinite;
 }
 
 .cap-view-label {
@@ -961,8 +972,7 @@ span.meijian-line.is-in {
 }
 
 .cap-related-photo {
-  transform: translate3d(var(--mx, 0px), var(--my, 0px), 0) scale(1.06);
-  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  transform: none;
 }
 
 .cap-related-wash {
@@ -998,6 +1008,7 @@ span.meijian-line.is-in {
   .cap-project,
   .cap-view-ring,
   .cap-related-photo,
+  ::view-transition,
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
