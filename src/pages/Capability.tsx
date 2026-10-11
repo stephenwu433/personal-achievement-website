@@ -1,27 +1,41 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { ScrollToPlugin } from 'gsap/ScrollToPlugin'
 import { SplitText } from 'gsap/SplitText'
-import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import SiteHeader from '@/src/components/SiteHeader'
 import {
   capabilities,
   capabilityById,
   rememberCapabilityReturn,
-  splitFigure,
   takeCapabilityReturn,
   type Capability as CapabilityItem,
   type CapabilityProject,
 } from '@/src/pages/capability.data'
-import { openCapability } from '@/src/pages/openCapability'
 import SkillsIntro from '@/src/pages/SkillsIntro'
 
-gsap.registerPlugin(useGSAP, ScrollTrigger, SplitText)
+gsap.registerPlugin(useGSAP, ScrollTrigger, ScrollToPlugin, SplitText)
 
 const serif = '"Noto Serif SC", "Songti SC", serif'
 
-let pendingRestore: { id: string; scroll: number } | null = null
+let jumpCache: { id: string; item: number } | null = null
+
+function readJump(id: string) {
+  if (jumpCache?.id === id) return jumpCache.item
+  const returned = takeCapabilityReturn(id)
+  const raw = new URLSearchParams(window.location.search).get('item')
+  const queryIndex = raw === null ? Number.NaN : Number(raw)
+  const itemIndex = returned ? returned.item : Number.isInteger(queryIndex) ? queryIndex : -1
+  if (itemIndex >= 0) {
+    jumpCache = { id, item: itemIndex }
+    window.setTimeout(() => {
+      if (jumpCache?.id === id && jumpCache.item === itemIndex) jumpCache = null
+    }, 1200)
+  }
+  return itemIndex
+}
 
 function useMedia(query: string) {
   const [matches, setMatches] = useState(() => window.matchMedia(query).matches)
@@ -35,444 +49,388 @@ function useMedia(query: string) {
   return matches
 }
 
-function stageScroll(section: HTMLElement, index: number, total: number) {
-  const span = section.offsetHeight - window.innerHeight
-  return section.offsetTop + (span * (index + 0.45)) / total
+function headerHeight() {
+  return document.querySelector('.site-chrome')?.getBoundingClientRect().height ?? 96
 }
 
-function HeroMedia({ item }: { item: CapabilityItem }) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const [videoOn, setVideoOn] = useState(false)
-  const frames = useMedia('(max-width: 767px)') ? item.mobileFrameSources : item.desktopFrameSources
-  const framesReady = frames.length > 0 && item.scrollFrameEnd > item.scrollFrameStart
-
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video || !item.videoSrc) return
-    const hold = () => {
-      if (document.hidden) video.pause()
-    }
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry?.isIntersecting || document.hidden) video.pause()
-      else void video.play().catch(() => setVideoOn(false))
-    })
-    observer.observe(video)
-    document.addEventListener('visibilitychange', hold)
-    return () => {
-      observer.disconnect()
-      document.removeEventListener('visibilitychange', hold)
-    }
-  }, [item.videoSrc])
-
-  return (
-    <div className="cap-hero absolute inset-0">
-      <img src={item.image} alt="" className="cap-photo absolute inset-0 size-full object-cover" style={{ objectPosition: item.focus }} />
-      <span className="sr-only">{framesReady ? '逐帧序列已接入' : '逐帧序列未启用'}</span>
-      {item.videoSrc ? (
-        <video
-          ref={videoRef}
-          className={`absolute inset-0 size-full object-cover ${videoOn ? 'opacity-100' : 'opacity-0'}`}
-          style={{ objectPosition: item.focus }}
-          src={item.videoSrc}
-          poster={item.posterSrc || item.image}
-          muted
-          loop
-          playsInline
-          preload="auto"
-          onCanPlay={() => setVideoOn(true)}
-          onError={() => setVideoOn(false)}
-        />
-      ) : null}
-    </div>
-  )
+function watchHeader() {
+  const header = document.querySelector('.site-chrome')
+  if (!header) return () => {}
+  const apply = () => {
+    document.documentElement.style.setProperty('--cap-header', `${header.getBoundingClientRect().height}px`)
+  }
+  apply()
+  const observer = new ResizeObserver(apply)
+  observer.observe(header)
+  window.addEventListener('resize', apply)
+  return () => {
+    observer.disconnect()
+    window.removeEventListener('resize', apply)
+  }
 }
 
-function ProjectSwitch({
-  item,
-  index,
-  selected,
-  onPick,
-  hideTabs = false,
-  rootRef,
-  reduced = false,
-}: {
-  item: CapabilityItem
-  index: number
-  selected: number
-  onPick: (index: number) => void
-  hideTabs?: boolean
-  rootRef?: RefObject<HTMLDivElement | null>
-  reduced?: boolean
-}) {
-  const [metricOpen, setMetricOpen] = useState(false)
-  const project = item.projects[index]
-  useLayoutEffect(() => {
-    const root = rootRef?.current
-    if (!root) return
-    const parts = root.querySelectorAll<HTMLElement>('[data-cap-part]')
-    if (reduced) {
-      gsap.set(parts, { clearProps: 'transform,opacity,visibility' })
-      return
-    }
-    gsap.fromTo(
-      parts,
-      { y: 22, autoAlpha: 0 },
-      { y: 0, autoAlpha: 1, duration: 0.48, stagger: 0.05, ease: 'power3.out' },
-    )
-  }, [project, reduced, rootRef])
-  if (!project) return <p className="mt-4 text-sm">项目证据待填。</p>
-  const figure = splitFigure(project.figure)
-  return (
-    <div ref={rootRef} key={`${project.name}-${project.figure}`} className="cap-project mt-4" aria-live="polite">
-      <p data-cap-part className="text-[13px] tracking-[0.08em]">{project.name}</p>
-      <p data-cap-part className="mt-2 text-[14px] leading-6">{project.text}</p>
-      <button
-        data-cap-part
-        type="button"
-        className={`cap-figure mt-3 block text-left ${metricOpen ? 'is-open' : ''}`}
-        aria-expanded={metricOpen}
-        aria-describedby={figure.unit ? `cap-metric-${index}` : undefined}
-        onClick={() => setMetricOpen((open) => !open)}
-      >
-        <span className="text-[32px] leading-none" style={{ fontFamily: serif }}>
-          {figure.value}
-        </span>
-        {figure.unit ? <span className="ml-2 text-[12px] tracking-[0.08em]">{figure.unit}</span> : null}
-        {figure.unit ? (
-          <span id={`cap-metric-${index}`} className="cap-metric mt-1 block text-[12px] tracking-[0.12em]">
-            {figure.unit}
-          </span>
-        ) : null}
-      </button>
-      {project.pieceId ? <ViewProject item={item} project={project} index={index} reduced={reduced} /> : null}
-      {hideTabs ? null : (
-        <div className="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="项目">
-          {item.projects.map((entry, entryIndex) => (
-            <button
-              key={`${entry.name}-${entry.figure}`}
-              type="button"
-              role="tab"
-              aria-selected={entryIndex === selected}
-              onClick={() => onPick(entryIndex)}
-              className="rounded-full border px-3 py-1 text-[12px]"
-              style={{
-                borderColor: `${item.paper}99`,
-                background: entryIndex === selected ? item.paper : 'transparent',
-                color: entryIndex === selected ? item.ink : item.text,
-              }}
-            >
-              {entry.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function ViewProject({
-  item,
-  project,
-  index,
-  reduced = false,
-}: {
-  item: CapabilityItem
-  project: CapabilityProject
-  index: number
-  reduced?: boolean
-}) {
-  const navigate = useNavigate()
-  const ringRef = useRef<HTMLSpanElement>(null)
-  useGSAP(() => {
-    if (reduced || !ringRef.current) return
-    const tween = gsap.to(ringRef.current, { rotation: 360, duration: 18, repeat: -1, ease: 'none', transformOrigin: '50% 50%' })
-    return () => tween.kill()
-  }, { dependencies: [reduced] })
-  if (!project.pieceId) return null
-  return (
-    <button
-      data-cap-part
-      type="button"
-      className="cap-view mt-4"
-      style={{ '--cap-paper': item.paper, '--cap-ink': item.ink, color: item.text } as CSSProperties}
-      onClick={() => {
-        rememberCapabilityReturn(item.id, index, window.scrollY)
-        openCapability(navigate, `/projects?work=${project.pieceId}`)
-      }}
-      onMouseEnter={(event) => {
-        event.currentTarget.style.background = item.paper
-        event.currentTarget.style.color = item.ink
-      }}
-      onMouseLeave={(event) => {
-        event.currentTarget.style.background = 'transparent'
-        event.currentTarget.style.color = item.text
-      }}
-      onFocus={(event) => {
-        event.currentTarget.style.background = item.paper
-        event.currentTarget.style.color = item.ink
-      }}
-      onBlur={(event) => {
-        event.currentTarget.style.background = 'transparent'
-        event.currentTarget.style.color = item.text
-      }}
-    >
-      <span ref={ringRef} className="cap-view-ring" style={{ borderColor: item.paper }} />
-      <span className="cap-view-label">查看项目</span>
-    </button>
-  )
+function shade(hex: string, amount: number) {
+  const value = Number.parseInt(hex.replace('#', ''), 16)
+  const channel = (shift: number) => Math.max(0, Math.min(255, ((value >> shift) & 255) + amount))
+  return `#${[channel(16), channel(8), channel(0)].map((part) => part.toString(16).padStart(2, '0')).join('')}`
 }
 
 export default function Capability() {
   const { id } = useParams()
   const item = capabilityById(id)
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [params, setParams] = useSearchParams()
-  const pinRef = useRef<HTMLElement>(null)
-  const seeking = useRef<number | null>(null)
   const reduced = useMedia('(prefers-reduced-motion: reduce)')
-  const narrow = useMedia('(max-width: 767px)')
-  const fine = useMedia('(hover: hover) and (pointer: fine)')
-  const count = Math.max(item?.projects.length ?? 1, 1)
-  const initial = Math.min(count - 1, Math.max(0, Number(params.get('item') ?? '0') || 0))
-  const [index, setIndex] = useState(initial)
-  const [shown, setShown] = useState(initial)
-  const indexRef = useRef(index)
-  indexRef.current = index
-  const restoreState = useRef(location.state)
-  restoreState.current = location.state
-  const projectRoot = useRef<HTMLDivElement>(null)
-  const titleRef = useRef<HTMLHeadingElement>(null)
-  const stacked = narrow || reduced
+  if (!item) return <Navigate to="/skills" replace />
+  return reduced ? <CapabilityStill item={item} /> : <CapabilityMotion item={item} />
+}
 
-  useEffect(() => {
-    const header = document.querySelector('.site-chrome')
-    if (!header) return
-    const apply = () => {
-      document.documentElement.style.setProperty('--cap-header', `${header.getBoundingClientRect().height}px`)
-    }
-    apply()
-    const observer = new ResizeObserver(apply)
-    observer.observe(header)
-    return () => observer.disconnect()
-  }, [])
+function Frame({ item, children }: { item: CapabilityItem; children: ReactNode }) {
+  useLayoutEffect(() => watchHeader(), [])
+  return (
+    <main
+      className="cap-page min-h-screen"
+      style={{ background: item.paper, color: item.ink, ['--cap-ink' as string]: item.ink, ['--cap-paper' as string]: item.paper, ['--cap-text' as string]: item.text } as CSSProperties}
+    >
+      <SiteHeader />
+      <SkillsIntro src={item.image} />
+      {children}
+    </main>
+  )
+}
 
-  useLayoutEffect(() => {
-    if (!item) return
-    const fromState = (restoreState.current as { restoreScroll?: number } | null)?.restoreScroll
-    let top = typeof fromState === 'number' ? fromState : undefined
-    if (pendingRestore?.id === item.id) top = pendingRestore.scroll
-    else {
-      const saved = takeCapabilityReturn(item.id)
-      if (saved && typeof top !== 'number') top = saved.scroll
-      if (typeof top === 'number') pendingRestore = { id: item.id, scroll: top }
-    }
-    const reducedNow = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (typeof top !== 'number') {
-      const itemIndex = Math.min(item.projects.length - 1, Math.max(0, Number(new URLSearchParams(window.location.search).get('item') ?? '0') || 0))
-      const section = pinRef.current
-      if (itemIndex > 0 && section && !reducedNow && item.projects.length > 1) {
-        top = stageScroll(section, itemIndex, item.projects.length)
-      }
-    }
-    window.scrollTo(0, typeof top === 'number' ? top : 0)
-    const timer = window.setTimeout(() => {
-      if (pendingRestore?.id === item.id) pendingRestore = null
-    }, 600)
-    return () => window.clearTimeout(timer)
-  }, [item])
+function ViewButton({ item, project, index }: { item: CapabilityItem; project: CapabilityProject; index: number }) {
+  const navigate = useNavigate()
+  if (!project.pieceId) return null
+  return (
+    <button
+      type="button"
+      className="cap-view"
+      onClick={() => {
+        rememberCapabilityReturn(item.id, index, window.scrollY)
+        const go = () => navigate(`/projects?work=${project.pieceId}`)
+        if ('startViewTransition' in document) document.startViewTransition(go)
+        else go()
+      }}
+    >
+      查看项目
+    </button>
+  )
+}
 
-  useEffect(() => {
-    if (reduced) {
-      setShown(index)
-      return
-    }
-    if (index === shown) return
-    let cancelled = false
-    const parts = projectRoot.current?.querySelectorAll<HTMLElement>('[data-cap-part]')
-    if (!parts?.length) {
-      setShown(index)
-      return
-    }
-    const tween = gsap.to(parts, {
-      y: -18,
-      autoAlpha: 0,
-      duration: 0.26,
-      stagger: 0.04,
-      ease: 'power2.in',
-      onComplete: () => {
-        if (!cancelled) setShown(index)
-      },
-    })
-    return () => {
-      cancelled = true
-      tween.kill()
-    }
-  }, [index, reduced, shown])
-
-  useGSAP(() => {
-    const title = titleRef.current
-    if (!item || reduced || !title) return
-    const split = SplitText.create(title, { type: 'chars', mask: 'chars', aria: 'auto' })
-    gsap.from(split.chars, { yPercent: 110, duration: 0.7, ease: 'power3.out', stagger: 0.045 })
-    return () => split.revert()
-  }, { dependencies: [item?.id, reduced] })
-
-  const writeItem = (next: number) => {
-    if (new URLSearchParams(window.location.search).get('item') === String(next)) return
-    setParams({ item: String(next) }, { replace: true, preventScrollReset: true })
-  }
-  const writeItemRef = useRef(writeItem)
-  writeItemRef.current = writeItem
-
-  const pick = (next: number) => {
-    if (!item) return
-    const clamped = Math.min(item.projects.length - 1, Math.max(0, next))
-    seeking.current = clamped
-    setIndex(clamped)
-    writeItem(clamped)
-    const section = pinRef.current
-    if (!section || reduced || item.projects.length < 2) return
-    window.scrollTo({ top: stageScroll(section, clamped, item.projects.length), behavior: 'smooth' })
-  }
+function CapabilityMotion({ item }: { item: CapabilityItem }) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  const storyTween = useRef<gsap.core.Timeline | null>(null)
+  const location = useLocation()
+  const locationRef = useRef(location)
+  const others = capabilities.filter((entry) => entry.id !== item.id)
 
   useGSAP(
     () => {
-      if (!item || reduced || item.projects.length < 2) return
-      const total = item.projects.length
-      const trigger = ScrollTrigger.create({
-        trigger: pinRef.current,
-        start: 'top top',
-        end: 'bottom bottom',
-        scrub: 0.6,
-        onUpdate(self) {
-          pinRef.current?.style.setProperty('--cap-p', self.progress.toFixed(4))
-          const next = Math.min(total - 1, Math.floor(self.progress * total))
-          if (seeking.current !== null) {
-            if (next === seeking.current) seeking.current = null
-            return
-          }
-          if (next !== indexRef.current) {
-            indexRef.current = next
-            setIndex(next)
-            writeItemRef.current(next)
-          }
+      const root = rootRef.current
+      if (!root) return
+      const top = headerHeight()
+      document.documentElement.style.setProperty('--cap-header', `${top}px`)
+      const bag = root.querySelector<HTMLElement>('[data-story] .cap-bag')
+      const giant = root.querySelector<HTMLElement>('[data-story] .cap-giant')
+      const captions = gsap.utils.toArray<HTMLElement>('[data-caption]', root)
+      const story = root.querySelector<HTMLElement>('[data-story]')
+      const progress = root.querySelector<HTMLElement>('[data-progress]')
+      const title = root.querySelector('.cap-open-title')
+
+      if (title) {
+        const split = SplitText.create(title, { type: 'chars' })
+        gsap.from(split.chars, { yPercent: 120, autoAlpha: 0, stagger: 0.035, duration: 0.7, ease: 'back.out(1.7)' })
+      }
+
+      const heroSlot = root.querySelector('.cap-open-hero-slot')
+      gsap.to('.cap-open-hero', { y: -14, duration: 2.7, yoyo: true, repeat: -1, ease: 'sine.inOut' })
+      const xTo = heroSlot ? gsap.quickTo(heroSlot, 'x', { duration: 0.7, ease: 'power3' }) : null
+      const onMove = (event: PointerEvent) => {
+        const open = root.querySelector('.cap-open')
+        if (!open || !xTo) return
+        const rect = open.getBoundingClientRect()
+        if (rect.bottom < 0 || rect.top > window.innerHeight) return
+        xTo(((event.clientX - rect.left) / rect.width - 0.5) * 18)
+      }
+      window.addEventListener('pointermove', onMove)
+
+      const mark = (current: number) => {
+        root.querySelectorAll<HTMLButtonElement>('[data-chip]').forEach((chip, index) => {
+          const on = index === current
+          chip.classList.toggle('is-on', on)
+          chip.setAttribute('aria-selected', on ? 'true' : 'false')
+        })
+      }
+
+      let shown = 0
+      const timeline = gsap.timeline({
+        defaults: { ease: 'power2.inOut' },
+        scrollTrigger: {
+          trigger: story,
+          start: () => `top top+=${headerHeight()}px`,
+          end: () => `+=${Math.round(window.innerHeight * (0.85 + item.projects.length * 0.8))}`,
+          pin: true,
+          scrub: 0.45,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+          onUpdate: (self) => {
+            const tween = self.animation as gsap.core.Timeline | undefined
+            if (!tween) return
+            const time = tween.duration() * self.progress
+            let next = 0
+            item.projects.forEach((_, index) => {
+              const label = tween.labels[`hold-${index}`]
+              if (typeof label === 'number' && time >= label - 0.02) next = index
+            })
+            if (next !== shown) {
+              shown = next
+              mark(next)
+            }
+            if (progress) gsap.set(progress, { scaleX: self.progress, transformOrigin: 'left center' })
+          },
         },
       })
-      return () => trigger.kill()
+      storyTween.current = timeline
+      gsap.set(progress, { scaleX: 0, transformOrigin: 'left center' })
+      if (bag && giant) {
+        gsap.set(captions, { autoAlpha: 0, y: 16, x: 0 })
+        gsap.set(giant, { autoAlpha: 1, y: 0 })
+        timeline.fromTo(bag, { yPercent: -72, autoAlpha: 0, rotation: -7 }, { yPercent: 0, autoAlpha: 1, rotation: 0, duration: 0.58, ease: 'power3.out' }, 0)
+        if (captions[0]) timeline.fromTo(captions[0], { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.3 }, 0.36)
+        timeline.addLabel('hold-0', 0.72)
+        timeline.to({}, { duration: 0.48 })
+
+        item.projects.forEach((_, index) => {
+          if (index === 0) return
+          const leave = `leave-${index - 1}`
+          const side = index % 2 === 1 ? -8 : 8
+          timeline.addLabel(leave)
+          if (captions[index - 1]) timeline.to(captions[index - 1], { autoAlpha: 0, x: -32, y: -6, duration: 0.18 }, leave)
+          timeline.to(bag, { xPercent: side, rotation: side * 0.35, duration: 0.22, ease: 'power1.inOut' }, leave)
+          timeline.to(bag, { xPercent: 0, rotation: 0, duration: 0.3, ease: 'power2.out' })
+          if (story) timeline.to(story, { backgroundColor: index % 2 === 1 ? shade(item.ink, 36) : item.ink, duration: 0.32 }, '<')
+          if (captions[index]) timeline.fromTo(captions[index], { autoAlpha: 0, x: 40, y: 10 }, { autoAlpha: 1, x: 0, y: 0, duration: 0.28 }, '<')
+          timeline.addLabel(`hold-${index}`)
+          timeline.to({}, { duration: 0.5 })
+        })
+      }
+
+      const panels = gsap.utils.toArray<HTMLElement>('[data-panel]', root)
+      gsap.set(panels, { autoAlpha: 0, y: 24 })
+      if (panels[0]) gsap.set(panels[0], { autoAlpha: 1, y: 0 })
+      const split = gsap.timeline({
+        defaults: { ease: 'power2.out' },
+        scrollTrigger: {
+          trigger: '[data-split]',
+          start: () => `top top+=${headerHeight()}px`,
+          end: () => `+=${Math.max(panels.length, 1) * window.innerHeight * 0.7}`,
+          pin: true,
+          scrub: 0.4,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+        },
+      })
+      split.to({}, { duration: 0.3 })
+      panels.forEach((panel, index) => {
+        if (index === 0) return
+        split.to(panels[index - 1], { autoAlpha: 0, y: -16, duration: 0.22 })
+        split.fromTo(panel, { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: 0.28 })
+        split.to({}, { duration: 0.35 })
+      })
+
+      const cards = gsap.utils.toArray<HTMLElement>('[data-card]', root)
+      gsap.set(cards, {
+        y: (index) => Number(index) * 18,
+        rotation: (index) => (Number(index) - (cards.length - 1) / 2) * 3.2,
+        zIndex: (index) => cards.length - Number(index),
+      })
+      const stack = gsap.timeline({
+        scrollTrigger: {
+          trigger: '[data-stack]',
+          start: () => `top top+=${headerHeight()}px`,
+          end: () => `+=${Math.max(cards.length - 1, 1) * window.innerHeight * 0.55}`,
+          pin: true,
+          scrub: 0.45,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+        },
+      })
+      cards.forEach((card, index) => {
+        if (index === cards.length - 1) return
+        stack.to(card, { yPercent: -125, rotation: -7, duration: 0.45, ease: 'power2.inOut' })
+      })
+
+      const params = new URLSearchParams(window.location.search)
+      const state = locationRef.current.state as { restoreScroll?: number } | null
+      let restoreIndex = readJump(item.id)
+      if (restoreIndex >= item.projects.length) restoreIndex = item.projects.length - 1
+      ScrollTrigger.refresh()
+      if (restoreIndex >= 0 && timeline.scrollTrigger) {
+        window.scrollTo(0, timeline.scrollTrigger.labelToScroll(`hold-${restoreIndex}`))
+      } else if (typeof state?.restoreScroll === 'number') {
+        window.scrollTo(0, state.restoreScroll)
+      }
+      if (params.has('item')) window.history.replaceState(null, '', `/skills/${item.id}`)
+
+      return () => window.removeEventListener('pointermove', onMove)
     },
-    { dependencies: [item?.id, reduced, item?.projects.length], scope: pinRef },
+    { scope: rootRef, dependencies: [item.id] },
   )
 
-  if (!item) return <Navigate to="/skills" replace />
-
-  const others = capabilities.filter((entry) => entry.id !== item.id)
-  const pinned = !reduced && item.projects.length > 1
+  const pick = (index: number) => {
+    const trigger = storyTween.current?.scrollTrigger
+    if (!trigger) return
+    gsap.to(window, { scrollTo: trigger.labelToScroll(`hold-${index}`), duration: 0.8, ease: 'power2.inOut', overwrite: 'auto' })
+  }
 
   return (
-    <div className="cap-page bg-background text-foreground">
-      <SkillsIntro src={item.image} />
-      <SiteHeader />
-      <main>
-        <section
-          ref={pinRef}
-          style={{ height: pinned ? `${(item.projects.length + 1) * 100}vh` : 'auto', background: item.ink }}
-        >
-          <div
-            className={
-              pinned
-                ? `sticky top-[var(--cap-header,6.75rem)] h-[calc(100dvh-var(--cap-header,6.75rem))] overflow-hidden ${stacked ? 'flex flex-col' : ''}`
-                : stacked
-                  ? 'relative'
-                  : 'relative min-h-[calc(100dvh-var(--cap-header,6.75rem))]'
-            }
-          >
-            <div className={stacked ? `relative w-full shrink-0 overflow-hidden ${pinned ? 'h-[min(32vh,220px)]' : 'h-[min(48vh,420px)]'}` : 'absolute inset-0'}>
-              {reduced ? (
-                <img src={item.image} alt="" className="size-full object-cover" style={{ objectPosition: item.focus }} />
-              ) : (
-                <HeroMedia item={item} />
-              )}
-            </div>
-            <div
-              className={`${stacked ? 'relative z-10 min-h-0 flex-1 overflow-y-auto p-4' : `absolute z-10 max-h-[calc(100%-1.5rem)] overflow-y-auto p-4 sm:p-5 ${item.place}`}`}
-              style={{ background: item.ink, color: item.text }}
-            >
-              <h1 key={item.id} ref={titleRef} className="overflow-hidden text-[clamp(32px,4vw,48px)] leading-none font-medium" style={{ fontFamily: serif }}>
-                {item.label}
-              </h1>
-              {item.intro ? <p className="mt-3 text-[14px] leading-6">{item.intro}</p> : null}
-              {reduced ? (
-                <div className="mt-2 flex flex-col gap-2">
-                  {item.projects.map((project, projectIndex) => (
-                    <ProjectSwitch
-                      key={`${project.name}-${project.figure}`}
-                      item={item}
-                      index={projectIndex}
-                      selected={projectIndex}
-                      onPick={pick}
-                      hideTabs
-                      reduced
-                    />
-                  ))}
-                </div>
-              ) : (
-                <ProjectSwitch item={item} index={shown} selected={index} onPick={pick} rootRef={projectRoot} reduced={reduced} />
-              )}
+    <Frame item={item}>
+      <div ref={rootRef}>
+        <section className="cap-open" aria-label={item.label}>
+          <div className="cap-open-copy">
+            <h1 className="cap-open-title" style={{ fontFamily: serif }}>
+              {item.label}
+            </h1>
+            <p className="cap-open-intro">{item.intro}</p>
+          </div>
+          <div className="cap-open-world">
+            <div className="cap-open-hero-slot">
+              <img className="cap-open-hero" src={item.image} alt="" style={{ objectPosition: item.focus }} />
             </div>
           </div>
+          <p className="cap-open-cue">向下滚动</p>
         </section>
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+
+        <section className="cap-story" data-story aria-label="项目切换" style={{ background: item.ink, color: item.text }}>
+          <h2 className="cap-giant" style={{ fontFamily: serif }}>
+            {item.label}
+          </h2>
+          <div className="cap-hero-row">
+            <div className="cap-bag-slot">
+              <img className="cap-bag" src={item.image} alt="" style={{ objectPosition: item.focus }} />
+            </div>
+          </div>
+          <div className="cap-caption-stack">
+            {item.projects.map((project, index) => (
+              <div key={`${project.name}-${project.figure}`} className="cap-caption" data-caption>
+                <p className="cap-kicker">{project.name}</p>
+                <p className="cap-line">{project.text}</p>
+                <div className="cap-meta">
+                  <p className="cap-num">{project.figure}</p>
+                  <ViewButton item={item} project={project} index={index} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="cap-chips" role="tablist" aria-label="项目">
+            {item.projects.map((project, index) => (
+              <button key={`${project.name}-${project.figure}`} type="button" className={index === 0 ? 'cap-chip is-on' : 'cap-chip'} data-chip role="tab" aria-selected={index === 0} onClick={() => pick(index)}>
+                {project.name}
+              </button>
+            ))}
+          </div>
+          <div className="cap-progress" data-progress />
+        </section>
+
+        <section className="cap-split" data-split>
+          <div>
+            <p className="text-xs tracking-[0.16em]">这一项能力</p>
+            <h2 className="mt-3 text-4xl leading-tight md:text-6xl" style={{ fontFamily: serif }}>
+              {item.label}
+            </h2>
+            <p className="mt-4 max-w-md text-sm leading-7">{item.intro}</p>
+          </div>
+          <img className="cap-split-photo" src={item.image} alt="" style={{ objectPosition: item.focus }} />
+          <div className="cap-switch" aria-live="polite">
+            {item.projects.map((project) => (
+              <article key={`${project.name}-${project.figure}`} className="cap-switch-panel" data-panel>
+                <p className="text-xs tracking-[0.16em]">项目证据</p>
+                <h3 className="mt-3 text-2xl leading-snug" style={{ fontFamily: serif }}>
+                  {project.name}
+                </h3>
+                <p className="mt-3 text-sm leading-7">{project.text}</p>
+                <p className="mt-4 text-sm tracking-[0.14em]">{project.figure}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="cap-stack" data-stack aria-label="其他能力">
+          <h2 className="cap-stack-title" style={{ fontFamily: serif }}>
+            其他能力
+          </h2>
+          <div className="cap-pile">
+            {others.map((entry) => (
+              <Link key={entry.id} to={`/skills/${entry.id}`} className="cap-card" data-card style={{ background: entry.ink, color: entry.text }}>
+                <img src={entry.image} alt="" style={{ objectPosition: entry.focus }} />
+                <span>
+                  <strong style={{ fontFamily: serif }}>{entry.label}</strong>
+                  <small>{entry.intro}</small>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section className="cap-more" aria-label="继续看其他能力">
+          <h2 className="text-3xl" style={{ fontFamily: serif }}>
+            继续看其他能力
+          </h2>
+          <div className="cap-more-grid">
+            {others.map((entry) => (
+              <Link key={entry.id} to={`/skills/${entry.id}`} className="cap-more-card">
+                <img src={entry.image} alt="" style={{ objectPosition: entry.focus }} />
+                <span>{entry.label}</span>
+              </Link>
+            ))}
+          </div>
+          <Link to="/skills" className="mt-8 inline-block text-sm underline">
+            返回个人能力
+          </Link>
+        </section>
+      </div>
+    </Frame>
+  )
+}
+
+function CapabilityStill({ item }: { item: CapabilityItem }) {
+  const others = capabilities.filter((entry) => entry.id !== item.id)
+  return (
+    <Frame item={item}>
+      <section className="cap-still-open" style={{ background: item.paper, color: item.ink }}>
+        <h1 className="text-5xl" style={{ fontFamily: serif }}>
+          {item.label}
+        </h1>
+        <p className="mt-4 max-w-xl text-sm leading-7">{item.intro}</p>
+        <img src={item.image} alt="" style={{ objectPosition: item.focus }} />
+      </section>
+      {item.projects.map((project, index) => (
+        <article key={`${project.name}-${project.figure}`} className="cap-still-beat" style={{ background: item.ink, color: item.text }}>
+          <div>
+            <h2 className="text-3xl" style={{ fontFamily: serif }}>
+              {project.name}
+            </h2>
+            <p className="mt-3 text-sm leading-7">{project.text}</p>
+            <p className="mt-3 text-sm tracking-[0.12em]">{project.figure}</p>
+            <ViewButton item={item} project={project} index={index} />
+          </div>
+        </article>
+      ))}
+      <section className="cap-more">
+        <h2 className="text-3xl" style={{ fontFamily: serif }}>
+          其他能力
+        </h2>
+        <div className="cap-more-grid">
           {others.map((entry) => (
-            <Link
-              key={entry.id}
-              to={`/skills/${entry.id}`}
-              onClick={(event) => {
-                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
-                event.preventDefault()
-                openCapability(navigate, `/skills/${entry.id}`)
-              }}
-              className="cap-related relative block min-h-[42vh] overflow-hidden"
-              style={{ background: entry.ink }}
-              onPointerMove={(event) => {
-                if (!fine || reduced) return
-                const photo = event.currentTarget.querySelector('.cap-related-photo')
-                if (!photo) return
-                const rect = event.currentTarget.getBoundingClientRect()
-                const x = gsap.utils.mapRange(rect.left, rect.right, -12, 12, event.clientX)
-                const y = gsap.utils.mapRange(rect.top, rect.bottom, -12, 12, event.clientY)
-                gsap.to(photo, { x, y, scale: 1.04, duration: 0.4, ease: 'power2.out', overwrite: 'auto' })
-              }}
-              onPointerLeave={(event) => {
-                const photo = event.currentTarget.querySelector('.cap-related-photo')
-                if (!photo) return
-                gsap.to(photo, { x: 0, y: 0, scale: 1, duration: 0.7, ease: 'elastic.out(1, 0.45)', overwrite: 'auto' })
-              }}
-            >
-              <img src={entry.image} alt="" className="cap-related-photo absolute inset-0 size-full object-cover" style={{ objectPosition: entry.focus }} />
-              <span className="cap-related-wash pointer-events-none absolute inset-0" style={{ background: entry.paper }} />
-              <span className="absolute inset-x-0 bottom-0 h-28" style={{ background: `linear-gradient(transparent, ${entry.ink})` }} />
-              <span className="absolute bottom-5 left-5 text-[clamp(26px,3vw,40px)] leading-none" style={{ color: entry.text, fontFamily: serif }}>
-                {entry.label}
-              </span>
+            <Link key={entry.id} to={`/skills/${entry.id}`} className="cap-more-card">
+              <img src={entry.image} alt="" style={{ objectPosition: entry.focus }} />
+              <span>{entry.label}</span>
             </Link>
           ))}
-        </section>
-        <p className="px-5 py-8" style={{ background: item.ink }}>
-          <Link
-            to="/skills"
-            className="text-sm underline underline-offset-4"
-            style={{ color: item.text }}
-            onClick={(event) => {
-              if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
-              event.preventDefault()
-              openCapability(navigate, '/skills')
-            }}
-          >
-            返回能力总览
-          </Link>
-        </p>
-      </main>
-    </div>
+        </div>
+        <Link to="/skills" className="mt-8 inline-block text-sm underline">
+          返回个人能力
+        </Link>
+      </section>
+    </Frame>
   )
 }
