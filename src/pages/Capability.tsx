@@ -6,7 +6,6 @@ import { ScrollToPlugin } from 'gsap/ScrollToPlugin'
 import { SplitText } from 'gsap/SplitText'
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import SiteHeader from '@/src/components/SiteHeader'
-import { projectPieces } from '@/src/content'
 import {
   capabilities,
   capabilityById,
@@ -48,10 +47,6 @@ function useMedia(query: string) {
     return () => media.removeEventListener('change', sync)
   }, [query])
   return matches
-}
-
-function projectImage(pieceId: string | null, fallback: string) {
-  return projectPieces.find((piece) => piece.id === pieceId)?.image ?? fallback
 }
 
 function headerHeight() {
@@ -134,11 +129,9 @@ function CapabilityMotion({ item }: { item: CapabilityItem }) {
       if (!root) return
       const top = headerHeight()
       document.documentElement.style.setProperty('--cap-header', `${top}px`)
-      const beats = gsap.utils.toArray<HTMLElement>('[data-beat]', root)
-      const bags = beats.map((beat) => beat.querySelector<HTMLElement>('.cap-bag'))
-      const giants = beats.map((beat) => beat.querySelector<HTMLElement>('.cap-giant'))
-      const copies = beats.map((beat) => beat.querySelectorAll<HTMLElement>('.cap-copy'))
-      const buttons = beats.map((beat) => beat.querySelector<HTMLElement>('.cap-view'))
+      const bag = root.querySelector<HTMLElement>('[data-story] .cap-bag')
+      const giant = root.querySelector<HTMLElement>('[data-story] .cap-giant')
+      const captions = gsap.utils.toArray<HTMLElement>('[data-caption]', root)
       const story = root.querySelector<HTMLElement>('[data-story]')
       const progress = root.querySelector<HTMLElement>('[data-progress]')
       const title = root.querySelector('.cap-open-title')
@@ -148,38 +141,17 @@ function CapabilityMotion({ item }: { item: CapabilityItem }) {
         gsap.from(split.chars, { yPercent: 120, autoAlpha: 0, stagger: 0.035, duration: 0.7, ease: 'back.out(1.7)' })
       }
 
-      gsap.to('.cap-open-hero-slot', { y: -16, duration: 2.7, yoyo: true, repeat: -1, ease: 'sine.inOut' })
-      gsap.utils.toArray<HTMLElement>('.cap-floater', root).forEach((floater, index) => {
-        gsap.to(floater, {
-          x: index % 2 === 0 ? 22 : -18,
-          y: index % 2 === 0 ? -18 : 16,
-          rotation: index % 2 === 0 ? 12 : -10,
-          duration: 2.4 + index * 0.45,
-          delay: index * 0.15,
-          yoyo: true,
-          repeat: -1,
-          ease: 'sine.inOut',
-        })
-      })
-
-      const world = root.querySelector('.cap-open-world')
-      const xTo = world ? gsap.quickTo(world, 'x', { duration: 0.7, ease: 'power3' }) : null
-      const yTo = world ? gsap.quickTo(world, 'y', { duration: 0.7, ease: 'power3' }) : null
+      const heroSlot = root.querySelector('.cap-open-hero-slot')
+      gsap.to('.cap-open-hero', { y: -14, duration: 2.7, yoyo: true, repeat: -1, ease: 'sine.inOut' })
+      const xTo = heroSlot ? gsap.quickTo(heroSlot, 'x', { duration: 0.7, ease: 'power3' }) : null
       const onMove = (event: PointerEvent) => {
         const open = root.querySelector('.cap-open')
-        if (!open || !xTo || !yTo) return
+        if (!open || !xTo) return
         const rect = open.getBoundingClientRect()
         if (rect.bottom < 0 || rect.top > window.innerHeight) return
-        xTo(((event.clientX - rect.left) / rect.width - 0.5) * 22)
-        yTo(((event.clientY - rect.top) / rect.height - 0.5) * 14)
+        xTo(((event.clientX - rect.left) / rect.width - 0.5) * 18)
       }
       window.addEventListener('pointermove', onMove)
-
-      gsap.to('.cap-open-hero', {
-        scale: 1.06,
-        ease: 'none',
-        scrollTrigger: { trigger: '.cap-open', start: 'top top', end: 'bottom top', scrub: true },
-      })
 
       const mark = (current: number) => {
         root.querySelectorAll<HTMLButtonElement>('[data-chip]').forEach((chip, index) => {
@@ -195,7 +167,7 @@ function CapabilityMotion({ item }: { item: CapabilityItem }) {
         scrollTrigger: {
           trigger: story,
           start: () => `top top+=${headerHeight()}px`,
-          end: () => `+=${Math.round(window.innerHeight * (item.projects.length * 1.85 + 0.8))}`,
+          end: () => `+=${Math.round(window.innerHeight * (0.85 + item.projects.length * 0.8))}`,
           pin: true,
           scrub: 0.45,
           anticipatePin: 1,
@@ -218,61 +190,29 @@ function CapabilityMotion({ item }: { item: CapabilityItem }) {
         },
       })
       storyTween.current = timeline
-      gsap.set(beats, { autoAlpha: 0 })
-      if (beats[0]) gsap.set(beats[0], { autoAlpha: 1 })
-      bags.forEach((bag) => bag && gsap.set(bag, { autoAlpha: 0 }))
-      giants.forEach((giant) => giant && gsap.set(giant, { autoAlpha: 0 }))
-      copies.forEach((nodes) => gsap.set(nodes, { autoAlpha: 0 }))
-      buttons.forEach((button) => button && gsap.set(button, { autoAlpha: 0 }))
       gsap.set(progress, { scaleX: 0, transformOrigin: 'left center' })
+      if (bag && giant) {
+        gsap.set(captions, { autoAlpha: 0, y: 16, x: 0 })
+        gsap.set(giant, { autoAlpha: 1, y: 0 })
+        timeline.fromTo(bag, { yPercent: -72, autoAlpha: 0, rotation: -7 }, { yPercent: 0, autoAlpha: 1, rotation: 0, duration: 0.58, ease: 'power3.out' }, 0)
+        if (captions[0]) timeline.fromTo(captions[0], { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.3 }, 0.36)
+        timeline.addLabel('hold-0', 0.72)
+        timeline.to({}, { duration: 0.48 })
 
-      item.projects.forEach((_, index) => {
-        const beat = beats[index]
-        const bag = bags[index]
-        const giant = giants[index]
-        const copy = copies[index]
-        const button = buttons[index]
-        const last = index === item.projects.length - 1
-        if (!beat || !bag || !giant) return
-        const enter = `enter-${index}`
-        timeline.addLabel(enter, index === 0 ? 0 : `leave-${index - 1}+=0.22`)
-
-        if (index % 2 === 1) {
-          timeline.fromTo(beat, { xPercent: 70, autoAlpha: 0 }, { xPercent: 0, autoAlpha: 1, duration: 0.5, ease: 'power2.out' }, enter)
-          timeline.fromTo(bag, { autoAlpha: 0, rotation: 8 }, { autoAlpha: 1, rotation: 0, duration: 0.4 }, enter)
-          if (story) timeline.to(story, { backgroundColor: shade(item.ink, 26), duration: 0.4 }, enter)
-        } else {
-          timeline.set(beat, { autoAlpha: 1 }, enter)
-          timeline.fromTo(bag, { yPercent: -120, autoAlpha: 0, rotation: -8 }, { yPercent: 0, autoAlpha: 1, rotation: 0, duration: 0.62, ease: 'power3.out' }, enter)
-          if (story && index > 0) timeline.to(story, { backgroundColor: item.ink, duration: 0.4 }, enter)
-        }
-        timeline.fromTo(giant, { autoAlpha: 0, yPercent: 14 }, { autoAlpha: 1, yPercent: 0, duration: 0.36 }, `${enter}+=0.1`)
-        timeline.fromTo(copy, { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: 0.28, stagger: 0.04 }, `${enter}+=0.24`)
-        if (button) timeline.fromTo(button, { autoAlpha: 0, scale: 0.7 }, { autoAlpha: 1, scale: 1, duration: 0.26, ease: 'back.out(1.6)' }, `${enter}+=0.28`)
-        timeline.addLabel(`hold-${index}`, `${enter}+=0.5`)
-        timeline.to(bag, { rotation: index % 2 === 0 ? 8 : -7, yPercent: 6, duration: 0.26, ease: 'power1.inOut' }, `hold-${index}+=0.18`)
-        timeline.to(bag, { rotation: 0, yPercent: 0, duration: 0.22, ease: 'power1.inOut' })
-
-        if (!last) {
-          const leave = `leave-${index}`
+        item.projects.forEach((_, index) => {
+          if (index === 0) return
+          const leave = `leave-${index - 1}`
+          const side = index % 2 === 1 ? -8 : 8
           timeline.addLabel(leave)
-          if (index % 2 === 0) {
-            timeline.to(bag, { yPercent: 120, autoAlpha: 0, duration: 0.4, ease: 'power2.in' }, leave)
-            if (button) timeline.to(button, { autoAlpha: 0, duration: 0.16 }, leave)
-            timeline.to(giant, { xPercent: -24, autoAlpha: 0, duration: 0.32 }, `${leave}+=0.2`)
-            timeline.to(copy, { autoAlpha: 0, y: 12, duration: 0.2 }, `${leave}+=0.2`)
-          } else {
-            timeline.to(beat, { xPercent: -75, autoAlpha: 0, duration: 0.45, ease: 'power2.inOut' }, leave)
-          }
-          timeline.set(beat, { autoAlpha: 0 })
-        } else {
-          timeline.addLabel('spin')
-          timeline.to(bag, { rotation: 16, duration: 0.45, ease: 'power1.inOut' }, 'spin')
-          timeline.to(giant, { yPercent: -58, rotation: -6, duration: 0.45, ease: 'power2.in' }, 'spin')
-          timeline.to(copy, { y: -20, autoAlpha: 0, duration: 0.28 }, 'spin+=0.08')
-          if (button) timeline.to(button, { autoAlpha: 0, duration: 0.2 }, 'spin')
-        }
-      })
+          if (captions[index - 1]) timeline.to(captions[index - 1], { autoAlpha: 0, x: -32, y: -6, duration: 0.18 }, leave)
+          timeline.to(bag, { xPercent: side, rotation: side * 0.35, duration: 0.22, ease: 'power1.inOut' }, leave)
+          timeline.to(bag, { xPercent: 0, rotation: 0, duration: 0.3, ease: 'power2.out' })
+          if (story) timeline.to(story, { backgroundColor: index % 2 === 1 ? shade(item.ink, 36) : item.ink, duration: 0.32 }, '<')
+          if (captions[index]) timeline.fromTo(captions[index], { autoAlpha: 0, x: 40, y: 10 }, { autoAlpha: 1, x: 0, y: 0, duration: 0.28 }, '<')
+          timeline.addLabel(`hold-${index}`)
+          timeline.to({}, { duration: 0.5 })
+        })
+      }
 
       const panels = gsap.utils.toArray<HTMLElement>('[data-panel]', root)
       gsap.set(panels, { autoAlpha: 0, y: 24 })
@@ -353,15 +293,6 @@ function CapabilityMotion({ item }: { item: CapabilityItem }) {
             <p className="cap-open-intro">{item.intro}</p>
           </div>
           <div className="cap-open-world">
-            {item.projects.slice(0, 3).map((project, index) => (
-              <img
-                key={`${project.name}-${project.figure}`}
-                className="cap-floater"
-                src={projectImage(project.pieceId, item.image)}
-                alt=""
-                style={{ left: ['12%', '74%', '20%'][index], top: ['56%', '40%', '28%'][index], zIndex: index === 1 ? 3 : 1 }}
-              />
-            ))}
             <div className="cap-open-hero-slot">
               <img className="cap-open-hero" src={item.image} alt="" style={{ objectPosition: item.focus }} />
             </div>
@@ -370,24 +301,26 @@ function CapabilityMotion({ item }: { item: CapabilityItem }) {
         </section>
 
         <section className="cap-story" data-story aria-label="项目切换" style={{ background: item.ink, color: item.text }}>
-          {item.projects.map((project, index) => (
-            <article key={`${project.name}-${project.figure}`} className="cap-beat" data-beat>
-              <h2 className="cap-giant" style={{ fontFamily: serif }}>
-                {project.name}
-              </h2>
-              <div className="cap-bag-slot">
-                <img className="cap-bag" src={projectImage(project.pieceId, item.image)} alt="" />
+          <h2 className="cap-giant" style={{ fontFamily: serif }}>
+            {item.label}
+          </h2>
+          <div className="cap-hero-row">
+            <div className="cap-bag-slot">
+              <img className="cap-bag" src={item.image} alt="" style={{ objectPosition: item.focus }} />
+            </div>
+          </div>
+          <div className="cap-caption-stack">
+            {item.projects.map((project, index) => (
+              <div key={`${project.name}-${project.figure}`} className="cap-caption" data-caption>
+                <p className="cap-kicker">{project.name}</p>
+                <p className="cap-line">{project.text}</p>
+                <div className="cap-meta">
+                  <p className="cap-num">{project.figure}</p>
+                  <ViewButton item={item} project={project} index={index} />
+                </div>
               </div>
-              <div className="cap-view-slot">
-                <ViewButton item={item} project={project} index={index} />
-              </div>
-              <div className="cap-caption">
-                <p className="cap-kicker cap-copy">{project.name}</p>
-                <p className="cap-line cap-copy">{project.text}</p>
-                <p className="cap-num cap-copy">{project.figure}</p>
-              </div>
-            </article>
-          ))}
+            ))}
+          </div>
           <div className="cap-chips" role="tablist" aria-label="项目">
             {item.projects.map((project, index) => (
               <button key={`${project.name}-${project.figure}`} type="button" className={index === 0 ? 'cap-chip is-on' : 'cap-chip'} data-chip role="tab" aria-selected={index === 0} onClick={() => pick(index)}>
@@ -472,7 +405,6 @@ function CapabilityStill({ item }: { item: CapabilityItem }) {
       </section>
       {item.projects.map((project, index) => (
         <article key={`${project.name}-${project.figure}`} className="cap-still-beat" style={{ background: item.ink, color: item.text }}>
-          <img src={projectImage(project.pieceId, item.image)} alt="" />
           <div>
             <h2 className="text-3xl" style={{ fontFamily: serif }}>
               {project.name}
