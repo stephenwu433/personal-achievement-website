@@ -1,0 +1,694 @@
+import { forwardRef, useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  deviceAcceptance,
+  deviceArchitecture,
+  deviceFact,
+  deviceGoals,
+  deviceHero,
+  deviceLinks,
+  deviceOverview,
+  deviceProblem,
+  deviceRisk,
+  deviceStep,
+  deviceValue,
+  deviceWork,
+} from '@/src/projects/deviceCase.data'
+
+const song = '"Noto Serif SC", "Source Han Serif SC", "STZhongsong", "华文中宋", "Songti SC", "SimSun", serif'
+const sans = '"Noto Sans SC", "Geist Variable", sans-serif'
+const mono = 'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace'
+
+function reducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function useInView<T extends HTMLElement>(threshold = 0.02) {
+  const ref = useRef<T>(null)
+  const [shown, setShown] = useState(false)
+
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return
+    if (reducedMotion()) {
+      setShown(true)
+      return
+    }
+    const scroller = node.closest('[data-project-sheet]')
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return
+        setShown(true)
+        observer.disconnect()
+      },
+      { root: scroller instanceof HTMLElement ? scroller : null, threshold, rootMargin: '0px 0px -8% 0px' },
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [threshold])
+
+  return { ref, shown }
+}
+
+function CountFigure({ display, active, delay = 0 }: { display: string; active: boolean; delay?: number }) {
+  const parts = /^(\d+)([^0-9]*)$/.exec(display)
+  const format = (value: number) => {
+    if (!parts) return display
+    const to = Number(parts[1])
+    const pad = parts[1].length > String(to).length ? parts[1].length : 0
+    const body = pad ? String(Math.round(value)).padStart(pad, '0') : String(Math.round(value))
+    return `${body}${parts[2]}`
+  }
+  const [text, setText] = useState(parts && !reducedMotion() ? format(0) : display)
+
+  useEffect(() => {
+    if (!parts || reducedMotion()) {
+      setText(display)
+      return
+    }
+    if (!active) {
+      setText(format(0))
+      return
+    }
+    const to = Number(parts[1])
+    let frame = 0
+    setText(format(0))
+    const timer = window.setTimeout(() => {
+      const started = performance.now()
+      const tick = (now: number) => {
+        const progress = Math.min(1, (now - started) / 880)
+        const eased = 1 - (1 - progress) ** 3
+        setText(format(to * eased))
+        if (progress < 1) frame = requestAnimationFrame(tick)
+        else setText(display)
+      }
+      frame = requestAnimationFrame(tick)
+    }, delay)
+    return () => {
+      window.clearTimeout(timer)
+      cancelAnimationFrame(frame)
+    }
+  }, [active, delay, display])
+
+  return <>{text}</>
+}
+
+function useFlowPhase(count: number) {
+  const ref = useRef<HTMLOListElement>(null)
+  const [phase, setPhase] = useState(-1)
+
+  useEffect(() => {
+    const node = ref.current
+    const scroller = node?.closest('[data-project-sheet]')
+    if (!node || !(scroller instanceof HTMLElement)) return
+    if (reducedMotion()) {
+      setPhase(count - 1)
+      return
+    }
+    const onScroll = () => {
+      const view = scroller.getBoundingClientRect()
+      const rect = node.getBoundingClientRect()
+      const start = view.bottom - 48
+      const end = view.top + 160
+      if (rect.top > start) {
+        setPhase(-1)
+        return
+      }
+      const progress = Math.min(1, Math.max(0, (start - rect.top) / (start - end)))
+      setPhase(Math.min(count - 1, Math.floor(progress * count)))
+    }
+    onScroll()
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    return () => scroller.removeEventListener('scroll', onScroll)
+  }, [count])
+
+  return { ref, phase }
+}
+
+function Reveal({ children, className = '', delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
+  const { ref, shown } = useInView<HTMLDivElement>()
+  return (
+    <div ref={ref} className={`device-reveal ${shown ? 'is-in' : ''} ${className}`} style={{ transitionDelay: `${delay}ms` }}>
+      {children}
+    </div>
+  )
+}
+
+function Kicker({ children }: { children: ReactNode }) {
+  return (
+    <p className="m-0 text-[12px] tracking-[0.18em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
+      {children}
+    </p>
+  )
+}
+
+function SectionTitle({ children }: { children: string }) {
+  const { ref, shown } = useInView<HTMLDivElement>(0.2)
+  const lines = children.split('\n')
+  return (
+    <div ref={ref} className={`device-reveal ${shown ? 'is-in' : ''}`}>
+      <h2 className="m-0 max-w-[18em] text-[clamp(18px,3.6vw,46px)] leading-[1.28] font-medium text-[#1A1916]" style={{ fontFamily: song }}>
+        {lines.map((line, index) => (
+          <span key={`${index}-${line}`} className="block">
+            {line}
+          </span>
+        ))}
+      </h2>
+      <span className="device-line mt-4 block h-px w-16 bg-[#1A1916]" />
+    </div>
+  )
+}
+
+function Metric({ display, active, delay = 0 }: { display: string; active: boolean; delay?: number }) {
+  return (
+    <p className="m-0 text-[clamp(28px,3vw,40px)] leading-none" style={{ fontFamily: mono }}>
+      <CountFigure display={display} active={active} delay={delay} />
+    </p>
+  )
+}
+
+function FigureCard({ display, delay = 0, className = '', children }: { display: string; delay?: number; className?: string; children: ReactNode }) {
+  const { ref, shown } = useInView<HTMLElement>(0.2)
+  return (
+    <article ref={ref} className={`device-reveal ${shown ? 'is-in' : ''} ${className}`} style={{ transitionDelay: `${delay}ms` }}>
+      <Metric display={display} active={shown} delay={delay} />
+      {children}
+    </article>
+  )
+}
+
+function HeroBoard() {
+  const { ref, shown } = useInView<HTMLElement>(0.12)
+  return (
+    <aside ref={ref} className={`device-reveal border border-[#1A1916]/15 ${shown ? 'is-in' : ''}`}>
+      <p className="m-0 border-b border-[#1A1916]/15 px-4 py-3 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+        {deviceHero.boardLabel}
+      </p>
+      <ol className="m-0 list-none p-0">
+        {deviceHero.stats.map((stat, index) => (
+          <li key={stat.value} className="grid grid-cols-[4.6rem_1fr] gap-3 border-t border-[#1A1916]/15 px-4 py-4 first:border-t-0">
+            <span className="text-[clamp(28px,3vw,40px)] leading-none" style={{ fontFamily: mono }}>
+              <CountFigure display={stat.value} active={shown} delay={index * 90} />
+            </span>
+            <span>
+              <span className="block text-[15px] leading-7">{stat.label}</span>
+              <span className="mt-1 block text-[13px] leading-6 text-[#1A1916]/70">{stat.note}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </aside>
+  )
+}
+
+const Chain = forwardRef<HTMLOListElement, { steps: readonly string[]; phase?: number; wide?: boolean }>(function Chain({ steps, phase, wide = false }, ref) {
+  return (
+    <ol ref={ref} className={`grid list-none gap-2 p-0 md:grid-cols-2 ${wide ? 'xl:grid-cols-6' : 'xl:grid-cols-3'}`}>
+      {steps.map((step, index) => {
+        const lit = phase === undefined || index <= phase
+        const waiting = phase !== undefined && index > phase
+        return (
+          <li key={step} className={`device-step border px-3 py-3 text-[14px] leading-7 ${lit ? 'is-lit' : ''} ${waiting ? 'is-wait' : ''}`}>
+            <span className="mr-2 text-[12px]" style={{ fontFamily: mono }}>
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            {step}
+          </li>
+        )
+      })}
+    </ol>
+  )
+})
+
+export default function DeviceCase({ onClose, embedded = false }: { onClose?: () => void; embedded?: boolean }) {
+  const { ref: flowRef, phase } = useFlowPhase(deviceOverview.steps.length)
+
+  return (
+    <article className="device-case text-[#1A1916]" style={{ fontFamily: sans, background: '#F5F3EE' }}>
+      {embedded ? null : (
+        <div className="mx-auto w-full max-w-[1120px] px-5 pt-8 sm:px-8">
+          <button type="button" onClick={onClose} className="text-[12px] tracking-[0.18em] underline underline-offset-4" style={{ fontFamily: mono }}>
+            返回
+          </button>
+        </div>
+      )}
+
+      <header className={`mx-auto w-full max-w-[1120px] px-5 pb-16 sm:px-8 ${embedded ? 'pt-16' : 'pt-8'}`}>
+        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+          <Reveal>
+            <Kicker>01 / {deviceHero.tag}</Kicker>
+            <p className="mt-4 mb-0 text-[20px] leading-8" style={{ fontFamily: song }}>
+              {deviceHero.name}
+            </p>
+            <h1 className="mt-4 text-[clamp(24px,3.1vw,40px)] leading-[1.25] font-medium" style={{ fontFamily: song }}>
+              <span className="block">{deviceHero.title[0]}</span>
+              <span className="block">{deviceHero.title[1]}</span>
+            </h1>
+            <p className="mt-6 max-w-[38rem] text-[16px] leading-8 text-[#1A1916]/80">{deviceHero.subtitle}</p>
+            <dl className="mt-6 border-t border-[#1A1916]/15 pt-4">
+              <dt className="text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
+                我的职责
+              </dt>
+              <dd className="mt-2 mb-0 text-[16px] leading-7">
+                {deviceHero.role}
+                <span className="mt-1 block text-[14px] text-[#1A1916]/70">{deviceHero.roleNote}</span>
+              </dd>
+            </dl>
+            {embedded ? null : (
+              <ul className="mt-6 grid list-none gap-3 p-0">
+                {deviceLinks.map((link) => (
+                  <li key={link.href}>
+                    <a
+                      href={link.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block border border-[#1A1916]/15 px-4 py-4 transition-colors hover:border-[#1A1916]"
+                    >
+                      <span className="text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                        {link.label}
+                      </span>
+                      <span className="mt-2 block text-[14px] leading-7">{link.note}</span>
+                      <span className="mt-2 block text-[12px] leading-5 break-all underline underline-offset-4" style={{ fontFamily: mono }}>
+                        {link.href}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Reveal>
+          <HeroBoard />
+        </div>
+        <Reveal className="mt-8" delay={80}>
+          <p className="mb-0 max-w-[46rem] border-t border-[#1A1916] pt-4 text-[14px] leading-7 text-[#1A1916]/70">{deviceHero.footnote}</p>
+        </Reveal>
+      </header>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {deviceProblem.index} / {deviceProblem.kicker}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{deviceProblem.title}</SectionTitle>
+          </div>
+          <Reveal>
+            <p className="mt-8 text-[18px] leading-8" style={{ fontFamily: song }}>
+              {deviceProblem.lead}
+            </p>
+            <div className="mt-4 grid gap-6 lg:grid-cols-2">
+              {deviceProblem.paragraphs.map((paragraph) => (
+                <p key={paragraph} className="m-0 text-[16px] leading-8">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          </Reveal>
+          <Reveal className="mt-10 grid gap-4 lg:grid-cols-[0.9fr_1.1fr]" delay={60}>
+            <div className="border border-[#1A1916]/15 px-4 py-5">
+              <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                {deviceProblem.chainLabel}
+              </p>
+              <ol className="mt-4 grid list-none gap-3 p-0">
+                {deviceProblem.chain.map((step, index) => (
+                  <li key={step} className="grid grid-cols-[1.5rem_1fr] gap-2 text-[15px] leading-7">
+                    <span style={{ fontFamily: mono }}>{index === 0 ? '·' : '↓'}</span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <div>
+              <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                {deviceProblem.impactLabel}
+              </p>
+              <div className="mt-4 grid gap-3">
+                {deviceProblem.impacts.map((impact) => (
+                  <article key={impact.title} className="border border-[#1A1916]/15 px-4 py-4">
+                    <h3 className="m-0 text-[16px] leading-7 font-medium">{impact.title}</h3>
+                    <p className="mt-2 mb-0 text-[15px] leading-7 text-[#1A1916]/80">{impact.body}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {deviceGoals.index} / {deviceGoals.kicker}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{deviceGoals.title}</SectionTitle>
+          </div>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            {deviceGoals.goals.map((goal, index) => (
+              <Reveal key={goal.index} delay={index * 90}>
+                <article className="h-full border border-[#1A1916]/15 px-4 py-5">
+                  <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                    {goal.index}｜{goal.title}
+                  </p>
+                  <p className="mt-3 mb-0 text-[15px] leading-8">{goal.body}</p>
+                </article>
+              </Reveal>
+            ))}
+          </div>
+          <Reveal className="mt-8" delay={80}>
+            <p className="max-w-[40rem] border-t border-[#1A1916] pt-4 text-[20px] leading-9" style={{ fontFamily: song }}>
+              {deviceGoals.close}
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {deviceOverview.index} / {deviceOverview.kicker}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{deviceOverview.title}</SectionTitle>
+          </div>
+          <div className="mt-8">
+            <Chain ref={flowRef} steps={deviceOverview.steps} phase={phase} wide />
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {deviceOverview.outcomes.map((outcome, index) => (
+              <Reveal key={outcome.code} delay={index * 80}>
+                <article className="h-full border border-[#1A1916]/15 px-4 py-4">
+                  <p className="m-0 text-[13px] tracking-[0.14em]" style={{ fontFamily: mono }}>
+                    {outcome.code}
+                  </p>
+                  <p className="mt-2 mb-0 text-[15px] leading-7">{outcome.body}</p>
+                </article>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {deviceFact.index} / {deviceFact.code}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{deviceFact.title}</SectionTitle>
+          </div>
+          <Reveal className="mt-6">
+            <p className="max-w-[40rem] text-[16px] leading-8">
+              <span className="mr-2 text-[12px] tracking-[0.14em]" style={{ fontFamily: mono }}>
+                {deviceFact.sceneLabel}
+              </span>
+              {deviceFact.scene}
+            </p>
+          </Reveal>
+          <div className="mt-8 grid gap-3 lg:grid-cols-3">
+            {deviceFact.columns.map((column, index) => (
+              <Reveal key={column.index} delay={index * 90}>
+                <article className="h-full border border-[#1A1916]/15 px-4 py-5">
+                  <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                    {column.index}. {column.title}
+                  </p>
+                  <p className="mt-3 mb-0 text-[15px] leading-8">{column.body}</p>
+                </article>
+              </Reveal>
+            ))}
+          </div>
+          <Reveal className="mt-8">
+            <Chain steps={deviceFact.chain} />
+          </Reveal>
+          <Reveal className="mt-4">
+            <p className="mb-0 max-w-[40rem] text-[14px] leading-7 text-[#1A1916]/70">{deviceFact.note}</p>
+          </Reveal>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {deviceStep.index} / {deviceStep.code}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{deviceStep.title}</SectionTitle>
+          </div>
+          <Reveal className="mt-6">
+            <p className="max-w-[40rem] text-[16px] leading-8">
+              <span className="mr-2 text-[12px] tracking-[0.14em]" style={{ fontFamily: mono }}>
+                {deviceStep.sceneLabel}
+              </span>
+              {deviceStep.scene}
+            </p>
+          </Reveal>
+          <Reveal className="mt-8 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <ol className="grid list-none gap-3 p-0">
+              {deviceStep.states.map((state, index) => (
+                <li key={state.code} className="border border-[#1A1916]/15 px-4 py-4">
+                  <p className="m-0 text-[13px] tracking-[0.14em]" style={{ fontFamily: mono }}>
+                    0{index + 1} {state.code}
+                  </p>
+                  <p className="mt-2 mb-0 text-[15px] leading-7">{state.body}</p>
+                </li>
+              ))}
+            </ol>
+            <div className="border border-[#1A1916]/15 px-4 py-4">
+              <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                {deviceStep.fieldsLabel}
+              </p>
+              <ul className="mt-3 mb-0 grid list-none gap-2 p-0">
+                {deviceStep.fields.map((field) => (
+                  <li key={field} className="border-t border-[#1A1916]/15 pt-2 text-[15px] leading-7">
+                    {field}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Reveal>
+          <Reveal className="mt-8">
+            <p className="max-w-[40rem] border-t border-[#1A1916] pt-4 text-[18px] leading-8" style={{ fontFamily: song }}>
+              {deviceStep.close}
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {deviceRisk.index} / {deviceRisk.code}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{deviceRisk.title}</SectionTitle>
+          </div>
+          <div className="mt-8 grid gap-4 lg:grid-cols-2">
+            <Reveal>
+            <article className="h-full border border-[#1A1916] px-4 py-5">
+              <h3 className="m-0 text-[20px] leading-8 font-medium" style={{ fontFamily: song }}>
+                {deviceRisk.block.title}
+              </h3>
+              <p className="mt-4 mb-2 text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
+                {deviceRisk.block.triggerLabel}
+              </p>
+              <p className="m-0 text-[16px] leading-8">{deviceRisk.block.triggers.join('｜')}</p>
+              <p className="mt-4 mb-2 text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
+                {deviceRisk.block.actionLabel}
+              </p>
+              <ul className="m-0 grid list-none gap-2 p-0">
+                {deviceRisk.block.actions.map((action) => (
+                  <li key={action} className="border-t border-[#1A1916]/15 pt-2 text-[15px] leading-7">
+                    {action}
+                  </li>
+                ))}
+              </ul>
+            </article>
+            </Reveal>
+            <Reveal delay={100}>
+            <article className="h-full border border-[#1A1916]/15 px-4 py-5">
+              <h3 className="m-0 text-[20px] leading-8 font-medium" style={{ fontFamily: song }}>
+                {deviceRisk.handoff.title}
+              </h3>
+              <p className="mt-4 mb-2 text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
+                {deviceRisk.handoff.triggerLabel}
+              </p>
+              <ul className="m-0 grid list-none gap-2 p-0">
+                {deviceRisk.handoff.triggers.map((trigger) => (
+                  <li key={trigger} className="text-[15px] leading-7">
+                    {trigger}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-4 mb-2 text-[12px] tracking-[0.16em] text-[#1A1916]/55" style={{ fontFamily: mono }}>
+                {deviceRisk.handoff.packetLabel}
+              </p>
+              <ul className="m-0 grid list-none gap-2 p-0 sm:grid-cols-2">
+                {deviceRisk.handoff.packet.map((item) => (
+                  <li key={item} className="border-t border-[#1A1916]/15 pt-2 text-[15px] leading-7">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </article>
+            </Reveal>
+          </div>
+          <Reveal className="mt-8">
+            <p className="max-w-[40rem] border-t border-[#1A1916] pt-4 text-[20px] leading-9" style={{ fontFamily: song }}>
+              {deviceRisk.close}
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {deviceArchitecture.index} / {deviceArchitecture.kicker}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{deviceArchitecture.title}</SectionTitle>
+          </div>
+          <Reveal className="mt-8">
+            <ol className="grid list-none gap-px bg-[#1A1916]/15 p-0">
+              {deviceArchitecture.layers.map((layer) => (
+                <li key={layer.index} className="grid gap-2 bg-[#F5F3EE] px-4 py-5 sm:grid-cols-[16rem_1fr] sm:items-baseline">
+                  <p className="m-0 text-[14px] tracking-[0.08em]" style={{ fontFamily: mono }}>
+                    {layer.index}｜{layer.name}
+                  </p>
+                  <p className="m-0 text-[15px] leading-7">{layer.body}</p>
+                </li>
+              ))}
+            </ol>
+          </Reveal>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {deviceArchitecture.split.map((side, index) => (
+              <Reveal key={side.title} delay={index * 90}>
+                <article className="h-full border border-[#1A1916]/15 px-4 py-4">
+                  <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                    {side.title}
+                  </p>
+                  <p className="mt-3 mb-0 text-[16px] leading-8">{side.items.join('｜')}</p>
+                </article>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {deviceAcceptance.index} / {deviceAcceptance.kicker}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{deviceAcceptance.title}</SectionTitle>
+          </div>
+          <div className="mt-8 grid gap-px bg-[#1A1916]/15 sm:grid-cols-2 xl:grid-cols-4">
+            {deviceAcceptance.board.map((item, index) => (
+              <FigureCard key={item.label} display={item.value} delay={index * 80} className="bg-[#F5F3EE] px-4 py-5">
+                <p className="mt-4 mb-0 text-[15px] leading-7">{item.label}</p>
+                <p className="mt-2 mb-0 text-[13px] leading-6 text-[#1A1916]/70">{item.note}</p>
+              </FigureCard>
+            ))}
+          </div>
+          <Reveal className="mt-8 grid gap-6 lg:grid-cols-2">
+            {deviceAcceptance.paragraphs.map((paragraph) => (
+              <p key={paragraph} className="m-0 text-[16px] leading-8">
+                {paragraph}
+              </p>
+            ))}
+          </Reveal>
+          <Reveal className="mt-8 border border-[#1A1916]/15">
+            <div className="grid border-b border-[#1A1916]/15 sm:grid-cols-[12rem_1fr]">
+              {deviceAcceptance.columns.map((column) => (
+                <p key={column} className="m-0 px-4 py-3 text-[12px] tracking-[0.14em]" style={{ fontFamily: mono }}>
+                  {column}
+                </p>
+              ))}
+            </div>
+            {deviceAcceptance.rows.map((row) => (
+              <div key={row.item} className="grid border-t border-[#1A1916]/15 sm:grid-cols-[12rem_1fr]">
+                <p className="m-0 px-4 py-3 text-[15px] leading-7">{row.item}</p>
+                <p className="m-0 px-4 py-3 text-[15px] leading-7 text-[#1A1916]/80">{row.check}</p>
+              </div>
+            ))}
+          </Reveal>
+          <Reveal className="mt-8">
+            <p className="max-w-[40rem] border-t border-[#1A1916] pt-4 text-[20px] leading-9" style={{ fontFamily: song }}>
+              {deviceAcceptance.close}
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {deviceValue.index} / {deviceValue.kicker}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{deviceValue.title}</SectionTitle>
+          </div>
+          <div className="mt-8 grid gap-3 lg:grid-cols-3">
+            {deviceValue.cards.map((card, index) => (
+              <Reveal key={card.title} delay={index * 90}>
+                <article className="h-full border border-[#1A1916]/15 px-4 py-5">
+                  <h3 className="m-0 text-[20px] leading-8 font-medium" style={{ fontFamily: song }}>
+                    {card.title}
+                  </h3>
+                  {card.paragraphs.map((paragraph) => (
+                    <p key={paragraph} className="mt-3 mb-0 text-[15px] leading-8">
+                      {paragraph}
+                    </p>
+                  ))}
+                </article>
+              </Reveal>
+            ))}
+          </div>
+          <div className="mt-8 grid gap-px bg-[#1A1916]/15 sm:grid-cols-2 xl:grid-cols-5">
+            {deviceValue.summary.map((item, index) => (
+              <FigureCard key={item.text} display={item.value} delay={index * 70} className="bg-[#F5F3EE] px-4 py-5">
+                <p className="mt-3 mb-0 text-[14px] leading-7">{item.text}</p>
+              </FigureCard>
+            ))}
+          </div>
+          <Reveal className="mt-8">
+            <p className="max-w-[42rem] border-t border-[#1A1916] pt-4 text-[20px] leading-9" style={{ fontFamily: song }}>
+              {deviceValue.close}
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
+      <section className="border-t border-[#1A1916]/15">
+        <div className="mx-auto w-full max-w-[1120px] px-5 py-16 sm:px-8">
+          <Kicker>
+            {deviceWork.index} / {deviceWork.kicker}
+          </Kicker>
+          <div className="mt-4">
+            <SectionTitle>{deviceWork.title}</SectionTitle>
+          </div>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            {deviceWork.items.map((item, index) => (
+              <Reveal key={item.title} delay={index * 90}>
+                <article className="h-full border border-[#1A1916]/15 px-4 py-5">
+                  <p className="m-0 text-[12px] tracking-[0.16em]" style={{ fontFamily: mono }}>
+                    0{index + 1}
+                  </p>
+                  <h3 className="mt-3 mb-0 text-[22px] leading-8 font-medium" style={{ fontFamily: song }}>
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 mb-0 text-[15px] leading-8">{item.body}</p>
+                </article>
+              </Reveal>
+            ))}
+          </div>
+          <Reveal className="mt-8">
+            <p className="max-w-[42rem] border-t border-[#1A1916] pt-5 text-[20px] leading-9" style={{ fontFamily: song }}>
+              {deviceWork.close}
+            </p>
+          </Reveal>
+        </div>
+      </section>
+    </article>
+  )
+}
